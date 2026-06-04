@@ -30,7 +30,7 @@
 
                     <div class="field">
 
-                        <label for="company_name">اسم الشركة / معرض</label>
+                        <label for="company_name" class="vs-form-label">اسم الشركة / معرض</label>
 
                         <InputText
 
@@ -52,7 +52,7 @@
 
                     <div class="field">
 
-                        <label for="phone">رقم الهاتف</label>
+                        <label for="phone" class="vs-form-label">رقم الهاتف</label>
 
                         <InputText
 
@@ -496,17 +496,13 @@ onMounted(load);
 
 
 
-.field label {
+.field .vs-form-label {
 
     display: block;
 
     margin-bottom: 0.35rem;
 
-    font-size: 0.85rem;
-
     font-weight: 600;
-
-    color: #3f3f46;
 
 }
 

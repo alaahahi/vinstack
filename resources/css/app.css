@@ -23,6 +23,32 @@
     --vs-btn-padding-y: 0.5rem;
     --vs-btn-padding-x-sm: 1rem;
     --vs-btn-padding-y-sm: 0.35rem;
+
+    /* Shared form inputs (login-aligned) */
+    --vs-input-height: 2.75rem;
+    --vs-input-height-compact: 2.5rem;
+    --vs-input-radius: 0.65rem;
+    --vs-input-padding-y: 0.625rem;
+    --vs-input-padding-x: 0.875rem;
+    --vs-input-padding-y-compact: 0.5rem;
+    --vs-input-padding-x-compact: 0.75rem;
+    --vs-input-font-size: 0.9375rem;
+    --vs-input-font-size-mobile: 16px;
+    --vs-input-border: var(--vs-border);
+    --vs-input-bg: var(--vs-surface);
+    --vs-input-color: var(--vs-text);
+    --vs-input-placeholder: var(--vs-text-subtle);
+    --vs-input-focus-border: var(--admin-accent);
+    --vs-input-focus-ring: 0 0 0 1px var(--admin-accent);
+    --vs-input-hover-border: var(--vs-zinc-300);
+    --vs-field-gap: 0.35rem;
+    --vs-field-margin: 1rem;
+    --vs-input-otp-width: 2.5rem;
+    --vs-input-otp-gap: 0.5rem;
+
+    /* Login card aliases */
+    --login-card-input-height: var(--vs-input-height-compact);
+    --login-card-input-radius: var(--vs-input-radius);
 }
 
 [data-theme='light'] {
@@ -127,6 +153,9 @@
     --vs-btn-add-disabled-bg: #bbf7d0;
     --vs-btn-add-disabled-border: #86efac;
     --vs-btn-add-disabled-color: #166534;
+
+    --vs-input-bg: #ffffff;
+    --vs-input-hover-border: var(--vs-zinc-300);
 }
 
 [data-theme='dark'] {
@@ -231,6 +260,11 @@
     --vs-btn-add-disabled-bg: #14532d;
     --vs-btn-add-disabled-border: #166534;
     --vs-btn-add-disabled-color: #86efac;
+
+    --vs-input-bg: var(--vs-zinc-900);
+    --vs-input-border: var(--vs-zinc-600);
+    --vs-input-hover-border: var(--vs-zinc-500);
+    --vs-input-placeholder: var(--vs-zinc-500);
 }
 
 html,
@@ -324,6 +358,133 @@ body,
     color: var(--vs-zinc-300);
 }
 
+/* Shared form field layout */
+.field {
+    margin-bottom: var(--vs-field-margin);
+    display: flex;
+    flex-direction: column;
+    gap: var(--vs-field-gap);
+}
+
+.field:last-child {
+    margin-bottom: 0;
+}
+
+.field > label:not(.p-checkbox-label):not(.p-radiobutton-label),
+.field > .vs-form-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--vs-text-secondary);
+}
+
+[data-theme='dark'] .field > label:not(.p-checkbox-label):not(.p-radiobutton-label),
+[data-theme='dark'] .field > .vs-form-label {
+    color: var(--vs-zinc-300);
+}
+
+/* PrimeVue form controls — login-aligned (exclude compact table/paginator inputs) */
+.p-inputtext:not(.p-inputtext-sm),
+.p-password .p-inputtext,
+.p-textarea,
+.p-select:not(.p-select-sm),
+.p-inputnumber:not(.p-inputnumber-sm) .p-inputnumber-input,
+.p-inputotp .p-inputotp-input {
+    font-family: inherit;
+    font-size: var(--vs-input-font-size);
+    color: var(--vs-input-color);
+    background: var(--vs-input-bg);
+    border: 1px solid var(--vs-input-border);
+    border-radius: var(--vs-input-radius);
+    min-height: var(--vs-input-height);
+    padding-block: var(--vs-input-padding-y);
+    padding-inline: var(--vs-input-padding-x);
+    transition:
+        background 0.15s ease,
+        color 0.15s ease,
+        border-color 0.15s ease,
+        box-shadow 0.15s ease;
+    box-shadow: none;
+}
+
+.p-textarea {
+    min-height: 6rem;
+    line-height: 1.45;
+    resize: vertical;
+}
+
+.p-select:not(.p-select-sm) {
+    min-height: var(--vs-input-height);
+    border-radius: var(--vs-input-radius);
+    border-color: var(--vs-input-border);
+    background: var(--vs-input-bg);
+}
+
+.p-select:not(.p-select-sm) .p-select-label {
+    padding-block: var(--vs-input-padding-y);
+    padding-inline: var(--vs-input-padding-x);
+    font-size: var(--vs-input-font-size);
+    color: var(--vs-input-color);
+}
+
+.p-password {
+    display: block;
+    width: 100%;
+}
+
+.p-password .p-inputtext {
+    width: 100%;
+}
+
+.p-inputtext:not(.p-inputtext-sm)::placeholder,
+.p-password .p-inputtext::placeholder,
+.p-textarea::placeholder {
+    color: var(--vs-input-placeholder);
+}
+
+.p-inputtext:not(.p-inputtext-sm):enabled:hover,
+.p-password .p-inputtext:enabled:hover,
+.p-textarea:enabled:hover,
+.p-select:not(.p-disabled):not(.p-select-sm):hover {
+    border-color: var(--vs-input-hover-border);
+}
+
+.p-inputtext:not(.p-inputtext-sm):enabled:focus,
+.p-password .p-inputtext:enabled:focus,
+.p-textarea:enabled:focus,
+.p-select:not(.p-disabled).p-focus:not(.p-select-sm) {
+    border-color: var(--vs-input-focus-border);
+    box-shadow: var(--vs-input-focus-ring);
+    outline: none;
+}
+
+.p-inputotp .p-inputotp-input {
+    width: var(--vs-input-otp-width);
+    text-align: center;
+}
+
+.p-inputotp {
+    gap: var(--vs-input-otp-gap);
+}
+
+/* Compact inputs inside tables / paginator — do not inherit form sizing */
+.p-datatable .p-inputtext,
+.p-datatable .p-password .p-inputtext,
+.p-paginator .p-inputtext,
+.p-inputtext.p-inputtext-sm,
+.p-inputfield-sm .p-inputtext {
+    min-height: auto;
+    font-size: inherit;
+    border-radius: var(--admin-radius-sm);
+    padding-block: 0.375rem;
+    padding-inline: 0.5rem;
+}
+
+.p-datatable .p-select,
+.p-paginator .p-select {
+    min-height: auto;
+    border-radius: var(--admin-radius-sm);
+}
+
 .vs-card-title,
 .settings-card__head h2 {
     margin: 0 0 0.2rem;
@@ -379,32 +540,14 @@ body,
     color: var(--vs-zinc-100);
 }
 
-/* PrimeVue text inputs — dark mode readability */
-[data-theme='dark'] .p-inputtext,
-[data-theme='dark'] .p-password .p-inputtext,
-[data-theme='dark'] .p-textarea {
-    background: var(--vs-zinc-900);
-    border-color: var(--vs-zinc-600);
+/* Dark mode — select & icons (inputs use --vs-input-* tokens) */
+[data-theme='dark'] .p-select:not(.p-select-sm) {
+    background: var(--vs-input-bg);
+    border-color: var(--vs-input-border);
+}
+
+[data-theme='dark'] .p-select:not(.p-select-sm) .p-select-label {
     color: var(--vs-zinc-100);
-}
-
-[data-theme='dark'] .p-inputtext:enabled:hover,
-[data-theme='dark'] .p-password .p-inputtext:enabled:hover,
-[data-theme='dark'] .p-textarea:enabled:hover {
-    border-color: var(--vs-zinc-500);
-}
-
-[data-theme='dark'] .p-inputtext:enabled:focus,
-[data-theme='dark'] .p-password .p-inputtext:enabled:focus,
-[data-theme='dark'] .p-textarea:enabled:focus {
-    border-color: var(--admin-accent);
-    box-shadow: 0 0 0 1px var(--admin-accent);
-}
-
-[data-theme='dark'] .p-inputtext::placeholder,
-[data-theme='dark'] .p-password .p-inputtext::placeholder,
-[data-theme='dark'] .p-textarea::placeholder {
-    color: var(--vs-zinc-500);
 }
 
 [data-theme='dark'] .p-iconfield .p-inputicon {
@@ -720,6 +863,17 @@ form .p-button[type='submit']:not(.p-button-outlined):not(.p-button-text):not(:d
 }
 
 @media (max-width: 640px) {
+    :root {
+        --vs-input-height: var(--vs-input-height-compact);
+        --vs-input-padding-y: var(--vs-input-padding-y-compact);
+        --vs-input-padding-x: var(--vs-input-padding-x-compact);
+        --vs-input-font-size: var(--vs-input-font-size-mobile);
+        --vs-input-otp-width: 2.35rem;
+        --vs-input-otp-gap: 0.4rem;
+        --vs-field-margin: 0.85rem;
+        --login-card-input-height: var(--vs-input-height-compact);
+    }
+
     .login-logo-frame--compact .login-logo {
         width: 3.5rem;
     }
@@ -728,32 +882,15 @@ form .p-button[type='submit']:not(.p-button-outlined):not(.p-button-text):not(:d
         font-size: 0.92rem;
     }
 
-    .login-form-panel .login-card .p-inputtext,
-    .login-form-panel .login-card .p-password .p-inputtext {
-        min-height: 40px;
-        padding-block: 0.5rem;
-        padding-inline: 0.75rem;
-        font-size: 16px;
-    }
-
     .login-form-panel .login-card .otp-ltr .p-inputotp-input {
-        min-height: 40px;
-        width: 2.35rem;
         padding-block: 0.45rem;
         font-size: 1rem;
-    }
-
-    .login-form-panel .login-card .p-inputotp {
-        gap: 0.4rem;
     }
 
     .brand-logo {
         width: 4.25rem;
     }
 
-    .p-inputtext,
-    .p-password .p-inputtext,
-    .p-select .p-select-label,
     .p-button:not(.p-button-sm):not(.p-button-icon-only):not(.p-button-link) {
         min-height: 44px;
     }
