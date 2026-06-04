@@ -37,7 +37,7 @@
     <script>
         (function () {
             var t = localStorage.getItem('theme');
-            document.documentElement.setAttribute('data-theme', t === 'dark' ? 'dark' : 'light');
+            document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
         })();
     </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])

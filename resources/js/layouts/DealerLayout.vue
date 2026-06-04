@@ -25,6 +25,7 @@
             </nav>
 
             <div class="header-actions">
+                <ThemeToggle />
                 <Button
                     icon="pi pi-user"
                     :label="profileLabel"
@@ -48,12 +49,6 @@
             </div>
             <DealerFooter />
         </main>
-
-        <aside class="dealer-sidebar" aria-label="إعدادات العرض">
-            <div class="dealer-sidebar__theme">
-                <ThemeToggle />
-            </div>
-        </aside>
     </div>
 </template>
 
@@ -162,9 +157,8 @@ onUnmounted(() => {
 .layout {
     min-height: 100dvh;
     min-height: 100vh;
-    display: grid;
-    grid-template-columns: 1fr 52px;
-    grid-template-rows: auto 1fr;
+    display: flex;
+    flex-direction: column;
     overflow-x: clip;
 }
 
@@ -254,7 +248,19 @@ onUnmounted(() => {
 }
 
 .header-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
     margin-inline-start: auto;
+}
+
+.header-actions :deep(.theme-toggle .p-button) {
+    color: var(--dealer-header-text);
+}
+
+.header-actions :deep(.theme-toggle .p-button:hover) {
+    background: var(--dealer-nav-hover);
+    color: #fff;
 }
 
 .profile-btn :deep(.p-button-label) {
@@ -268,8 +274,7 @@ onUnmounted(() => {
 }
 
 .content {
-    grid-column: 1;
-    grid-row: 2;
+    flex: 1;
     padding: 1rem 1.25rem 1.5rem;
     background: var(--dealer-content-bg);
     min-width: 0;
@@ -294,32 +299,7 @@ onUnmounted(() => {
     color: var(--dealer-page-title);
 }
 
-.dealer-sidebar {
-    grid-row: 2;
-    grid-column: 2;
-    background: var(--dealer-header-bg);
-    border-inline-start: 1px solid var(--app-border);
-    display: flex;
-    flex-direction: column;
-    justify-content: flex-end;
-    align-items: center;
-    padding-bottom: 1rem;
-}
-
-.dealer-sidebar__theme :deep(.p-button) {
-    color: var(--dealer-header-text);
-}
-
-.dealer-sidebar__theme :deep(.p-button:hover) {
-    background: var(--dealer-nav-hover);
-    color: #fff;
-}
-
 @media (max-width: 640px) {
-    .layout {
-        grid-template-columns: 1fr 44px;
-    }
-
     .header {
         padding: 0.75rem 1rem;
         isolation: isolate;
@@ -363,6 +343,11 @@ onUnmounted(() => {
     }
 
     .profile-btn :deep(.p-button) {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .header-actions :deep(.theme-toggle .p-button) {
         min-width: 44px;
         min-height: 44px;
     }

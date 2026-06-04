@@ -1,7 +1,7 @@
 import { defineStore } from 'pinia';
 
 const STORAGE_KEY = 'theme';
-const DEFAULT_THEME = 'light';
+const DEFAULT_THEME = 'dark';
 
 export const LOGO_DAY = '/images/logo-day.jpg';
 

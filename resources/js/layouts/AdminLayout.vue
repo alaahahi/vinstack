@@ -34,6 +34,9 @@
                         <i :class="item.icon" />
                         <span>{{ item.label }}</span>
                     </RouterLink>
+                    <div v-if="group.label === 'النظام'" class="admin-nav__theme">
+                        <ThemeToggle />
+                    </div>
                 </div>
             </nav>
 
@@ -47,9 +50,6 @@
                     <span>الملف الشخصي</span>
                 </RouterLink>
                 <span v-if="auth.user?.name" class="admin-sidebar__user">{{ auth.user.name }}</span>
-                <div class="admin-sidebar__theme">
-                    <ThemeToggle />
-                </div>
             </div>
         </aside>
 
@@ -334,19 +334,18 @@ watch(
     white-space: nowrap;
 }
 
-.admin-sidebar__theme {
+.admin-nav__theme {
     display: flex;
-    justify-content: center;
-    padding-top: 0.35rem;
-    margin-top: 0.15rem;
-    border-top: 1px solid var(--admin-sidebar-border);
+    align-items: center;
+    padding: 0.35rem 0.65rem;
+    margin-top: 0.1rem;
 }
 
-.admin-sidebar__theme :deep(.p-button) {
+.admin-nav__theme :deep(.p-button) {
     color: var(--admin-sidebar-text);
 }
 
-.admin-sidebar__theme :deep(.p-button:hover) {
+.admin-nav__theme :deep(.p-button:hover) {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
 }
