@@ -153,6 +153,13 @@
     --vs-btn-add-disabled-bg: #bbf7d0;
     --vs-btn-add-disabled-border: #86efac;
     --vs-btn-add-disabled-color: #166534;
+    --vs-btn-assign-bg: #ca8a04;
+    --vs-btn-assign-border: #ca8a04;
+    --vs-btn-assign-color: #ffffff;
+    --vs-btn-assign-hover-bg: #a16207;
+    --vs-btn-assign-hover-border: #a16207;
+    --vs-btn-assign-outlined-bg: rgba(255, 255, 255, 0.65);
+    --vs-btn-assign-outlined-hover-bg: rgba(202, 138, 4, 0.12);
 
     --vs-input-bg: #ffffff;
     --vs-input-hover-border: var(--vs-zinc-300);
@@ -260,6 +267,13 @@
     --vs-btn-add-disabled-bg: #14532d;
     --vs-btn-add-disabled-border: #166534;
     --vs-btn-add-disabled-color: #86efac;
+    --vs-btn-assign-bg: #eab308;
+    --vs-btn-assign-border: #ca8a04;
+    --vs-btn-assign-color: #422006;
+    --vs-btn-assign-hover-bg: #facc15;
+    --vs-btn-assign-hover-border: #eab308;
+    --vs-btn-assign-outlined-bg: rgba(255, 255, 255, 0.04);
+    --vs-btn-assign-outlined-hover-bg: rgba(234, 179, 8, 0.18);
 
     --vs-input-bg: var(--vs-zinc-900);
     --vs-input-border: var(--vs-zinc-600);
@@ -575,7 +589,7 @@ body,
 /* Default solid primary → light outlined pill */
 .p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(
         .p-button-icon-only
-    ):not(.login-submit):not(.btn-cta):not(.btn-add):not(.btn-pill--filled):not(
+    ):not(.login-submit):not(.btn-cta):not(.btn-add):not(.btn-assign):not(.btn-pill--filled):not(
         .form-footer__btn--next
     ):not(.form-footer__btn--save):not(.form-footer__btn--prev) {
     background: var(--vs-btn-bg);
@@ -586,7 +600,7 @@ body,
 
 .p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(
         .p-button-icon-only
-    ):not(.login-submit):not(.btn-cta):not(.btn-add):not(.btn-pill--filled):not(
+    ):not(.login-submit):not(.btn-cta):not(.btn-add):not(.btn-assign):not(.btn-pill--filled):not(
         .form-footer__btn--next
     ):not(.form-footer__btn--save):not(.form-footer__btn--prev):not(:disabled):hover {
     background: var(--vs-btn-hover-bg);
@@ -596,7 +610,7 @@ body,
 
 .p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(
         .p-button-icon-only
-    ):not(.login-submit):not(.btn-cta):not(.btn-add):not(.btn-pill--filled):not(
+    ):not(.login-submit):not(.btn-cta):not(.btn-add):not(.btn-assign):not(.btn-pill--filled):not(
         .form-footer__btn--next
     ):not(.form-footer__btn--save):not(.form-footer__btn--prev):not(:disabled):active {
     background: var(--vs-surface-hover);
@@ -678,6 +692,41 @@ form .p-button[type='submit']:not(.p-button-outlined):not(.p-button-text):not(:d
     background: var(--vs-btn-add-outlined-hover-bg);
     border-color: var(--vs-btn-add-border);
     color: var(--vs-btn-add-bg);
+}
+
+/* Assign actions — yellow accent pill */
+.btn-assign.p-button:not(.p-button-text):not(.p-button-link) {
+    background: var(--vs-btn-assign-bg);
+    border: 1px solid var(--vs-btn-assign-border);
+    color: var(--vs-btn-assign-color);
+}
+
+.btn-assign.p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(:disabled):hover {
+    background: var(--vs-btn-assign-hover-bg);
+    border-color: var(--vs-btn-assign-hover-border);
+    color: var(--vs-btn-assign-color);
+}
+
+.btn-assign.p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(:disabled):active {
+    filter: brightness(0.95);
+}
+
+.btn-assign.p-button-outlined:not(.p-button-text):not(.p-button-link) {
+    background: var(--vs-btn-assign-outlined-bg);
+    border: 1px solid var(--vs-btn-assign-border);
+    color: var(--vs-btn-assign-bg);
+}
+
+.btn-assign.p-button-outlined:not(.p-button-text):not(.p-button-link):not(:disabled):hover {
+    background: var(--vs-btn-assign-outlined-hover-bg);
+    border-color: var(--vs-btn-assign-hover-border);
+    color: var(--vs-btn-assign-hover-bg);
+}
+
+.btn-assign.p-button-outlined:not(.p-button-text):not(.p-button-link):not(:disabled):active {
+    background: var(--vs-btn-assign-outlined-hover-bg);
+    border-color: var(--vs-btn-assign-border);
+    color: var(--vs-btn-assign-bg);
 }
 
 /* Explicit outlined — border from design tokens */

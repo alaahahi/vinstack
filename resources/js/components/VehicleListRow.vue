@@ -103,7 +103,7 @@
                 title="تعديل سيارة يدوية"
                 @click="$emit('edit', vehicle)"
             />
-            <Button label="Assign" size="small" outlined @click="$emit('assign', vehicle)" />
+            <Button label="إسناد" size="small" class="btn-assign" @click="$emit('assign', vehicle)" />
         </div>
 
         <!-- Dealer: local status + action -->
