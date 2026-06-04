@@ -1,6 +1,6 @@
 <template>
     <div class="profile-page">
-        <p class="subtitle page-intro">تحديث اسمك والبريد الإلكتروني ورقم هاتف تسجيل الدخول</p>
+        <p class="subtitle page-intro">تحديث اسمك والبريد الإلكتروني ورقم هاتف تسجيل الدخول وكلمة المرور</p>
 
         <Card v-if="loading" class="profile-card">
             <template #content>
@@ -67,6 +67,73 @@
                 </form>
             </template>
         </Card>
+
+        <Card v-if="!loading" class="profile-card password-card">
+            <template #title>تغيير كلمة المرور</template>
+            <template #content>
+                <form class="profile-form" @submit.prevent="savePassword">
+                    <div class="field">
+                        <label for="current_password" class="vs-form-label">كلمة المرور الحالية</label>
+                        <Password
+                            id="current_password"
+                            v-model="passwordForm.current_password"
+                            toggle-mask
+                            :feedback="false"
+                            input-class="w-full"
+                            class="w-full"
+                            autocomplete="current-password"
+                            :invalid="Boolean(passwordErrors.current_password)"
+                        />
+                        <small v-if="passwordErrors.current_password" class="error">
+                            {{ passwordErrors.current_password }}
+                        </small>
+                    </div>
+
+                    <div class="field">
+                        <label for="new_password" class="vs-form-label">كلمة المرور الجديدة</label>
+                        <Password
+                            id="new_password"
+                            v-model="passwordForm.password"
+                            toggle-mask
+                            :feedback="false"
+                            input-class="w-full"
+                            class="w-full"
+                            autocomplete="new-password"
+                            :invalid="Boolean(passwordErrors.password)"
+                        />
+                        <small class="hint">8 أحرف على الأقل</small>
+                        <small v-if="passwordErrors.password" class="error">{{ passwordErrors.password }}</small>
+                    </div>
+
+                    <div class="field">
+                        <label for="password_confirmation" class="vs-form-label">تأكيد كلمة المرور الجديدة</label>
+                        <Password
+                            id="password_confirmation"
+                            v-model="passwordForm.password_confirmation"
+                            toggle-mask
+                            :feedback="false"
+                            input-class="w-full"
+                            class="w-full"
+                            autocomplete="new-password"
+                            :invalid="Boolean(passwordErrors.password_confirmation)"
+                        />
+                        <small v-if="passwordErrors.password_confirmation" class="error">
+                            {{ passwordErrors.password_confirmation }}
+                        </small>
+                    </div>
+
+                    <div class="actions">
+                        <Button
+                            type="submit"
+                            label="تحديث كلمة المرور"
+                            icon="pi pi-lock"
+                            severity="secondary"
+                            :loading="savingPassword"
+                        />
+                    </div>
+                </form>
+            </template>
+        </Card>
     </div>
 </template>
 
@@ -75,6 +142,7 @@ import { computed, onMounted, reactive, ref } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import Card from 'primevue/card';
 import InputText from 'primevue/inputtext';
+import Password from 'primevue/password';
 import Button from 'primevue/button';
 import ProgressSpinner from 'primevue/progressspinner';
 import api from '../../api/client';
@@ -84,13 +152,25 @@ const toast = useToast();
 const auth = useAuthStore();
 const loading = ref(true);
 const saving = ref(false);
+const savingPassword = ref(false);
 const profile = ref({});
 const errors = reactive({ name: '', email: '', phone: '' });
+const passwordErrors = reactive({
+    current_password: '',
+    password: '',
+    password_confirmation: '',
+});
 
 const form = reactive({
     name: '',
     email: '',
     phone: '',
+});
+
+const passwordForm = reactive({
+    current_password: '',
+    password: '',
+    password_confirmation: '',
 });
 
 const roleLabel = computed(() => {
@@ -111,18 +191,34 @@ function clearErrors() {
     errors.phone = '';
 }
 
-function applyValidationErrors(payload) {
-    clearErrors();
+function clearPasswordErrors() {
+    passwordErrors.current_password = '';
+    passwordErrors.password = '';
+    passwordErrors.password_confirmation = '';
+}
+
+function applyValidationErrors(payload, target) {
+    if (target === errors) {
+        clearErrors();
+    } else {
+        clearPasswordErrors();
+    }
 
     if (! payload || typeof payload !== 'object') {
         return;
     }
 
     for (const [key, messages] of Object.entries(payload)) {
-        if (key in errors && Array.isArray(messages) && messages[0]) {
-            errors[key] = messages[0];
+        if (key in target && Array.isArray(messages) && messages[0]) {
+            target[key] = messages[0];
         }
     }
+}
+
+function resetPasswordForm() {
+    passwordForm.current_password = '';
+    passwordForm.password = '';
+    passwordForm.password_confirmation = '';
 }
 
 async function load() {
@@ -170,7 +266,7 @@ async function save() {
             life: 3000,
         });
     } catch (e) {
-        applyValidationErrors(e.response?.data?.errors);
+        applyValidationErrors(e.response?.data?.errors, errors);
         toast.add({
             severity: 'error',
             summary: 'خطأ',
@@ -182,16 +278,56 @@ async function save() {
     }
 }
 
+async function savePassword() {
+    savingPassword.value = true;
+    clearPasswordErrors();
+
+    try {
+        const { data } = await api.put('/admin/profile/password', {
+            current_password: passwordForm.current_password,
+            password: passwordForm.password,
+            password_confirmation: passwordForm.password_confirmation,
+        });
+
+        resetPasswordForm();
+
+        toast.add({
+            severity: 'success',
+            summary: 'تم التحديث',
+            detail: data.message || 'تم تحديث كلمة المرور',
+            life: 3000,
+        });
+    } catch (e) {
+        applyValidationErrors(e.response?.data?.errors, passwordErrors);
+        toast.add({
+            severity: 'error',
+            summary: 'خطأ',
+            detail: e.response?.data?.message || 'تعذّر تحديث كلمة المرور',
+            life: 4000,
+        });
+    } finally {
+        savingPassword.value = false;
+    }
+}
+
 onMounted(load);
 </script>
 
 <style scoped>
 .profile-page {
     max-width: 520px;
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
 }
 
 .page-intro {
-    margin: 0 0 1rem;
+    margin: 0;
+}
+
+.password-card :deep(.p-card-title) {
+    font-size: 1rem;
+    font-weight: 600;
 }
 
 .subtitle {

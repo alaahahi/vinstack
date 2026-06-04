@@ -4,10 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Api\FormatsAuthUser;
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\UpdateAdminPasswordRequest;
 use App\Http\Requests\Admin\UpdateAdminProfileRequest;
 use App\Models\User;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Hash;
 
 class ProfileController extends Controller
 {
@@ -39,6 +41,19 @@ class ProfileController extends Controller
             'data' => $this->profilePayload($user),
             'user' => $this->userPayload($user),
             'message' => 'تم تحديث الملف الشخصي.',
+        ]);
+    }
+
+    public function updatePassword(UpdateAdminPasswordRequest $request): JsonResponse
+    {
+        $user = $this->adminOrAbort($request->user());
+
+        $user->forceFill([
+            'password' => Hash::make($request->validated('password')),
+        ])->save();
+
+        return response()->json([
+            'message' => 'تم تحديث كلمة المرور.',
         ]);
     }
 
