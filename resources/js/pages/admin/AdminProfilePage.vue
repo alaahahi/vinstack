@@ -408,4 +408,22 @@ onMounted(load);
 .actions {
     padding-top: 0.25rem;
 }
+
+@media (max-width: 640px) {
+    .profile-cards {
+        grid-template-columns: 1fr;
+    }
+
+    .actions :deep(.p-button) {
+        width: 100%;
+        min-height: 44px;
+        justify-content: center;
+    }
+
+    .readonly-row {
+        flex-direction: column;
+        align-items: flex-start;
+        gap: 0.2rem;
+    }
+}
 </style>

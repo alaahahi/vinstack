@@ -67,10 +67,12 @@ const { themeLogo } = useTheme();
 
 <style scoped>
 .login-page {
+    min-height: 100dvh;
     min-height: 100vh;
     display: flex;
     flex-direction: column;
     background: var(--login-panel-bg);
+    overflow-x: hidden;
 }
 
 .login-brand-panel {
@@ -81,8 +83,11 @@ const { themeLogo } = useTheme();
     flex: 1;
     display: flex;
     flex-direction: column;
-    padding: 1rem 1.25rem 1.5rem;
+    padding: max(1rem, env(safe-area-inset-top, 0px)) max(1.25rem, env(safe-area-inset-right, 0px))
+        max(1.5rem, env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px));
+    min-height: 100dvh;
     min-height: 100vh;
+    box-sizing: border-box;
 }
 
 .login-form-panel__header {
@@ -126,9 +131,21 @@ const { themeLogo } = useTheme();
 .login-form-panel__body {
     flex: 1;
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     justify-content: center;
     width: 100%;
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+}
+
+@media (min-width: 900px) {
+    .login-form-panel__body {
+        align-items: center;
+        overflow-y: visible;
+        padding-bottom: 0;
+    }
 }
 
 .login-footer {

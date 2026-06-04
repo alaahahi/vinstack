@@ -455,4 +455,24 @@ function documentLabel(doc) {
 .mt-sm {
     margin-top: 0.5rem;
 }
+
+@media (max-width: 640px) {
+    .drawer-title {
+        font-size: 1rem;
+    }
+
+    .field-grid {
+        grid-template-columns: 1fr;
+        gap: 0.2rem 0;
+    }
+
+    .field-grid dt {
+        font-weight: 600;
+        margin-top: 0.35rem;
+    }
+
+    .field-grid dt:first-of-type {
+        margin-top: 0;
+    }
+}
 </style>

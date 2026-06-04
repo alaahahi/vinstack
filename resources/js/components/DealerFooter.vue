@@ -204,5 +204,39 @@ onMounted(loadPublicSettings);
 
 }
 
+@media (max-width: 640px) {
+
+    .dealer-footer {
+
+        font-size: 0.75rem;
+
+        padding-top: 1rem;
+
+    }
+
+    .dealer-footer__row {
+
+        flex-direction: column;
+
+        gap: 0.6rem;
+
+    }
+
+    .dealer-footer__separator {
+
+        display: none;
+
+    }
+
+    .dealer-footer__support-label {
+
+        white-space: normal;
+
+        text-align: center;
+
+    }
+
+}
+
 </style>
 

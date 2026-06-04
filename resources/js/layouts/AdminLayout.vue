@@ -186,8 +186,10 @@ watch(
 .admin-layout {
     display: grid;
     grid-template-columns: 260px 1fr;
+    min-height: 100dvh;
     min-height: 100vh;
     background: var(--admin-content-bg);
+    overflow-x: clip;
 }
 
 .admin-overlay {
@@ -447,6 +449,39 @@ watch(
 
     .admin-content {
         padding: 1rem 1rem 1.5rem;
+    }
+}
+
+@media (max-width: 640px) {
+    .admin-topbar {
+        padding: 0.65rem 0.85rem;
+        gap: 0.5rem;
+    }
+
+    .admin-topbar__title {
+        font-size: 1rem;
+    }
+
+    .admin-topbar__subtitle {
+        font-size: 0.75rem;
+    }
+
+    .admin-topbar__menu :deep(.p-button) {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .admin-topbar__profile :deep(.p-button) {
+        min-width: 44px;
+        min-height: 44px;
+    }
+
+    .admin-content {
+        padding: 0.85rem 0.85rem 1.25rem;
+    }
+
+    .admin-nav__link {
+        min-height: 44px;
     }
 }
 </style>

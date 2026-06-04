@@ -68,6 +68,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/system/backup', [DatabaseBackupController::class, 'backup']);
         Route::get('/system/backups', [DatabaseBackupController::class, 'index']);
         Route::get('/system/backups/{filename}/download', [DatabaseBackupController::class, 'download']);
+        Route::delete('/system/backups/{filename}', [DatabaseBackupController::class, 'destroy']);
         Route::post('/system/restore', [DatabaseBackupController::class, 'restore']);
 
         Route::get('/vinstack/settings', [VinstackSettingsController::class, 'show']);

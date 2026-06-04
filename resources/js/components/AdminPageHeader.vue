@@ -89,4 +89,39 @@ defineProps({
     min-width: min(100%, 200px);
     max-width: 280px;
 }
+
+@media (max-width: 640px) {
+    .admin-page-header {
+        gap: 0.5rem;
+    }
+
+    .admin-page-header__actions {
+        width: 100%;
+        margin-inline-start: 0;
+        order: 2;
+    }
+
+    .admin-page-header__actions :deep(.p-button) {
+        flex: 1 1 auto;
+        min-height: 44px;
+        justify-content: center;
+    }
+
+    .admin-page-header__filters {
+        order: 3;
+        padding: 0.65rem 0.75rem;
+    }
+
+    .admin-page-header__filters :deep(.p-iconfield) {
+        max-width: none;
+        width: 100%;
+        flex: 1 1 100%;
+    }
+
+    .admin-page-header__filters :deep(.p-select),
+    .admin-page-header__filters :deep(.p-button) {
+        flex: 1 1 auto;
+        min-width: min(100%, 8rem);
+    }
+}
 </style>

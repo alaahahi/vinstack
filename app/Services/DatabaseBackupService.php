@@ -107,6 +107,15 @@ class DatabaseBackupService
         $this->restoreFromPath($path);
     }
 
+    public function deleteBackup(string $filename): void
+    {
+        $path = $this->resolveBackupPath($filename);
+
+        if (! File::delete($path)) {
+            throw new RuntimeException('تعذر حذف ملف النسخة الاحتياطية.');
+        }
+    }
+
     public function restoreFromUpload(UploadedFile $file): void
     {
         $extension = strtolower($file->getClientOriginalExtension() ?: 'sql');
@@ -167,15 +176,26 @@ class DatabaseBackupService
     private function restoreSqlite(string $sqlPath): void
     {
         $dbPath = $this->sqliteDatabasePath();
+        $tmpPath = $dbPath.'.restore-'.bin2hex(random_bytes(8)).'.tmp';
 
-        if ($this->trySqliteCliRestore($dbPath, $sqlPath)) {
+        $this->disconnectDatabase();
+
+        try {
+            $this->deleteSqliteDatabaseFiles($tmpPath);
+            $this->createEmptySqliteFile($tmpPath);
+
+            if (! $this->trySqliteCliRestore($tmpPath, $sqlPath)) {
+                $this->restoreSqliteViaPdo($tmpPath, $sqlPath);
+            }
+
+            $this->replaceSqliteDatabaseFile($dbPath, $tmpPath);
+        } catch (Throwable $e) {
+            $this->deleteSqliteDatabaseFiles($tmpPath);
+
+            throw $this->wrapRestoreFailure($e);
+        } finally {
             $this->reconnectDatabase();
-
-            return;
         }
-
-        $this->restoreSqliteViaPdo($dbPath, $sqlPath);
-        $this->reconnectDatabase();
     }
 
     private function restoreMysql(string $sqlPath): void
@@ -225,7 +245,9 @@ class DatabaseBackupService
         ]);
 
         if (! $result->successful()) {
-            throw new RuntimeException(trim($result->errorOutput()) ?: 'فشل استرجاع SQLite عبر sqlite3.');
+            throw new RuntimeException(
+                trim($result->errorOutput()) ?: 'فشل تنفيذ ملف النسخة الاحتياطية عبر sqlite3.'
+            );
         }
 
         return true;
@@ -344,30 +366,110 @@ class DatabaseBackupService
 
     private function restoreSqliteViaPdo(string $dbPath, string $sqlPath): void
     {
-        if (! File::exists($dbPath)) {
-            throw new RuntimeException('ملف قاعدة بيانات SQLite غير موجود.');
+        $pdo = new PDO('sqlite:'.$dbPath, null, null, [
+            PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
+        ]);
+
+        try {
+            $sql = File::get($sqlPath);
+            $pdo->exec('PRAGMA foreign_keys = OFF');
+
+            foreach ($this->splitSqlStatements($sql) as $statement) {
+                if ($statement === '') {
+                    continue;
+                }
+
+                $upper = strtoupper(ltrim($statement));
+
+                if (str_starts_with($upper, 'PRAGMA ') || $upper === 'BEGIN' || $upper === 'COMMIT' || $upper === 'ROLLBACK') {
+                    try {
+                        $pdo->exec($statement);
+                    } catch (Throwable) {
+                        // Ignore pragma/transaction wrappers from mixed dump formats.
+                    }
+
+                    continue;
+                }
+
+                try {
+                    $pdo->exec($statement);
+                } catch (Throwable $e) {
+                    throw new RuntimeException('فشل تنفيذ أمر SQL: '.$e->getMessage(), 0, $e);
+                }
+            }
+
+            $pdo->exec('PRAGMA foreign_keys = ON');
+        } finally {
+            unset($pdo);
+        }
+    }
+
+    private function createEmptySqliteFile(string $dbPath): void
+    {
+        $directory = dirname($dbPath);
+
+        if (! File::isDirectory($directory)) {
+            File::makeDirectory($directory, 0755, true);
         }
 
         $pdo = new PDO('sqlite:'.$dbPath, null, null, [
             PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION,
         ]);
+        unset($pdo);
+    }
 
-        $sql = File::get($sqlPath);
-        $pdo->exec('PRAGMA foreign_keys = OFF');
-
-        foreach ($this->splitSqlStatements($sql) as $statement) {
-            if ($statement === '') {
-                continue;
-            }
-
-            try {
-                $pdo->exec($statement);
-            } catch (Throwable $e) {
-                throw new RuntimeException('فشل تنفيذ أمر SQL: '.$e->getMessage());
-            }
+    private function replaceSqliteDatabaseFile(string $dbPath, string $restoredPath): void
+    {
+        if (! File::exists($restoredPath)) {
+            throw new RuntimeException('ملف الاسترجاع المؤقت غير موجود بعد تطبيق النسخة.');
         }
 
-        $pdo->exec('PRAGMA foreign_keys = ON');
+        $this->disconnectDatabase();
+        $this->deleteSqliteDatabaseFiles($dbPath);
+
+        if (@rename($restoredPath, $dbPath)) {
+            return;
+        }
+
+        if (! File::copy($restoredPath, $dbPath)) {
+            throw new RuntimeException('تعذّر استبدال ملف قاعدة بيانات SQLite بعد الاسترجاع.');
+        }
+
+        File::delete($restoredPath);
+    }
+
+    private function deleteSqliteDatabaseFiles(string $dbPath): void
+    {
+        foreach ([$dbPath, $dbPath.'-wal', $dbPath.'-shm', $dbPath.'-journal'] as $path) {
+            if (File::exists($path)) {
+                File::delete($path);
+            }
+        }
+    }
+
+    private function disconnectDatabase(): void
+    {
+        $connection = Config::get('database.default', 'sqlite');
+        DB::disconnect($connection);
+        DB::purge($connection);
+    }
+
+    private function wrapRestoreFailure(Throwable $e): RuntimeException
+    {
+        if ($e instanceof RuntimeException && str_contains($e->getMessage(), 'لم تُستبدَل قاعدة البيانات')) {
+            return $e;
+        }
+
+        $detail = trim($e->getMessage());
+
+        return new RuntimeException(
+            'تعذّر استكمال استرجاع قاعدة البيانات من ملف النسخة الاحتياطية. '
+            .'لم تُستبدَل قاعدة البيانات الحالية — يمكنك إعادة المحاولة بأمان. '
+            .'تأكد أن الملف نسخة SQL (.sql) أُنشئت من نفس التطبيق (نسخ احتياطي من الإعدادات).'
+            .($detail !== '' ? ' السبب: '.$detail : ''),
+            0,
+            $e
+        );
     }
 
     /**

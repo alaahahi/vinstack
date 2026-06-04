@@ -203,4 +203,39 @@ async function submit() {
 .w-full {
     width: 100%;
 }
+
+@media (max-width: 640px) {
+    .login-card {
+        max-width: 100%;
+    }
+
+    .login-card :deep(.p-card-body) {
+        padding: 1rem;
+    }
+
+    .login-tablist {
+        gap: 0;
+    }
+
+    .login-tab {
+        min-height: 44px;
+        padding: 0.65rem 0.4rem;
+        font-size: 0.78rem;
+        line-height: 1.3;
+        white-space: normal;
+        text-align: center;
+        hyphens: auto;
+    }
+
+    .field :deep(.p-inputtext),
+    .field :deep(.p-password .p-inputtext) {
+        min-height: 44px;
+        font-size: 16px;
+    }
+
+    .login-submit :deep(.p-button) {
+        min-height: 44px;
+        width: 100%;
+    }
+}
 </style>

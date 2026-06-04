@@ -259,6 +259,15 @@
                                                         @click="downloadBackup(row.filename)"
                                                     />
                                                     <Button
+                                                        icon="pi pi-trash"
+                                                        text
+                                                        rounded
+                                                        severity="danger"
+                                                        title="حذف"
+                                                        :loading="deletingFilename === row.filename"
+                                                        @click="confirmDeleteBackup(row.filename)"
+                                                    />
+                                                    <Button
                                                         icon="pi pi-replay"
                                                         text
                                                         rounded
@@ -459,6 +468,7 @@ const backupsLoading = ref(false);
 const creatingBackup = ref(false);
 const downloadingFilename = ref('');
 const restoringFilename = ref('');
+const deletingFilename = ref('');
 const restoringUpload = ref(false);
 const restoreFile = ref(null);
 const restoreFileInput = ref(null);
@@ -791,6 +801,41 @@ async function downloadBackup(filename) {
 function onRestoreFileSelected(event) {
     const file = event.target.files?.[0];
     restoreFile.value = file ?? null;
+}
+
+function confirmDeleteBackup(filename) {
+    confirm.require({
+        message: 'هل تريد حذف هذا النسخة الاحتياطية؟',
+        header: 'حذف نسخة احتياطية',
+        icon: 'pi pi-trash',
+        rejectLabel: 'إلغاء',
+        acceptLabel: 'حذف',
+        acceptClass: 'p-button-danger',
+        accept: () => deleteBackup(filename),
+    });
+}
+
+async function deleteBackup(filename) {
+    deletingFilename.value = filename;
+
+    try {
+        const { data } = await api.delete(`/admin/system/backups/${encodeURIComponent(filename)}`);
+        toast.add({
+            severity: 'success',
+            summary: data.message || 'تم الحذف',
+            life: 3000,
+        });
+        await loadBackups();
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: 'خطأ',
+            detail: e.response?.data?.message || 'فشل حذف النسخة الاحتياطية',
+            life: 4000,
+        });
+    } finally {
+        deletingFilename.value = '';
+    }
 }
 
 function confirmRestoreFromList(filename) {
@@ -1155,5 +1200,37 @@ onMounted(async () => {
     margin: 0;
     font-size: 0.8125rem;
     color: var(--vs-text-muted);
+}
+
+@media (max-width: 640px) {
+    .settings-group__actions {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .settings-group__actions :deep(.p-button),
+    .settings-card__footer :deep(.p-button),
+    .system-actions :deep(.p-button) {
+        width: 100%;
+        min-height: 44px;
+        justify-content: center;
+    }
+
+    .settings-card__head {
+        padding: 1rem 0.85rem 0;
+    }
+
+    .settings-card__body {
+        padding: 0.75rem 0.85rem 1rem;
+    }
+
+    .restorable-list__item {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .backup-row-actions {
+        justify-content: flex-end;
+    }
 }
 </style>

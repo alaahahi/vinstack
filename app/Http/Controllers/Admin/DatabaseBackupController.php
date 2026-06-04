@@ -56,6 +56,23 @@ class DatabaseBackupController extends Controller
         ]);
     }
 
+    public function destroy(string $filename): JsonResponse
+    {
+        try {
+            $this->backups->deleteBackup($filename);
+
+            return response()->json([
+                'message' => 'تم حذف النسخة الاحتياطية.',
+            ]);
+        } catch (HttpExceptionInterface $e) {
+            throw $e;
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function restore(Request $request): JsonResponse
     {
         $validated = $request->validate([

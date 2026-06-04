@@ -574,5 +574,25 @@ onMounted(load);
 
 }
 
+@media (max-width: 640px) {
+
+    .profile-page {
+
+        max-width: 100%;
+
+    }
+
+    .actions :deep(.p-button) {
+
+        width: 100%;
+
+        min-height: 44px;
+
+        justify-content: center;
+
+    }
+
+}
+
 </style>
 

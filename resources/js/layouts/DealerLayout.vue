@@ -160,10 +160,12 @@ onUnmounted(() => {
 
 <style scoped>
 .layout {
+    min-height: 100dvh;
     min-height: 100vh;
     display: grid;
     grid-template-columns: 1fr 52px;
     grid-template-rows: auto 1fr;
+    overflow-x: clip;
 }
 
 .header {
@@ -339,6 +341,25 @@ onUnmounted(() => {
 
     .content {
         padding: 0.85rem 1rem 1.25rem;
+    }
+
+    .brand h2 {
+        font-size: 0.95rem;
+    }
+
+    .brand-logo {
+        width: 4rem;
+    }
+
+    .nav-link {
+        min-height: 44px;
+        padding: 0.55rem 0.45rem;
+        font-size: 0.8rem;
+    }
+
+    .profile-btn :deep(.p-button) {
+        min-width: 44px;
+        min-height: 44px;
     }
 }
 </style>
