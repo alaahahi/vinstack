@@ -2,6 +2,7 @@
     <div class="profile-page">
         <p class="subtitle page-intro">تحديث اسمك والبريد الإلكتروني ورقم هاتف تسجيل الدخول وكلمة المرور</p>
 
+        <div class="profile-cards">
         <Card v-if="loading" class="profile-card">
             <template #content>
                 <div class="card-loading">
@@ -134,6 +135,7 @@
                 </form>
             </template>
         </Card>
+        </div>
     </div>
 </template>
 
@@ -315,10 +317,17 @@ onMounted(load);
 
 <style scoped>
 .profile-page {
-    max-width: 520px;
+    max-width: 100%;
     display: flex;
     flex-direction: column;
     gap: 1rem;
+}
+
+.profile-cards {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+    gap: 1rem;
+    align-items: start;
 }
 
 .page-intro {
