@@ -88,6 +88,18 @@ const { themeLogo } = useTheme();
     min-height: 100dvh;
     min-height: 100vh;
     box-sizing: border-box;
+    position: relative;
+    isolation: isolate;
+}
+
+.login-form-panel::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    z-index: -1;
+    pointer-events: none;
+    background: var(--login-mobile-form-gradient);
+    opacity: 1;
 }
 
 .login-form-panel__header {
@@ -137,7 +149,7 @@ const { themeLogo } = useTheme();
     min-height: 0;
     overflow-y: auto;
     -webkit-overflow-scrolling: touch;
-    padding-bottom: calc(1.5rem + env(safe-area-inset-bottom, 0px));
+    padding: 0.25rem 0.15rem calc(1.5rem + env(safe-area-inset-bottom, 0px));
 }
 
 @media (min-width: 900px) {
@@ -282,6 +294,45 @@ const { themeLogo } = useTheme();
 
     .login-form-panel__body {
         padding: 2rem 0;
+    }
+}
+
+@media (max-width: 640px) {
+    .login-form-panel {
+        padding: max(0.75rem, env(safe-area-inset-top, 0px)) max(1rem, env(safe-area-inset-right, 0px))
+            max(1.25rem, env(safe-area-inset-bottom, 0px)) max(1rem, env(safe-area-inset-left, 0px));
+    }
+
+    .login-form-panel__header {
+        margin-bottom: 1rem;
+        padding-bottom: 0.65rem;
+        border-bottom: 1px solid var(--login-panel-border);
+    }
+
+    .login-mobile-brand {
+        gap: 0.7rem;
+    }
+
+    .login-logo-frame--compact {
+        padding: 0.4rem;
+        border-radius: 0.65rem;
+        box-shadow: var(--login-logo-shadow), 0 2px 12px rgba(0, 0, 0, 0.06);
+    }
+
+    .login-form-panel__body {
+        align-items: flex-start;
+        padding-top: 0.35rem;
+    }
+
+    .login-footer {
+        padding-top: 0.75rem;
+        font-size: 0.8rem;
+    }
+}
+
+@media (min-width: 900px) {
+    .login-form-panel::before {
+        display: none;
     }
 }
 </style>

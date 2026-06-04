@@ -85,6 +85,16 @@
     --login-route-dot-ring: rgba(239, 68, 68, 0.35);
     --login-logo-border: rgba(255, 255, 255, 0.2);
     --login-logo-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    --login-mobile-form-gradient: radial-gradient(
+            ellipse 120% 80% at 50% -15%,
+            rgba(239, 68, 68, 0.07) 0%,
+            transparent 55%
+        ),
+        linear-gradient(180deg, var(--vs-zinc-50) 0%, var(--login-panel-bg) 42%);
+    --login-card-bg: #ffffff;
+    --login-card-shadow: 0 4px 24px rgba(24, 24, 27, 0.07), 0 1px 3px rgba(24, 24, 27, 0.04);
+    --login-tabs-bg: rgba(24, 24, 27, 0.05);
+    --login-tab-active-bg: #ffffff;
     --dealer-footer-text: var(--vs-zinc-500);
     --dealer-footer-link: var(--vs-zinc-600);
     --dealer-footer-link-hover: #dc2626;
@@ -179,6 +189,16 @@
     --login-route-dot-ring: rgba(248, 113, 113, 0.4);
     --login-logo-border: rgba(255, 255, 255, 0.14);
     --login-logo-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    --login-mobile-form-gradient: radial-gradient(
+            ellipse 120% 80% at 50% -10%,
+            rgba(248, 113, 113, 0.12) 0%,
+            transparent 50%
+        ),
+        linear-gradient(180deg, var(--vs-zinc-900) 0%, var(--login-panel-bg) 45%);
+    --login-card-bg: var(--vs-zinc-900);
+    --login-card-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--login-panel-border);
+    --login-tabs-bg: rgba(255, 255, 255, 0.06);
+    --login-tab-active-bg: var(--vs-zinc-800);
     --dealer-footer-text: var(--vs-zinc-500);
     --dealer-footer-link: var(--vs-zinc-400);
     --dealer-footer-link-hover: #f87171;
@@ -635,6 +655,35 @@ form .p-button[type='submit']:not(.p-button-outlined):not(.p-button-text):not(:d
 }
 
 /* Login page — split brand panel, logo frame, CSS animations */
+.login-form-panel .login-card.p-card,
+.login-form-panel .login-card .p-card {
+    border: 1px solid var(--login-panel-border);
+    border-radius: 1rem;
+    background: var(--login-card-bg, var(--p-content-background));
+    box-shadow: var(--login-card-shadow);
+}
+
+.login-form-panel .login-card .p-card-title {
+    font-size: 1.15rem;
+    font-weight: 700;
+    color: var(--login-form-title);
+}
+
+@media (max-width: 640px) {
+    .login-form-panel .login-card.p-card,
+    .login-form-panel .login-card .p-card {
+        border-radius: 1.1rem;
+    }
+
+    .login-form-panel .login-card .p-card-body {
+        padding: 1.1rem 1rem 1.15rem;
+    }
+
+    .login-form-panel .login-card .p-card-title {
+        font-size: 1.05rem;
+    }
+}
+
 .login-logo-frame {
     display: inline-flex;
     padding: 0.65rem;
@@ -677,6 +726,25 @@ form .p-button[type='submit']:not(.p-button-outlined):not(.p-button-text):not(:d
 
     .login-mobile-brand__name {
         font-size: 0.92rem;
+    }
+
+    .login-form-panel .login-card .p-inputtext,
+    .login-form-panel .login-card .p-password .p-inputtext {
+        min-height: 40px;
+        padding-block: 0.5rem;
+        padding-inline: 0.75rem;
+        font-size: 16px;
+    }
+
+    .login-form-panel .login-card .otp-ltr .p-inputotp-input {
+        min-height: 40px;
+        width: 2.35rem;
+        padding-block: 0.45rem;
+        font-size: 1rem;
+    }
+
+    .login-form-panel .login-card .p-inputotp {
+        gap: 0.4rem;
     }
 
     .brand-logo {

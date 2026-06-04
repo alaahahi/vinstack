@@ -14,7 +14,7 @@
                                 :aria-selected="activeTab === 0"
                                 @click="activeTab = 0"
                             >
-                                رقم الهاتف
+                                البريد وكلمة المرور
                             </button>
                             <button
                                 type="button"
@@ -24,24 +24,10 @@
                                 :aria-selected="activeTab === 1"
                                 @click="activeTab = 1"
                             >
-                                البريد وكلمة المرور
+                                رقم الهاتف
                             </button>
                         </div>
                         <div v-show="activeTab === 0" class="login-tabpanel" role="tabpanel">
-                            <div class="field">
-                                <label for="login-phone">رقم الهاتف</label>
-                                <InputText
-                                    id="login-phone"
-                                    v-model="phone"
-                                    type="tel"
-                                    class="w-full"
-                                    placeholder="07XXXXXXXXX"
-                                    autocomplete="tel"
-                                    :required="activeTab === 0"
-                                />
-                            </div>
-                        </div>
-                        <div v-show="activeTab === 1" class="login-tabpanel" role="tabpanel">
                             <div class="field">
                                 <label for="login-email">البريد الإلكتروني</label>
                                 <InputText
@@ -52,7 +38,7 @@
                                     placeholder="admin@vinstack.local"
                                     autocomplete="username"
                                     dir="ltr"
-                                    :required="activeTab === 1"
+                                    :required="activeTab === 0"
                                 />
                             </div>
                             <div class="field">
@@ -65,6 +51,20 @@
                                     input-class="w-full"
                                     class="w-full"
                                     autocomplete="current-password"
+                                    :required="activeTab === 0"
+                                />
+                            </div>
+                        </div>
+                        <div v-show="activeTab === 1" class="login-tabpanel" role="tabpanel">
+                            <div class="field">
+                                <label for="login-phone">رقم الهاتف</label>
+                                <InputText
+                                    id="login-phone"
+                                    v-model="phone"
+                                    type="tel"
+                                    class="w-full"
+                                    placeholder="07XXXXXXXXX"
+                                    autocomplete="tel"
                                     :required="activeTab === 1"
                                 />
                             </div>
@@ -113,7 +113,7 @@ function loginErrorDetail(error) {
 async function submit() {
     try {
         const payload =
-            activeTab.value === 0
+            activeTab.value === 1
                 ? { phone: phone.value }
                 : { email: email.value, password: password.value };
 
@@ -156,16 +156,19 @@ async function submit() {
 .login-tablist {
     display: flex;
     direction: rtl;
-    border-bottom: 1px solid var(--p-content-border-color, var(--vs-zinc-200));
+    gap: 0.25rem;
+    padding: 0.2rem;
+    border-radius: 0.65rem;
+    background: var(--login-tabs-bg, rgba(0, 0, 0, 0.04));
+    border-bottom: none;
 }
 
 .login-tab {
     flex: 1 1 0;
     margin: 0;
-    padding: 1rem 0.75rem;
+    padding: 0.75rem 0.65rem;
     border: none;
-    border-bottom: 2px solid transparent;
-    margin-bottom: -1px;
+    border-radius: 0.5rem;
     background: transparent;
     color: var(--login-form-muted);
     font: inherit;
@@ -173,7 +176,8 @@ async function submit() {
     cursor: pointer;
     transition:
         color 0.2s ease,
-        border-color 0.2s ease;
+        background 0.2s ease,
+        box-shadow 0.2s ease;
 }
 
 .login-tab:hover:not(.login-tab--active) {
@@ -182,7 +186,8 @@ async function submit() {
 
 .login-tab--active {
     color: var(--login-form-title);
-    border-bottom-color: var(--login-accent);
+    background: var(--login-tab-active-bg, var(--p-content-background));
+    box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
 }
 
 .login-tabpanel {
@@ -209,33 +214,37 @@ async function submit() {
         max-width: 100%;
     }
 
-    .login-card :deep(.p-card-body) {
-        padding: 1rem;
-    }
-
     .login-tablist {
-        gap: 0;
+        margin-bottom: 0.15rem;
     }
 
     .login-tab {
-        min-height: 44px;
-        padding: 0.65rem 0.4rem;
-        font-size: 0.78rem;
-        line-height: 1.3;
+        min-height: 40px;
+        padding: 0.5rem 0.35rem;
+        font-size: 0.76rem;
+        line-height: 1.25;
         white-space: normal;
         text-align: center;
         hyphens: auto;
     }
 
-    .field :deep(.p-inputtext),
-    .field :deep(.p-password .p-inputtext) {
-        min-height: 44px;
-        font-size: 16px;
+    .login-tabpanel {
+        padding-top: 0.85rem;
+    }
+
+    .field {
+        margin-bottom: 0.85rem;
+        gap: 0.3rem;
+    }
+
+    .field label {
+        font-size: 0.88rem;
     }
 
     .login-submit :deep(.p-button) {
-        min-height: 44px;
+        min-height: 40px;
         width: 100%;
+        padding-block: 0.55rem;
     }
 }
 </style>
