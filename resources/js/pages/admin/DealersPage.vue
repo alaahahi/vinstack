@@ -47,6 +47,15 @@
                         <span>{{ dealer.phone }}</span>
                     </div>
                     <Button
+                        icon="pi pi-copy"
+                        label="نسخ بيانات الدخول"
+                        severity="secondary"
+                        outlined
+                        size="small"
+                        :loading="copyingDealerId === dealer.id"
+                        @click="copyLoginInfo(dealer)"
+                    />
+                    <Button
                         v-if="dealer.two_factor_enabled"
                         icon="pi pi-key"
                         label="عرض رموز الاسترداد"
@@ -162,6 +171,7 @@ import AdminPageHeader from '../../components/AdminPageHeader.vue';
 import RecoveryCodesDialog from '../../components/RecoveryCodesDialog.vue';
 import api from '../../api/client';
 import { ADMIN_POLL_MS } from '../../constants/presence';
+import { formatDealerLoginCopy } from '../../utils/dealerLoginCopy';
 import { formatLastSeenLabel, isDealerOnline } from '../../utils/lastSeen';
 
 const toast = useToast();
@@ -178,6 +188,8 @@ const recoveryCodes = ref([]);
 const recoverySubtitle = ref('');
 const loadingRecoveryDealerId = ref(null);
 const deletingDealerId = ref(null);
+const copyingDealerId = ref(null);
+const loginUrl = ref('');
 let pollTimer = null;
 
 const form = reactive({
@@ -206,6 +218,7 @@ async function load({ silent = false } = {}) {
     try {
         const { data } = await api.get('/admin/dealers');
         dealers.value = data.data;
+        loginUrl.value = data.meta?.login_url || loginUrl.value;
     } finally {
         if (!silent) {
             loading.value = false;
@@ -225,6 +238,48 @@ function formatArchivedAt(iso) {
         }).format(new Date(iso));
     } catch {
         return iso;
+    }
+}
+
+function resolveLoginUrl(dealer) {
+    return loginUrl.value || dealer.login_url || `${window.location.origin}/login`;
+}
+
+async function copyLoginInfo(dealer, passwordOverride) {
+    const username = dealer.login_identifier || dealer.phone || dealer.user?.email;
+
+    if (!username?.trim()) {
+        toast.add({
+            severity: 'warn',
+            summary: 'لا توجد بيانات',
+            detail: 'لا يوجد هاتف أو بريد لنسخ بيانات الدخول.',
+            life: 4000,
+        });
+
+        return;
+    }
+
+    copyingDealerId.value = dealer.id;
+
+    const text = formatDealerLoginCopy(dealer, resolveLoginUrl(dealer), passwordOverride);
+
+    try {
+        await navigator.clipboard.writeText(text);
+        toast.add({
+            severity: 'success',
+            summary: 'تم النسخ',
+            detail: 'تم نسخ بيانات الدخول إلى الحافظة.',
+            life: 3000,
+        });
+    } catch {
+        toast.add({
+            severity: 'warn',
+            summary: 'تعذّر النسخ',
+            detail: 'انسخ البيانات يدوياً من بطاقة التاجر.',
+            life: 4000,
+        });
+    } finally {
+        copyingDealerId.value = null;
     }
 }
 
@@ -276,8 +331,10 @@ function openEdit(dealer) {
 async function save() {
     saving.value = true;
 
+    const createdPassword = form.password;
+
     try {
-        await api.post('/admin/dealers', { ...form });
+        const { data } = await api.post('/admin/dealers', { ...form });
         showForm.value = false;
         toast.add({ severity: 'success', summary: 'تم إنشاء التاجر', life: 3000 });
         Object.assign(form, {
@@ -288,6 +345,19 @@ async function save() {
             phone: '',
         });
         await load();
+
+        const created = data.data;
+
+        if (created) {
+            if (data.meta?.login_url) {
+                loginUrl.value = data.meta.login_url;
+            }
+
+            const passwordForCopy =
+                data.login_credentials?.password?.trim() || createdPassword?.trim() || '';
+
+            await copyLoginInfo(created, passwordForCopy);
+        }
     } catch (e) {
         toast.add({
             severity: 'error',

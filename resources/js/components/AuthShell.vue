@@ -105,16 +105,27 @@ const { themeLogo } = useTheme();
 .login-form-panel__header {
     display: flex;
     align-items: flex-start;
-    justify-content: space-between;
+    justify-content: center;
     gap: 1rem;
     margin-bottom: 1.25rem;
+    position: relative;
 }
 
 .login-mobile-brand {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.85rem;
     min-width: 0;
+    flex: 1;
+    margin-inline: auto;
+    padding-inline: 2.75rem;
+}
+
+.login-theme-toggle {
+    position: absolute;
+    inset-inline-end: 0;
+    top: 0;
 }
 
 .login-mobile-brand__text {
@@ -290,6 +301,10 @@ const { themeLogo } = useTheme();
     .login-form-panel__header {
         justify-content: flex-end;
         margin-bottom: 0;
+    }
+
+    .login-theme-toggle {
+        position: static;
     }
 
     .login-form-panel__body {

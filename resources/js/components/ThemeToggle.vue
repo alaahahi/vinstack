@@ -22,5 +22,18 @@ const { toggleIcon, toggleTooltip } = theme;
 <style scoped>
 .theme-toggle {
     flex-shrink: 0;
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.theme-toggle :deep(.p-button) {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
+}
+
+.theme-toggle :deep(.p-button-icon) {
+    margin: 0;
 }
 </style>

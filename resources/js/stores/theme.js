@@ -4,6 +4,7 @@ const STORAGE_KEY = 'theme';
 const DEFAULT_THEME = 'dark';
 
 export const LOGO_DAY = '/images/logo-day.jpg';
+export const LOGO_NIGHT = '/images/logo-night.png';
 
 function readStoredTheme() {
     const stored = localStorage.getItem(STORAGE_KEY);
@@ -21,7 +22,7 @@ export const useThemeStore = defineStore('theme', {
     }),
     getters: {
         isDark: (state) => state.theme === 'dark',
-        themeLogo: () => LOGO_DAY,
+        themeLogo: (state) => (state.theme === 'dark' ? LOGO_NIGHT : LOGO_DAY),
         toggleIcon: (state) => (state.theme === 'dark' ? 'pi pi-sun' : 'pi pi-moon'),
         toggleTooltip: (state) => (state.theme === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي'),
     },

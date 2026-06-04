@@ -20,12 +20,17 @@ class DealerController extends Controller
     {
         $dealers = Dealer::query()
             ->withCount('activeAssignments as vehicles_count')
-            ->with('user:id,name,email,last_seen_at,recovery_codes_archive,two_factor_confirmed_at')
+            ->with('user:id,name,email,phone,last_seen_at,recovery_codes_archive,two_factor_confirmed_at')
             ->orderBy('company_name')
             ->get()
             ->map(fn (Dealer $dealer) => $this->formatDealer($dealer));
 
-        return response()->json(['data' => $dealers]);
+        return response()->json([
+            'data' => $dealers,
+            'meta' => [
+                'login_url' => $this->loginPageUrl(),
+            ],
+        ]);
     }
 
     public function store(StoreDealerRequest $request): JsonResponse
@@ -44,9 +49,18 @@ class DealerController extends Controller
             'phone' => $request->input('phone'),
         ]);
 
-        $dealer->load('user:id,name,email,last_seen_at,recovery_codes_archive,two_factor_confirmed_at');
+        $dealer->load('user:id,name,email,phone,last_seen_at,recovery_codes_archive,two_factor_confirmed_at');
 
-        return response()->json(['data' => $this->formatDealer($dealer)], 201);
+        $formatted = $this->formatDealer($dealer);
+
+        return response()->json([
+            'data' => $formatted,
+            'login_credentials' => [
+                'username' => $formatted['login_identifier'],
+                'password' => $request->string('password')->toString(),
+                'url' => $this->loginPageUrl(),
+            ],
+        ], 201);
     }
 
     public function update(UpdateDealerRequest $request, Dealer $dealer): JsonResponse
@@ -78,7 +92,7 @@ class DealerController extends Controller
             $dealer->update($dealerUpdates);
         }
 
-        $dealer->load('user:id,name,email,last_seen_at,recovery_codes_archive,two_factor_confirmed_at');
+        $dealer->load('user:id,name,email,phone,last_seen_at,recovery_codes_archive,two_factor_confirmed_at');
 
         return response()->json([
             'data' => $this->formatDealer($dealer),
@@ -145,6 +159,8 @@ class DealerController extends Controller
             'id' => $dealer->id,
             'company_name' => $dealer->company_name,
             'phone' => $dealer->phone,
+            'login_identifier' => $this->loginIdentifier($dealer),
+            'login_url' => $this->loginPageUrl(),
             'user' => $user ? [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -158,5 +174,21 @@ class DealerController extends Controller
             'two_factor_enabled' => $user?->two_factor_confirmed_at !== null,
             'vehicles_count' => (int) ($dealer->vehicles_count ?? $dealer->activeAssignments()->count()),
         ];
+    }
+
+    protected function loginPageUrl(): string
+    {
+        return rtrim(config('app.url', url('/')), '/').'/login';
+    }
+
+    protected function loginIdentifier(Dealer $dealer): string
+    {
+        $phone = trim((string) ($dealer->phone ?? ''));
+
+        if ($phone !== '') {
+            return $phone;
+        }
+
+        return trim((string) ($dealer->user?->email ?? ''));
     }
 }

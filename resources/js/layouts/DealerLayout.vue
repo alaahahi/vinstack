@@ -2,7 +2,9 @@
     <div class="layout">
         <header class="header">
             <div class="brand">
-                <img :src="themeLogo" alt="KAML KAMAL" class="brand-logo" />
+                <div class="brand-logo-frame">
+                    <img :src="themeLogo" alt="KAML KAMAL" class="brand-logo" />
+                </div>
                 <div class="brand-text">
                     <h2>KAML KAMAL</h2>
                     <p class="brand-tagline">Fast. Safe. Reliable.</p>
@@ -250,8 +252,15 @@ onUnmounted(() => {
 .header-actions {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: 0.25rem;
     margin-inline-start: auto;
+}
+
+.header-actions :deep(.theme-toggle) {
+    display: inline-flex;
+    justify-content: center;
+    align-items: center;
 }
 
 .header-actions :deep(.theme-toggle .p-button) {

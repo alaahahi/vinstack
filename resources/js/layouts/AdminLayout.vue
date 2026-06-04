@@ -9,11 +9,13 @@
 
         <aside class="admin-sidebar" aria-label="قائمة الإدارة">
             <div class="admin-sidebar__brand">
-                <img
-                    :src="themeLogo"
-                    alt="KAML KAMAL"
-                    class="brand-logo"
-                />
+                <div class="brand-logo-frame">
+                    <img
+                        :src="themeLogo"
+                        alt="KAML KAMAL"
+                        class="brand-logo"
+                    />
+                </div>
                 <div class="admin-sidebar__titles">
                     <span class="admin-sidebar__name">KAML KAMAL</span>
                     <span class="admin-sidebar__tagline">Fast. Safe. Reliable.</span>
@@ -211,10 +213,22 @@ watch(
 
 .admin-sidebar__brand {
     display: flex;
+    flex-direction: column;
     align-items: center;
+    text-align: center;
     gap: 0.75rem;
     padding: 1.25rem 1rem 1rem;
     border-bottom: 1px solid var(--admin-sidebar-border);
+}
+
+.admin-sidebar__brand .brand-logo-frame {
+    width: 100%;
+    max-width: 9.5rem;
+}
+
+.admin-sidebar__brand .brand-logo {
+    width: 100%;
+    max-width: 7rem;
 }
 
 .admin-sidebar__titles {
@@ -337,8 +351,18 @@ watch(
 .admin-nav__theme {
     display: flex;
     align-items: center;
+    justify-content: center;
+    width: 100%;
+    box-sizing: border-box;
     padding: 0.35rem 0.65rem;
     margin-top: 0.1rem;
+    text-align: center;
+}
+
+.admin-nav__theme :deep(.theme-toggle) {
+    display: flex;
+    justify-content: center;
+    width: 100%;
 }
 
 .admin-nav__theme :deep(.p-button) {

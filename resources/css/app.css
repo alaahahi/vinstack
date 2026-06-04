@@ -109,8 +109,11 @@
     --login-route-track: rgba(255, 255, 255, 0.12);
     --login-route-dot: #fafafa;
     --login-route-dot-ring: rgba(239, 68, 68, 0.35);
-    --login-logo-border: rgba(255, 255, 255, 0.2);
-    --login-logo-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    --login-logo-border: rgba(24, 24, 27, 0.14);
+    --login-logo-frame-bg: rgba(255, 255, 255, 0.92);
+    --login-logo-shadow: 0 4px 20px rgba(24, 24, 27, 0.1);
+    --brand-logo-border: rgba(24, 24, 27, 0.12);
+    --brand-logo-frame-bg: rgba(255, 255, 255, 0.9);
     --login-mobile-form-gradient: radial-gradient(
             ellipse 120% 80% at 50% -15%,
             rgba(239, 68, 68, 0.07) 0%,
@@ -223,8 +226,11 @@
     --login-route-track: rgba(255, 255, 255, 0.1);
     --login-route-dot: #e4e4e7;
     --login-route-dot-ring: rgba(248, 113, 113, 0.4);
-    --login-logo-border: rgba(255, 255, 255, 0.14);
+    --login-logo-border: rgba(255, 255, 255, 0.18);
+    --login-logo-frame-bg: rgba(0, 0, 0, 0.28);
     --login-logo-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    --brand-logo-border: rgba(255, 255, 255, 0.14);
+    --brand-logo-frame-bg: rgba(0, 0, 0, 0.22);
     --login-mobile-form-gradient: radial-gradient(
             ellipse 120% 80% at 50% -10%,
             rgba(248, 113, 113, 0.12) 0%,
@@ -303,11 +309,28 @@ body,
 }
 
 /* Theme logo (themeLogo) — Admin sidebar, Dealer header, Login */
+.brand-logo-frame,
+.login-logo-frame {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    margin-inline: auto;
+    padding: 0.5rem;
+    border: 2px solid var(--brand-logo-border, var(--login-logo-border));
+    border-radius: 12px;
+    background: var(--brand-logo-frame-bg, var(--login-logo-frame-bg));
+    box-shadow: var(--login-logo-shadow);
+    flex-shrink: 0;
+}
+
 .brand-logo,
-.logo {
+.logo,
+.login-logo {
     width: 6.75rem;
     height: auto;
+    max-width: 100%;
     object-fit: contain;
+    display: block;
     flex-shrink: 0;
 }
 
@@ -877,12 +900,10 @@ form .p-button[type='submit']:not(.p-button-outlined):not(.p-button-text):not(:d
 }
 
 .login-logo-frame {
-    display: inline-flex;
     padding: 0.65rem;
-    border: 2px solid var(--login-logo-border);
+    border-color: var(--login-logo-border);
+    background: var(--login-logo-frame-bg);
     border-radius: 14px;
-    background: rgba(0, 0, 0, 0.2);
-    box-shadow: var(--login-logo-shadow);
 }
 
 .login-logo-frame--compact {
@@ -896,9 +917,6 @@ form .p-button[type='submit']:not(.p-button-outlined):not(.p-button-text):not(:d
 
 .login-logo {
     width: 7.5rem;
-    height: auto;
-    object-fit: contain;
-    display: block;
 }
 
 .login-logo-frame--compact .login-logo {
