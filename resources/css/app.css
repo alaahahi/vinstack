@@ -1,0 +1,703 @@
+@import 'primeicons/primeicons.css';
+
+:root {
+    /* Shared palette */
+    --vs-zinc-50: #fafafa;
+    --vs-zinc-100: #f4f4f5;
+    --vs-zinc-200: #e4e4e7;
+    --vs-zinc-300: #d4d4d8;
+    --vs-zinc-400: #a1a1aa;
+    --vs-zinc-500: #71717a;
+    --vs-zinc-600: #52525b;
+    --vs-zinc-700: #3f3f46;
+    --vs-zinc-800: #27272a;
+    --vs-zinc-900: #18181b;
+    --vs-zinc-950: #09090b;
+
+    --admin-radius: 12px;
+    --admin-radius-sm: 8px;
+    --admin-accent: #3b82f6;
+
+    --vs-btn-radius: 9999px;
+    --vs-btn-padding-x: 1.25rem;
+    --vs-btn-padding-y: 0.5rem;
+    --vs-btn-padding-x-sm: 1rem;
+    --vs-btn-padding-y-sm: 0.35rem;
+}
+
+[data-theme='light'] {
+    --app-bg: var(--vs-zinc-100);
+    --app-text: var(--vs-zinc-900);
+    --app-text-muted: var(--vs-zinc-500);
+    --app-border: var(--vs-zinc-200);
+    --app-surface: #ffffff;
+
+    --vs-surface: #ffffff;
+    --vs-surface-elevated: var(--vs-zinc-50);
+    --vs-surface-hover: var(--vs-zinc-50);
+    --vs-text: var(--vs-zinc-900);
+    --vs-text-secondary: var(--vs-zinc-700);
+    --vs-text-muted: var(--vs-zinc-500);
+    --vs-text-subtle: var(--vs-zinc-400);
+    --vs-border: #ececef;
+
+    --status-terminal-bg: #eff6ff;
+    --status-terminal-fg: #2563eb;
+    --status-new-bg: #f0fdf4;
+    --status-new-fg: #16a34a;
+    --status-transit-bg: #fff7ed;
+    --status-transit-fg: #ea580c;
+
+    --admin-sidebar-bg: #0f1419;
+    --admin-sidebar-border: rgba(255, 255, 255, 0.06);
+    --admin-sidebar-text: #e4e4e7;
+    --admin-sidebar-muted: #71717a;
+    --admin-sidebar-active: rgba(59, 130, 246, 0.15);
+    --admin-sidebar-active-text: #93c5fd;
+    --admin-content-bg: var(--vs-zinc-100);
+    --admin-surface: var(--vs-surface);
+    --admin-border: var(--vs-zinc-200);
+    --admin-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.03);
+    --admin-topbar-title: var(--vs-zinc-900);
+    --admin-topbar-subtitle: var(--vs-zinc-500);
+
+    --dealer-header-bg: #18181b;
+    --dealer-header-text: #e4e4e7;
+    --dealer-header-muted: #a1a1aa;
+    --dealer-nav-hover: #27272a;
+    --dealer-nav-active: #3f3f46;
+    --dealer-content-bg: var(--vs-zinc-100);
+    --dealer-page-title: var(--vs-zinc-500);
+
+    --login-bg: var(--vs-zinc-100);
+    --login-panel-bg: var(--vs-zinc-100);
+    --login-panel-border: var(--vs-zinc-200);
+    --login-form-title: var(--vs-zinc-900);
+    --login-form-muted: var(--vs-zinc-500);
+    --login-brand-gradient: linear-gradient(145deg, #18181b 0%, #27272a 45%, #3f1518 100%);
+    --login-brand-text: #fafafa;
+    --login-brand-muted: #d4d4d8;
+    --login-brand-subtle: #a1a1aa;
+    --login-brand-glow: rgba(220, 38, 38, 0.18);
+    --login-accent: #ef4444;
+    --login-route-track: rgba(255, 255, 255, 0.12);
+    --login-route-dot: #fafafa;
+    --login-route-dot-ring: rgba(239, 68, 68, 0.35);
+    --login-logo-border: rgba(255, 255, 255, 0.2);
+    --login-logo-shadow: 0 8px 32px rgba(0, 0, 0, 0.35);
+    --dealer-footer-text: var(--vs-zinc-500);
+    --dealer-footer-link: var(--vs-zinc-600);
+    --dealer-footer-link-hover: #dc2626;
+
+    --vs-btn-bg: rgba(255, 255, 255, 0.65);
+    --vs-btn-border: var(--vs-border);
+    --vs-btn-color: var(--vs-text-secondary);
+    --vs-btn-hover-bg: var(--vs-surface-hover);
+    --vs-btn-hover-border: var(--vs-zinc-300);
+    --vs-btn-cta-bg: var(--admin-accent);
+    --vs-btn-cta-border: var(--admin-accent);
+    --vs-btn-cta-color: #ffffff;
+    --vs-btn-cta-hover-bg: #2563eb;
+    --vs-btn-cta-hover-border: #2563eb;
+    --vs-btn-login-bg: var(--login-accent);
+    --vs-btn-login-border: var(--login-accent);
+    --vs-btn-login-color: #ffffff;
+    --vs-btn-login-hover-bg: #dc2626;
+    --vs-btn-login-hover-border: #dc2626;
+    --vs-btn-success-border: #16a34a;
+    --vs-btn-success-color: #15803d;
+    --vs-btn-success-hover-bg: rgba(22, 163, 74, 0.08);
+}
+
+[data-theme='dark'] {
+    --app-bg: var(--vs-zinc-950);
+    --app-text: var(--vs-zinc-100);
+    --app-text-muted: var(--vs-zinc-400);
+    --app-border: var(--vs-zinc-700);
+    --app-surface: var(--vs-zinc-800);
+
+    --vs-surface: var(--vs-zinc-800);
+    --vs-surface-elevated: #323238;
+    --vs-surface-hover: #3a3a42;
+    --vs-text: var(--vs-zinc-100);
+    --vs-text-secondary: var(--vs-zinc-300);
+    --vs-text-muted: var(--vs-zinc-400);
+    --vs-text-subtle: var(--vs-zinc-500);
+    --vs-border: var(--vs-zinc-700);
+
+    --status-terminal-bg: rgba(59, 130, 246, 0.2);
+    --status-terminal-fg: #93c5fd;
+    --status-new-bg: rgba(34, 197, 94, 0.18);
+    --status-new-fg: #86efac;
+    --status-transit-bg: rgba(234, 88, 12, 0.2);
+    --status-transit-fg: #fdba74;
+
+    --admin-sidebar-bg: #050608;
+    --admin-sidebar-border: rgba(255, 255, 255, 0.08);
+    --admin-sidebar-text: #f4f4f5;
+    --admin-sidebar-muted: #a1a1aa;
+    --admin-sidebar-active: rgba(59, 130, 246, 0.22);
+    --admin-sidebar-active-text: #bfdbfe;
+    --admin-content-bg: var(--vs-zinc-900);
+    --admin-surface: var(--vs-surface);
+    --admin-border: var(--vs-zinc-700);
+    --admin-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.2);
+    --admin-topbar-title: var(--vs-zinc-50);
+    --admin-topbar-subtitle: var(--vs-zinc-400);
+
+    --dealer-header-bg: #050608;
+    --dealer-header-text: #f4f4f5;
+    --dealer-header-muted: #a1a1aa;
+    --dealer-nav-hover: var(--vs-zinc-800);
+    --dealer-nav-active: var(--vs-zinc-700);
+    --dealer-content-bg: var(--vs-zinc-900);
+    --dealer-page-title: var(--vs-zinc-400);
+
+    --login-bg: var(--vs-zinc-950);
+    --login-panel-bg: var(--vs-zinc-950);
+    --login-panel-border: var(--vs-zinc-800);
+    --login-form-title: var(--vs-zinc-100);
+    --login-form-muted: var(--vs-zinc-400);
+    --login-brand-gradient: linear-gradient(155deg, #050608 0%, #18181b 50%, #450a0a 100%);
+    --login-brand-text: #f4f4f5;
+    --login-brand-muted: #d4d4d8;
+    --login-brand-subtle: #71717a;
+    --login-brand-glow: rgba(239, 68, 68, 0.22);
+    --login-accent: #f87171;
+    --login-route-track: rgba(255, 255, 255, 0.1);
+    --login-route-dot: #e4e4e7;
+    --login-route-dot-ring: rgba(248, 113, 113, 0.4);
+    --login-logo-border: rgba(255, 255, 255, 0.14);
+    --login-logo-shadow: 0 12px 40px rgba(0, 0, 0, 0.5);
+    --dealer-footer-text: var(--vs-zinc-500);
+    --dealer-footer-link: var(--vs-zinc-400);
+    --dealer-footer-link-hover: #f87171;
+
+    --vs-btn-bg: rgba(255, 255, 255, 0.04);
+    --vs-btn-border: var(--vs-border);
+    --vs-btn-color: var(--vs-text-secondary);
+    --vs-btn-hover-bg: var(--vs-surface-hover);
+    --vs-btn-hover-border: var(--vs-zinc-600);
+    --vs-btn-cta-bg: var(--admin-accent);
+    --vs-btn-cta-border: var(--admin-accent);
+    --vs-btn-cta-color: #f8fafc;
+    --vs-btn-cta-hover-bg: #2563eb;
+    --vs-btn-cta-hover-border: #2563eb;
+    --vs-btn-login-bg: var(--login-accent);
+    --vs-btn-login-border: var(--login-accent);
+    --vs-btn-login-color: #ffffff;
+    --vs-btn-login-hover-bg: #ef4444;
+    --vs-btn-login-hover-border: #ef4444;
+    --vs-btn-success-border: #4ade80;
+    --vs-btn-success-color: #86efac;
+    --vs-btn-success-hover-bg: rgba(34, 197, 94, 0.14);
+}
+
+html,
+body,
+#app {
+    margin: 0;
+    min-height: 100vh;
+    font-family: system-ui, -apple-system, 'Segoe UI', 'Tahoma', sans-serif;
+    background: var(--app-bg);
+    color: var(--app-text);
+}
+
+/* Theme logo (themeLogo) — Admin sidebar, Dealer header, Login */
+.brand-logo,
+.logo {
+    width: 6.75rem;
+    height: auto;
+    object-fit: contain;
+    flex-shrink: 0;
+}
+
+/* Admin page chrome (used inside AdminLayout content) */
+.admin-page {
+    max-width: 1440px;
+    margin: 0 auto;
+}
+
+.admin-surface {
+    background: var(--admin-surface);
+    border: 1px solid var(--admin-border);
+    border-radius: var(--admin-radius);
+    box-shadow: var(--admin-shadow);
+}
+
+.admin-surface--flush :deep(.p-datatable) {
+    border-radius: var(--admin-radius);
+    overflow: hidden;
+}
+
+.admin-empty {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.5rem;
+    padding: 3rem 1.5rem;
+    text-align: center;
+    color: var(--vs-text-muted);
+}
+
+.admin-empty i {
+    font-size: 2rem;
+    color: var(--vs-text-subtle);
+}
+
+.admin-empty-title {
+    margin: 0;
+    font-weight: 600;
+    color: var(--vs-text-secondary);
+}
+
+.admin-empty-hint {
+    margin: 0;
+    font-size: 0.875rem;
+    max-width: 28rem;
+    color: var(--vs-text-muted);
+}
+
+/* Theme-aware form labels & admin settings cards */
+.vs-form-label,
+.field label.vs-form-label {
+    font-size: 0.85rem;
+    font-weight: 500;
+    color: var(--vs-text-secondary);
+}
+
+[data-theme='dark'] .vs-form-label,
+[data-theme='dark'] .field label.vs-form-label,
+[data-theme='dark'] .admin-page .field label {
+    color: var(--vs-zinc-300);
+}
+
+.vs-card-title,
+.settings-card__head h2 {
+    margin: 0 0 0.2rem;
+    font-size: 1rem;
+    font-weight: 600;
+    color: var(--vs-text);
+}
+
+.vs-card-subtitle,
+.settings-card__head p {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--vs-text-muted);
+}
+
+[data-theme='dark'] .vs-card-subtitle,
+[data-theme='dark'] .settings-card__head p {
+    color: var(--vs-zinc-300);
+}
+
+.vs-sync-status {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.88rem;
+    color: var(--vs-text-secondary);
+    padding: 0.65rem 0.75rem;
+    background: var(--vs-surface-elevated);
+    border-radius: var(--admin-radius-sm);
+    border: 1px solid var(--admin-border);
+}
+
+.vs-sync-status--muted {
+    color: var(--vs-text-muted);
+}
+
+.vs-sync-status strong {
+    font-weight: 600;
+    color: var(--vs-text);
+}
+
+[data-theme='dark'] .vs-sync-status {
+    background: var(--vs-surface-elevated);
+    color: var(--vs-text-secondary);
+    border-color: var(--vs-border);
+}
+
+[data-theme='dark'] .vs-sync-status--muted {
+    color: var(--vs-text-muted);
+}
+
+[data-theme='dark'] .vs-sync-status strong {
+    color: var(--vs-zinc-100);
+}
+
+/* PrimeVue text inputs — dark mode readability */
+[data-theme='dark'] .p-inputtext,
+[data-theme='dark'] .p-password .p-inputtext,
+[data-theme='dark'] .p-textarea {
+    background: var(--vs-zinc-900);
+    border-color: var(--vs-zinc-600);
+    color: var(--vs-zinc-100);
+}
+
+[data-theme='dark'] .p-inputtext:enabled:hover,
+[data-theme='dark'] .p-password .p-inputtext:enabled:hover,
+[data-theme='dark'] .p-textarea:enabled:hover {
+    border-color: var(--vs-zinc-500);
+}
+
+[data-theme='dark'] .p-inputtext:enabled:focus,
+[data-theme='dark'] .p-password .p-inputtext:enabled:focus,
+[data-theme='dark'] .p-textarea:enabled:focus {
+    border-color: var(--admin-accent);
+    box-shadow: 0 0 0 1px var(--admin-accent);
+}
+
+[data-theme='dark'] .p-inputtext::placeholder,
+[data-theme='dark'] .p-password .p-inputtext::placeholder,
+[data-theme='dark'] .p-textarea::placeholder {
+    color: var(--vs-zinc-500);
+}
+
+[data-theme='dark'] .p-iconfield .p-inputicon {
+    color: var(--vs-zinc-400);
+}
+
+/* PrimeVue 4 — global pill buttons (outlined default, filled CTAs) */
+.p-button:not(.p-button-icon-only) {
+    border-radius: var(--vs-btn-radius);
+    padding: var(--vs-btn-padding-y) var(--vs-btn-padding-x);
+}
+
+.p-button-sm:not(.p-button-icon-only) {
+    padding: var(--vs-btn-padding-y-sm) var(--vs-btn-padding-x-sm);
+}
+
+.p-button-icon-only.p-button-rounded {
+    border-radius: 50%;
+}
+
+.p-button-rounded:not(.p-button-icon-only) {
+    border-radius: var(--vs-btn-radius);
+}
+
+/* Default solid primary → light outlined pill */
+.p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(
+        .p-button-icon-only
+    ):not(.login-submit):not(.btn-cta):not(.btn-pill--filled) {
+    background: var(--vs-btn-bg);
+    border: 1px solid var(--vs-btn-border);
+    color: var(--vs-btn-color);
+    box-shadow: none;
+}
+
+.p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(
+        .p-button-icon-only
+    ):not(.login-submit):not(.btn-cta):not(.btn-pill--filled):not(:disabled):hover {
+    background: var(--vs-btn-hover-bg);
+    border-color: var(--vs-btn-hover-border);
+    color: var(--vs-text);
+}
+
+.p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(
+        .p-button-icon-only
+    ):not(.login-submit):not(.btn-cta):not(.btn-pill--filled):not(:disabled):active {
+    background: var(--vs-surface-hover);
+    border-color: var(--vs-btn-hover-border);
+    color: var(--vs-text);
+}
+
+/* Primary CTAs — filled accent pill */
+.login-submit.p-button,
+.btn-cta.p-button,
+form .p-button[type='submit']:not(.p-button-outlined):not(.p-button-text) {
+    background: var(--vs-btn-cta-bg);
+    border: 1px solid var(--vs-btn-cta-border);
+    color: var(--vs-btn-cta-color);
+}
+
+.login-submit.p-button {
+    background: var(--vs-btn-login-bg);
+    border-color: var(--vs-btn-login-border);
+    color: var(--vs-btn-login-color);
+}
+
+.login-submit.p-button:not(:disabled):hover,
+.btn-cta.p-button:not(:disabled):hover,
+form .p-button[type='submit']:not(.p-button-outlined):not(.p-button-text):not(:disabled):hover {
+    background: var(--vs-btn-cta-hover-bg);
+    border-color: var(--vs-btn-cta-hover-border);
+    color: var(--vs-btn-cta-color);
+}
+
+.login-submit.p-button:not(:disabled):hover {
+    background: var(--vs-btn-login-hover-bg);
+    border-color: var(--vs-btn-login-hover-border);
+}
+
+.login-submit.p-button:not(:disabled):active,
+.btn-cta.p-button:not(:disabled):active,
+form .p-button[type='submit']:not(.p-button-outlined):not(.p-button-text):not(:disabled):active {
+    filter: brightness(0.95);
+}
+
+/* Explicit outlined — border from design tokens */
+.p-button-outlined:not(.p-button-icon-only) {
+    background: var(--vs-btn-bg);
+    border: 1px solid var(--vs-btn-border);
+    color: var(--vs-btn-color);
+}
+
+.p-button-outlined:not(.p-button-icon-only):not(:disabled):hover {
+    background: var(--vs-btn-hover-bg);
+    border-color: var(--vs-btn-hover-border);
+    color: var(--vs-text);
+}
+
+.p-button-outlined.p-button-success:not(.p-button-icon-only) {
+    border-color: var(--vs-btn-success-border);
+    color: var(--vs-btn-success-color);
+}
+
+.p-button-outlined.p-button-success:not(.p-button-icon-only):not(:disabled):hover {
+    background: var(--vs-btn-success-hover-bg);
+    border-color: var(--vs-btn-success-border);
+    color: var(--vs-btn-success-color);
+}
+
+/* Secondary severity — muted outlined pill */
+.p-button-secondary:not(.p-button-outlined):not(.p-button-text):not(.p-button-icon-only) {
+    background: var(--vs-btn-bg);
+    border: 1px solid var(--vs-btn-border);
+    color: var(--vs-text-muted);
+}
+
+.p-button-secondary:not(.p-button-outlined):not(.p-button-text):not(.p-button-icon-only):not(
+        :disabled
+    ):hover {
+    background: var(--vs-btn-hover-bg);
+    border-color: var(--vs-btn-hover-border);
+    color: var(--vs-text-secondary);
+}
+
+/* Text buttons — pill border on hover (labeled); icon-only stay circular */
+.p-button-text:not(.p-button-icon-only):not(:disabled):hover {
+    background: var(--vs-btn-hover-bg);
+    border: 1px solid var(--vs-btn-border);
+    color: var(--vs-text-secondary);
+}
+
+.p-button-text.p-button-icon-only.p-button-rounded:not(:disabled):hover {
+    background: var(--vs-btn-hover-bg);
+    border: 1px solid var(--vs-btn-border);
+}
+
+.p-button-text:not(:disabled):active,
+.p-button-text.p-button-icon-only.p-button-rounded:not(:disabled):active {
+    background: var(--vs-surface-hover);
+    border-color: var(--vs-btn-hover-border);
+}
+
+.p-button:focus-visible {
+    outline: 2px solid var(--admin-accent);
+    outline-offset: 2px;
+}
+
+.login-submit.p-button:focus-visible {
+    outline-color: var(--login-accent);
+}
+
+/* PrimeVue DataTable — theme-aware surfaces */
+[data-theme='dark'] .p-datatable .p-datatable-table-container,
+[data-theme='dark'] .p-datatable .p-datatable-table {
+    background: var(--vs-surface);
+    color: var(--vs-text);
+}
+
+[data-theme='dark'] .p-datatable .p-datatable-thead > tr > th {
+    background: var(--vs-surface-elevated);
+    color: var(--vs-text-muted);
+    border-color: var(--vs-border);
+}
+
+[data-theme='dark'] .p-datatable .p-datatable-tbody > tr {
+    background: var(--vs-surface);
+    color: var(--vs-text);
+}
+
+[data-theme='dark'] .p-datatable .p-datatable-tbody > tr > td {
+    border-color: var(--vs-border);
+}
+
+[data-theme='dark'] .p-datatable .p-datatable-tbody > tr:hover {
+    background: var(--vs-surface-hover);
+}
+
+[data-theme='light'] .p-datatable .p-datatable-thead > tr > th {
+    background: var(--vs-surface-elevated);
+    color: var(--vs-text-muted);
+    border-color: var(--vs-border);
+}
+
+/* VIN copy label — theme-aware contrast (VinCopyLabel.vue) */
+.vin-copy-label__text {
+    color: var(--vs-text-secondary);
+}
+
+[data-theme='dark'] .vin-copy-label__text {
+    color: var(--vs-zinc-200);
+}
+
+[data-theme='dark'] .vin-copy-label__btn,
+[data-theme='dark'] .vin-copy-label__btn .p-button-icon {
+    color: var(--vs-zinc-400);
+}
+
+[data-theme='dark'] .vin-copy-label__btn:hover,
+[data-theme='dark'] .vin-copy-label__btn:hover .p-button-icon {
+    color: var(--vs-zinc-200);
+}
+
+/* Login page — split brand panel, logo frame, CSS animations */
+.login-logo-frame {
+    display: inline-flex;
+    padding: 0.65rem;
+    border: 2px solid var(--login-logo-border);
+    border-radius: 14px;
+    background: rgba(0, 0, 0, 0.2);
+    box-shadow: var(--login-logo-shadow);
+}
+
+.login-logo-frame--compact {
+    padding: 0.45rem;
+    border-radius: 10px;
+}
+
+.login-logo-frame--animate {
+    animation: loginLogoFadeIn 0.9s ease-out both;
+}
+
+.login-logo {
+    width: 7.5rem;
+    height: auto;
+    object-fit: contain;
+    display: block;
+}
+
+.login-logo-frame--compact .login-logo {
+    width: 4.5rem;
+}
+
+@media (max-width: 899px) {
+    .login-route {
+        display: none;
+    }
+}
+
+@keyframes loginLogoFadeIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.96);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+@keyframes loginDotPulse {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 0.55;
+    }
+    50% {
+        transform: scale(1.35);
+        opacity: 1;
+        background: var(--login-accent);
+        box-shadow: 0 0 0 4px var(--login-route-dot-ring), 0 0 12px var(--login-accent);
+    }
+}
+
+@keyframes loginRouteDrive {
+    0% {
+        left: 0%;
+        opacity: 0.6;
+    }
+    8% {
+        opacity: 1;
+    }
+    92% {
+        opacity: 1;
+    }
+    100% {
+        left: 100%;
+        opacity: 0.6;
+    }
+}
+
+@keyframes loginGlowPulse {
+    0%,
+    100% {
+        opacity: 0.45;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.85;
+        transform: scale(1.08);
+    }
+}
+
+/* OTP — always LTR digit order in RTL (Arabic) UI */
+.otp-ltr {
+    direction: ltr;
+    unicode-bidi: isolate;
+    display: inline-flex;
+    justify-content: center;
+}
+
+.otp-ltr .p-inputotp,
+.otp-ltr.p-inputotp {
+    direction: ltr;
+    unicode-bidi: bidi-override;
+    flex-direction: row;
+}
+
+.otp-ltr .p-inputotp-input,
+.otp-ltr .p-inputtext {
+    direction: ltr;
+    text-align: center;
+    unicode-bidi: plaintext;
+}
+
+.otp-ltr--success .p-inputotp-input,
+.otp-ltr--success .p-inputtext {
+    border-color: #22c55e !important;
+    box-shadow: 0 0 0 1px #22c55e;
+}
+
+.otp-ltr--error .p-inputotp-input,
+.otp-ltr--error .p-inputtext {
+    border-color: #ef4444 !important;
+    box-shadow: 0 0 0 1px #ef4444;
+}
+
+.otp-ltr--error {
+    animation: otpShake 0.5s ease;
+}
+
+@keyframes otpShake {
+    0%,
+    100% {
+        transform: translateX(0);
+    }
+    20% {
+        transform: translateX(-8px);
+    }
+    40% {
+        transform: translateX(8px);
+    }
+    60% {
+        transform: translateX(-6px);
+    }
+    80% {
+        transform: translateX(6px);
+    }
+}

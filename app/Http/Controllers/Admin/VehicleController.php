@@ -1,0 +1,78 @@
+<?php
+
+namespace App\Http\Controllers\Admin;
+
+use App\Actions\AssignVehicleAction;
+use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\AssignVehicleRequest;
+use App\Models\Dealer;
+use App\Models\Vehicle;
+use App\Services\VehicleDetailService;
+use App\Services\VehicleUploadedImageService;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
+
+class VehicleController extends Controller
+{
+    public function index(Request $request, VehicleUploadedImageService $gallery): JsonResponse
+    {
+        $query = Vehicle::query()
+            ->with(['activeAssignment.dealer.user:id,name,email', 'uploadedImages']);
+
+        if ($search = $request->string('search')->trim()) {
+            $query->where(function ($q) use ($search) {
+                $q->where('vin', 'like', "%{$search}%")
+                    ->orWhere('make', 'like', "%{$search}%")
+                    ->orWhere('model', 'like', "%{$search}%")
+                    ->orWhere('vinstack_id', 'like', "%{$search}%");
+            });
+        }
+
+        if ($status = $request->input('status')) {
+            $query->where('status', $status);
+        }
+
+        if ($request->filled('sort_field')) {
+            $sortField = $request->input('sort_field');
+            $sortOrder = $request->input('sort_order', 'desc') === 'asc' ? 'asc' : 'desc';
+            $allowedSort = ['id', 'vin', 'make', 'model', 'year', 'price', 'status', 'created_at'];
+
+            if (in_array($sortField, $allowedSort, true)) {
+                $query->orderBy($sortField, $sortOrder);
+            }
+        } else {
+            $query->newestFirst();
+        }
+
+        $vehicles = $query->paginate(
+            perPage: min((int) $request->input('per_page', 15), 100),
+            page: (int) $request->input('page', 1),
+        );
+
+        $vehicles->through(fn (Vehicle $vehicle) => $gallery->enrichListVehicle($vehicle));
+
+        return response()->json($vehicles);
+    }
+
+    public function details(Vehicle $vehicle, VehicleDetailService $details): JsonResponse
+    {
+        return response()->json([
+            'data' => $details->build($vehicle, includeAssignment: true),
+        ]);
+    }
+
+    public function assign(
+        AssignVehicleRequest $request,
+        Vehicle $vehicle,
+        AssignVehicleAction $action,
+    ): JsonResponse {
+        $dealer = Dealer::query()->findOrFail($request->integer('dealer_id'));
+
+        $assignment = $action->execute($vehicle, $dealer, $request->user());
+
+        return response()->json([
+            'data' => $assignment,
+            'message' => 'Vehicle assigned successfully.',
+        ]);
+    }
+}

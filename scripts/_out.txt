@@ -1,0 +1,15 @@
+﻿=== C:\xampp\htdocs\vinstack-lite\resources\js\components\VehicleDetailDrawer.vue ===
+            <VehiclePhotosPanel\n                v-if="photosVehicle"\n                :vehicle="photosVehicle"\n                :admin-mode="mode === 'admin'"\n                @updated="onPhotosUpdated"\n            /
+
+=== C:\xampp\htdocs\vinstack-lite\resources\js\components\VehicleDetailDrawer.vue ===
+ v-if="photosVehicle"\n                :vehicle="photosVehicle"\n                :admin-mode="mode === 'admin'"\n                @updated="onPhotosUpdated"\n            />
+
+=== C:\xampp\htdocs\vinstack-lite\resources\js\components\VehicleDetailDrawer.vue ===
+            <VehiclePhotosPanel\n                v-if="photosVehicle"\n                :vehicle="photosVehicle"\n                :admin-mode="mode === 'admin'"\n                @updated="onPhotosUpdated"\n            />
+
+=== C:\xampp\htdocs\vinstack-lite\resources\js\components\VehicleDetailDrawer.vue ===
+            <VehiclePhotosPanel v-if="photosVehicle" :vehicle="photosVehicle" />
+
+=== C:\xampp\htdocs\vinstack-lite\resources\js\components\VehicleDetailDrawer.vue ===
+            <VehiclePhotosPanel v-if="photosVehicle" :vehicle="photosVehicle" />
+

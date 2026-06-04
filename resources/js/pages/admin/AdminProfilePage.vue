@@ -1,0 +1,250 @@
+<template>
+    <div class="profile-page">
+        <p class="subtitle page-intro">تحديث اسمك ورقم هاتف تسجيل الدخول</p>
+
+        <Card v-if="loading" class="profile-card">
+            <template #content>
+                <div class="card-loading">
+                    <ProgressSpinner style="width: 36px; height: 36px" />
+                </div>
+            </template>
+        </Card>
+
+        <Card v-else class="profile-card">
+            <template #content>
+                <form class="profile-form" @submit.prevent="save">
+                    <div class="field">
+                        <label for="name" class="vs-form-label">الاسم</label>
+                        <InputText
+                            id="name"
+                            v-model="form.name"
+                            class="w-full"
+                            :invalid="Boolean(errors.name)"
+                        />
+                        <small v-if="errors.name" class="error">{{ errors.name }}</small>
+                    </div>
+
+                    <div class="field">
+                        <label for="phone" class="vs-form-label">رقم الهاتف</label>
+                        <InputText
+                            id="phone"
+                            v-model="form.phone"
+                            class="w-full"
+                            dir="ltr"
+                            inputmode="tel"
+                            :invalid="Boolean(errors.phone)"
+                        />
+                        <small class="hint">يُستخدم لتسجيل الدخول — نفس تنسيق رقم الدخول</small>
+                        <small v-if="errors.phone" class="error">{{ errors.phone }}</small>
+                    </div>
+
+                    <div class="readonly-block">
+                        <div class="readonly-row">
+                            <span class="readonly-label">البريد</span>
+                            <span dir="ltr">{{ profile.email || '—' }}</span>
+                        </div>
+                        <div class="readonly-row">
+                            <span class="readonly-label">الدور</span>
+                            <span>{{ roleLabel }}</span>
+                        </div>
+                    </div>
+
+                    <div class="actions">
+                        <Button type="submit" label="حفظ التغييرات" icon="pi pi-check" :loading="saving" />
+                    </div>
+                </form>
+            </template>
+        </Card>
+    </div>
+</template>
+
+<script setup>
+import { computed, onMounted, reactive, ref } from 'vue';
+import { useToast } from 'primevue/usetoast';
+import Card from 'primevue/card';
+import InputText from 'primevue/inputtext';
+import Button from 'primevue/button';
+import ProgressSpinner from 'primevue/progressspinner';
+import api from '../../api/client';
+import { useAuthStore } from '../../stores/auth';
+
+const toast = useToast();
+const auth = useAuthStore();
+const loading = ref(true);
+const saving = ref(false);
+const profile = ref({});
+const errors = reactive({ name: '', phone: '' });
+
+const form = reactive({
+    name: '',
+    phone: '',
+});
+
+const roleLabel = computed(() => {
+    if (profile.value.role === 'admin') {
+        return 'مدير النظام';
+    }
+
+    if (profile.value.role === 'dealer') {
+        return 'تاجر';
+    }
+
+    return profile.value.role || '—';
+});
+
+function clearErrors() {
+    errors.name = '';
+    errors.phone = '';
+}
+
+function applyValidationErrors(payload) {
+    clearErrors();
+
+    if (! payload || typeof payload !== 'object') {
+        return;
+    }
+
+    for (const [key, messages] of Object.entries(payload)) {
+        if (key in errors && Array.isArray(messages) && messages[0]) {
+            errors[key] = messages[0];
+        }
+    }
+}
+
+async function load() {
+    loading.value = true;
+
+    try {
+        const { data } = await api.get('/admin/profile');
+        profile.value = data.data ?? {};
+        form.name = profile.value.name ?? '';
+        form.phone = profile.value.phone ?? '';
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: 'خطأ',
+            detail: e.response?.data?.message || 'تعذّر تحميل الملف الشخصي',
+            life: 4000,
+        });
+    } finally {
+        loading.value = false;
+    }
+}
+
+async function save() {
+    saving.value = true;
+    clearErrors();
+
+    try {
+        const { data } = await api.put('/admin/profile', {
+            name: form.name.trim(),
+            phone: form.phone.trim(),
+        });
+
+        profile.value = data.data ?? profile.value;
+
+        if (data.user) {
+            auth.setSession({ token: auth.token, user: data.user });
+        }
+
+        toast.add({
+            severity: 'success',
+            summary: 'تم الحفظ',
+            detail: data.message || 'تم تحديث الملف الشخصي',
+            life: 3000,
+        });
+    } catch (e) {
+        applyValidationErrors(e.response?.data?.errors);
+        toast.add({
+            severity: 'error',
+            summary: 'خطأ',
+            detail: e.response?.data?.message || 'تعذّر حفظ التغييرات',
+            life: 4000,
+        });
+    } finally {
+        saving.value = false;
+    }
+}
+
+onMounted(load);
+</script>
+
+<style scoped>
+.profile-page {
+    max-width: 520px;
+}
+
+.page-intro {
+    margin: 0 0 1rem;
+}
+
+.subtitle {
+    margin: 0;
+    font-size: 0.85rem;
+    color: var(--vs-text-muted);
+}
+
+.profile-card {
+    border: 1px solid var(--admin-border);
+    box-shadow: var(--admin-shadow);
+}
+
+.card-loading {
+    display: flex;
+    justify-content: center;
+    padding: 2rem;
+}
+
+.profile-form {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+}
+
+.profile-form .vs-form-label {
+    display: block;
+    margin-bottom: 0.35rem;
+    font-weight: 600;
+}
+
+.w-full {
+    width: 100%;
+}
+
+.hint {
+    display: block;
+    margin-top: 0.3rem;
+    color: var(--vs-text-subtle);
+    font-size: 0.78rem;
+}
+
+.error {
+    display: block;
+    margin-top: 0.3rem;
+    color: #dc2626;
+    font-size: 0.78rem;
+}
+
+.readonly-block {
+    padding: 0.85rem 1rem;
+    background: var(--vs-surface-elevated);
+    border-radius: 8px;
+    border: 1px solid var(--admin-border);
+}
+
+.readonly-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 0.35rem 0;
+    font-size: 0.88rem;
+}
+
+.readonly-label {
+    color: var(--vs-text-muted);
+}
+
+.actions {
+    padding-top: 0.25rem;
+}
+</style>
