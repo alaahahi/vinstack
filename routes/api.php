@@ -42,6 +42,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dealers', [DealerController::class, 'index']);
         Route::post('/dealers', [DealerController::class, 'store']);
         Route::put('/dealers/{dealer}', [DealerController::class, 'update']);
+        Route::delete('/dealers/{dealer}', [DealerController::class, 'destroy']);
         Route::get('/dealers/{dealer}/recovery-codes', [DealerController::class, 'recoveryCodes']);
 
         Route::get('/vehicles', [AdminVehicleController::class, 'index']);

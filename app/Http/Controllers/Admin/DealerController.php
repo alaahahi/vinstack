@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Support\DealerPresence;
 use App\Support\RecoveryCodesArchive;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 
 class DealerController extends Controller
@@ -18,6 +19,7 @@ class DealerController extends Controller
     public function index(): JsonResponse
     {
         $dealers = Dealer::query()
+            ->withCount('activeAssignments as vehicles_count')
             ->with('user:id,name,email,last_seen_at,recovery_codes_archive,two_factor_confirmed_at')
             ->orderBy('company_name')
             ->get()
@@ -84,6 +86,30 @@ class DealerController extends Controller
         ]);
     }
 
+    public function destroy(Dealer $dealer): JsonResponse
+    {
+        if ($dealer->activeAssignments()->exists()) {
+            return response()->json([
+                'message' => 'لا يمكن حذف التاجر لأنه مرتبط بسيارات',
+            ], 422);
+        }
+
+        $user = $dealer->user;
+
+        DB::transaction(function () use ($user, $dealer) {
+            if ($user) {
+                $user->tokens()->delete();
+                $user->delete();
+            } else {
+                $dealer->delete();
+            }
+        });
+
+        return response()->json([
+            'message' => 'تم حذف التاجر.',
+        ]);
+    }
+
     public function recoveryCodes(Dealer $dealer): JsonResponse
     {
         $user = $dealer->user;
@@ -130,6 +156,7 @@ class DealerController extends Controller
                 ? RecoveryCodesArchive::hasArchive($user)
                 : false,
             'two_factor_enabled' => $user?->two_factor_confirmed_at !== null,
+            'vehicles_count' => (int) ($dealer->vehicles_count ?? $dealer->activeAssignments()->count()),
         ];
     }
 }

@@ -65,6 +65,21 @@
                         size="small"
                         @click="openEdit(dealer)"
                     />
+                    <Button
+                        icon="pi pi-trash"
+                        label="حذف"
+                        severity="danger"
+                        outlined
+                        size="small"
+                        :disabled="dealer.vehicles_count > 0"
+                        :title="
+                            dealer.vehicles_count > 0
+                                ? 'لا يمكن الحذف — التاجر مرتبط بسيارات'
+                                : 'حذف التاجر'
+                        "
+                        :loading="deletingDealerId === dealer.id"
+                        @click="confirmDeleteDealer(dealer)"
+                    />
                 </li>
             </ul>
         </section>
@@ -136,6 +151,7 @@
 
 <script setup>
 import { onMounted, onUnmounted, reactive, ref } from 'vue';
+import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
@@ -149,6 +165,7 @@ import { ADMIN_POLL_MS } from '../../constants/presence';
 import { formatLastSeenLabel, isDealerOnline } from '../../utils/lastSeen';
 
 const toast = useToast();
+const confirm = useConfirm();
 const dealers = ref([]);
 const loading = ref(false);
 const showForm = ref(false);
@@ -160,6 +177,7 @@ const recoveryDialogVisible = ref(false);
 const recoveryCodes = ref([]);
 const recoverySubtitle = ref('');
 const loadingRecoveryDealerId = ref(null);
+const deletingDealerId = ref(null);
 let pollTimer = null;
 
 const form = reactive({
@@ -279,6 +297,46 @@ async function save() {
         });
     } finally {
         saving.value = false;
+    }
+}
+
+function confirmDeleteDealer(dealer) {
+    if (dealer.vehicles_count > 0) {
+        return;
+    }
+
+    confirm.require({
+        message: `هل تريد حذف التاجر «${dealer.company_name}»؟ لا يمكن التراجع عن هذه العملية.`,
+        header: 'حذف تاجر',
+        icon: 'pi pi-trash',
+        rejectLabel: 'إلغاء',
+        acceptLabel: 'حذف',
+        acceptClass: 'p-button-danger',
+        accept: () => deleteDealer(dealer),
+    });
+}
+
+async function deleteDealer(dealer) {
+    deletingDealerId.value = dealer.id;
+
+    try {
+        const { data } = await api.delete(`/admin/dealers/${dealer.id}`);
+        toast.add({
+            severity: 'success',
+            summary: 'تم الحذف',
+            detail: data.message || 'تم حذف التاجر',
+            life: 3000,
+        });
+        await load({ silent: true });
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: 'خطأ',
+            detail: e.response?.data?.message || 'فشل حذف التاجر',
+            life: 4000,
+        });
+    } finally {
+        deletingDealerId.value = null;
     }
 }
 
