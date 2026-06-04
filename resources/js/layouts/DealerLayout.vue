@@ -322,17 +322,22 @@ onUnmounted(() => {
 
     .header {
         padding: 0.75rem 1rem;
+        isolation: isolate;
     }
 
     .nav {
         order: 3;
         width: 100%;
         justify-content: stretch;
+        position: relative;
+        z-index: 1;
     }
 
     .nav-link {
         flex: 1;
         justify-content: center;
+        touch-action: manipulation;
+        -webkit-tap-highlight-color: rgba(255, 255, 255, 0.08);
     }
 
     .header-actions {

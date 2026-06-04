@@ -273,6 +273,7 @@ watch(
     font-size: 0.88rem;
     transition: background 0.12s ease, color 0.12s ease;
     margin-bottom: 0.15rem;
+    touch-action: manipulation;
 }
 
 .admin-nav__link i {
@@ -437,6 +438,8 @@ watch(
         transform: translateX(100%);
         transition: transform 0.22s ease;
         box-shadow: -8px 0 24px rgba(0, 0, 0, 0.2);
+        /* Above .admin-overlay (35) so drawer links receive touch/click */
+        z-index: 40;
     }
 
     .admin-layout--sidebar-open .admin-sidebar {
