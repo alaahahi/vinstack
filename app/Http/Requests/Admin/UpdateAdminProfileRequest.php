@@ -4,6 +4,7 @@ namespace App\Http\Requests\Admin;
 
 use App\Support\PhoneNormalizer;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class UpdateAdminProfileRequest extends FormRequest
 {
@@ -25,6 +26,13 @@ class UpdateAdminProfileRequest extends FormRequest
     {
         return [
             'name' => ['required', 'string', 'min:2', 'max:255'],
+            'email' => [
+                'required',
+                'string',
+                'email',
+                'max:255',
+                Rule::unique('users', 'email')->ignore($this->user()?->id),
+            ],
             'phone' => ['required', 'string', 'min:7', 'max:20'],
         ];
     }
@@ -35,6 +43,9 @@ class UpdateAdminProfileRequest extends FormRequest
             'name.required' => 'الاسم مطلوب.',
             'name.min' => 'الاسم قصير جداً.',
             'name.max' => 'الاسم طويل جداً.',
+            'email.required' => 'البريد الإلكتروني مطلوب.',
+            'email.email' => 'صيغة البريد الإلكتروني غير صالحة.',
+            'email.unique' => 'البريد الإلكتروني مستخدم من حساب آخر.',
             'phone.required' => 'رقم الهاتف مطلوب.',
             'phone.min' => 'رقم الهاتف غير صالح.',
             'phone.max' => 'رقم الهاتف طويل جداً.',

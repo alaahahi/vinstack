@@ -1,6 +1,6 @@
 <template>
     <div class="profile-page">
-        <p class="subtitle page-intro">تحديث اسمك ورقم هاتف تسجيل الدخول</p>
+        <p class="subtitle page-intro">تحديث اسمك والبريد الإلكتروني ورقم هاتف تسجيل الدخول</p>
 
         <Card v-if="loading" class="profile-card">
             <template #content>
@@ -25,6 +25,22 @@
                     </div>
 
                     <div class="field">
+                        <label for="email" class="vs-form-label">البريد الإلكتروني</label>
+                        <InputText
+                            id="email"
+                            v-model="form.email"
+                            type="email"
+                            class="w-full"
+                            dir="ltr"
+                            inputmode="email"
+                            autocomplete="email"
+                            :invalid="Boolean(errors.email)"
+                        />
+                        <small class="hint">يُستخدم لتسجيل الدخول بكلمة المرور</small>
+                        <small v-if="errors.email" class="error">{{ errors.email }}</small>
+                    </div>
+
+                    <div class="field">
                         <label for="phone" class="vs-form-label">رقم الهاتف</label>
                         <InputText
                             id="phone"
@@ -39,10 +55,6 @@
                     </div>
 
                     <div class="readonly-block">
-                        <div class="readonly-row">
-                            <span class="readonly-label">البريد</span>
-                            <span dir="ltr">{{ profile.email || '—' }}</span>
-                        </div>
                         <div class="readonly-row">
                             <span class="readonly-label">الدور</span>
                             <span>{{ roleLabel }}</span>
@@ -73,10 +85,11 @@ const auth = useAuthStore();
 const loading = ref(true);
 const saving = ref(false);
 const profile = ref({});
-const errors = reactive({ name: '', phone: '' });
+const errors = reactive({ name: '', email: '', phone: '' });
 
 const form = reactive({
     name: '',
+    email: '',
     phone: '',
 });
 
@@ -94,6 +107,7 @@ const roleLabel = computed(() => {
 
 function clearErrors() {
     errors.name = '';
+    errors.email = '';
     errors.phone = '';
 }
 
@@ -118,6 +132,7 @@ async function load() {
         const { data } = await api.get('/admin/profile');
         profile.value = data.data ?? {};
         form.name = profile.value.name ?? '';
+        form.email = profile.value.email ?? '';
         form.phone = profile.value.phone ?? '';
     } catch (e) {
         toast.add({
@@ -138,6 +153,7 @@ async function save() {
     try {
         const { data } = await api.put('/admin/profile', {
             name: form.name.trim(),
+            email: form.email.trim(),
             phone: form.phone.trim(),
         });
 

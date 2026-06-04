@@ -29,6 +29,7 @@ class ProfileController extends Controller
 
         $user->fill([
             'name' => $validated['name'],
+            'email' => $validated['email'],
             'phone' => $validated['phone'],
         ]);
         $user->save();
