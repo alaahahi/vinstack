@@ -36,6 +36,7 @@
                 @assign="$emit('assign', $event)"
                 @update-status="$emit('update-status', $event)"
                 @open-detail="$emit('open-detail', $event)"
+                @edit="$emit('edit', $event)"
             />
         </div>
 
@@ -100,7 +101,7 @@ defineProps({
     },
 });
 
-defineEmits(['assign', 'update-status', 'open-detail', 'page', 'empty-action']);
+defineEmits(['assign', 'update-status', 'open-detail', 'edit', 'page', 'empty-action']);
 </script>
 
 <style scoped>

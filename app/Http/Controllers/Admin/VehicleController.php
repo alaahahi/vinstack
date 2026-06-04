@@ -51,7 +51,17 @@ class VehicleController extends Controller
 
         $vehicles->through(fn (Vehicle $vehicle) => $gallery->enrichListVehicle($vehicle));
 
-        return response()->json($vehicles);
+        return response()->json([
+            'data' => $vehicles->items(),
+            'meta' => [
+                'current_page' => $vehicles->currentPage(),
+                'last_page' => $vehicles->lastPage(),
+                'per_page' => $vehicles->perPage(),
+                'total' => $vehicles->total(),
+                'from' => $vehicles->firstItem(),
+                'to' => $vehicles->lastItem(),
+            ],
+        ]);
     }
 
     public function details(Vehicle $vehicle, VehicleDetailService $details): JsonResponse

@@ -107,6 +107,16 @@
     --vs-btn-success-border: #16a34a;
     --vs-btn-success-color: #15803d;
     --vs-btn-success-hover-bg: rgba(22, 163, 74, 0.08);
+    --vs-btn-add-bg: #15803d;
+    --vs-btn-add-border: #15803d;
+    --vs-btn-add-color: #ffffff;
+    --vs-btn-add-hover-bg: #166534;
+    --vs-btn-add-hover-border: #166534;
+    --vs-btn-add-outlined-bg: rgba(255, 255, 255, 0.65);
+    --vs-btn-add-outlined-hover-bg: rgba(22, 163, 74, 0.1);
+    --vs-btn-add-disabled-bg: #bbf7d0;
+    --vs-btn-add-disabled-border: #86efac;
+    --vs-btn-add-disabled-color: #166534;
 }
 
 [data-theme='dark'] {
@@ -191,6 +201,16 @@
     --vs-btn-success-border: #4ade80;
     --vs-btn-success-color: #86efac;
     --vs-btn-success-hover-bg: rgba(34, 197, 94, 0.14);
+    --vs-btn-add-bg: #166534;
+    --vs-btn-add-border: #15803d;
+    --vs-btn-add-color: #ffffff;
+    --vs-btn-add-hover-bg: #15803d;
+    --vs-btn-add-hover-border: #22c55e;
+    --vs-btn-add-outlined-bg: rgba(255, 255, 255, 0.04);
+    --vs-btn-add-outlined-hover-bg: rgba(34, 197, 94, 0.14);
+    --vs-btn-add-disabled-bg: #14532d;
+    --vs-btn-add-disabled-border: #166534;
+    --vs-btn-add-disabled-color: #86efac;
 }
 
 html,
@@ -381,7 +401,9 @@ body,
 /* Default solid primary → light outlined pill */
 .p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(
         .p-button-icon-only
-    ):not(.login-submit):not(.btn-cta):not(.btn-pill--filled) {
+    ):not(.login-submit):not(.btn-cta):not(.btn-add):not(.btn-pill--filled):not(
+        .form-footer__btn--next
+    ):not(.form-footer__btn--save):not(.form-footer__btn--prev) {
     background: var(--vs-btn-bg);
     border: 1px solid var(--vs-btn-border);
     color: var(--vs-btn-color);
@@ -390,7 +412,9 @@ body,
 
 .p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(
         .p-button-icon-only
-    ):not(.login-submit):not(.btn-cta):not(.btn-pill--filled):not(:disabled):hover {
+    ):not(.login-submit):not(.btn-cta):not(.btn-add):not(.btn-pill--filled):not(
+        .form-footer__btn--next
+    ):not(.form-footer__btn--save):not(.form-footer__btn--prev):not(:disabled):hover {
     background: var(--vs-btn-hover-bg);
     border-color: var(--vs-btn-hover-border);
     color: var(--vs-text);
@@ -398,7 +422,9 @@ body,
 
 .p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(
         .p-button-icon-only
-    ):not(.login-submit):not(.btn-cta):not(.btn-pill--filled):not(:disabled):active {
+    ):not(.login-submit):not(.btn-cta):not(.btn-add):not(.btn-pill--filled):not(
+        .form-footer__btn--next
+    ):not(.form-footer__btn--save):not(.form-footer__btn--prev):not(:disabled):active {
     background: var(--vs-surface-hover);
     border-color: var(--vs-btn-hover-border);
     color: var(--vs-text);
@@ -438,14 +464,56 @@ form .p-button[type='submit']:not(.p-button-outlined):not(.p-button-text):not(:d
     filter: brightness(0.95);
 }
 
+/* Add / create actions — green accent pill */
+.btn-add.p-button:not(.p-button-text):not(.p-button-link) {
+    background: var(--vs-btn-add-bg);
+    border: 1px solid var(--vs-btn-add-border);
+    color: var(--vs-btn-add-color);
+}
+
+.btn-add.p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(:disabled):hover {
+    background: var(--vs-btn-add-hover-bg);
+    border-color: var(--vs-btn-add-hover-border);
+    color: var(--vs-btn-add-color);
+}
+
+.btn-add.p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(:disabled):active {
+    filter: brightness(0.95);
+}
+
+.btn-add.p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):disabled {
+    background: var(--vs-btn-add-disabled-bg);
+    border-color: var(--vs-btn-add-disabled-border);
+    color: var(--vs-btn-add-disabled-color);
+    opacity: 0.85;
+}
+
+.btn-add.p-button-outlined:not(.p-button-text):not(.p-button-link) {
+    background: var(--vs-btn-add-outlined-bg);
+    border: 1px solid var(--vs-btn-add-border);
+    color: var(--vs-btn-add-bg);
+}
+
+.btn-add.p-button-outlined:not(.p-button-text):not(.p-button-link):not(:disabled):hover {
+    background: var(--vs-btn-add-outlined-hover-bg);
+    border-color: var(--vs-btn-add-hover-border);
+    color: var(--vs-btn-add-hover-bg);
+}
+
+.btn-add.p-button-outlined:not(.p-button-text):not(.p-button-link):not(:disabled):active {
+    background: var(--vs-btn-add-outlined-hover-bg);
+    border-color: var(--vs-btn-add-border);
+    color: var(--vs-btn-add-bg);
+}
+
 /* Explicit outlined — border from design tokens */
-.p-button-outlined:not(.p-button-icon-only) {
+.p-button-outlined:not(.p-button-icon-only):not(.form-footer__btn--prev) {
     background: var(--vs-btn-bg);
     border: 1px solid var(--vs-btn-border);
     color: var(--vs-btn-color);
 }
 
-.p-button-outlined:not(.p-button-icon-only):not(:disabled):hover {
+.p-button-outlined:not(.p-button-icon-only):not(.form-footer__btn--prev):not(:disabled):hover {
     background: var(--vs-btn-hover-bg);
     border-color: var(--vs-btn-hover-border);
     color: var(--vs-text);

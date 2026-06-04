@@ -23,7 +23,8 @@ class SyncVehicles extends Command
             return self::FAILURE;
         }
 
-        $this->info("Fetched: {$result['total']}, Created: {$result['created']}, Updated: {$result['updated']}");
+        $restorableCount = count($result['restorable']);
+        $this->info("Fetched: {$result['total']}, Created: {$result['created']}, Updated: {$result['updated']}, Restorable: {$restorableCount}");
 
         return self::SUCCESS;
     }

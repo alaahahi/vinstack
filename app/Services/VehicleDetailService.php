@@ -2,8 +2,8 @@
 
 namespace App\Services;
 
+use App\Enums\VehicleSource;
 use App\Models\Vehicle;
-use App\Services\VehicleUploadedImageService;
 use App\Support\VehicleGalleryMerger;
 use Illuminate\Support\Arr;
 use RuntimeException;
@@ -42,6 +42,7 @@ class VehicleDetailService
             'images_by_stage' => $imagesByStage,
             'uploaded_images' => $this->uploadedImages->listForVehicle($vehicle),
             'thumbnail_url' => $this->thumbnailUrl($merged),
+            'source' => $vehicle->source?->value ?? VehicleSource::Vinstack->value,
             'vinstack_fresh' => $fresh !== [],
             'sections' => $this->buildSections($merged),
             'invoices' => $this->normalizeInvoices($merged),
@@ -63,6 +64,10 @@ class VehicleDetailService
      */
     protected function fetchVinstackData(Vehicle $vehicle): array
     {
+        if ($vehicle->source === VehicleSource::Manual) {
+            return [];
+        }
+
         $vin = trim((string) $vehicle->vin);
 
         if ($vin === '') {

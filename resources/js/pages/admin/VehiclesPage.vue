@@ -1,6 +1,14 @@
 <template>
     <div class="admin-page">
-        <AdminPageHeader>
+        <AdminPageHeader :count="total" count-label="سيارة">
+            <template #actions>
+                <Button
+                    label="إضافة سيارة يدوياً"
+                    icon="pi pi-plus"
+                    class="btn-add"
+                    @click="openCreateManual"
+                />
+            </template>
             <template #filters>
                 <IconField>
                     <InputIcon class="pi pi-search" />
@@ -34,6 +42,7 @@
                 empty-hint="ستظهر السيارات بعد المزامنة من Vinstack أو الإضافة اليدوية."
                 empty-action-label="تحديث القائمة"
                 @assign="openAssign"
+                @edit="openEdit"
                 @open-detail="openDetail"
                 @page="onPage"
                 @empty-action="load"
@@ -44,6 +53,22 @@
             :vehicle-id="detailVehicleId"
             mode="admin"
         />
+
+        <Drawer
+            v-model:visible="manualFormVisible"
+            position="right"
+            class="manual-vehicle-drawer"
+            :header="manualFormHeader"
+            :style="{ width: 'min(720px, 95vw)' }"
+            @hide="onManualDrawerHide"
+        >
+            <ManualVehicleForm
+                :vehicle="editingVehicle"
+                @saved="onManualSaved"
+                @deleted="onManualDeleted"
+                @cancel="closeManualForm"
+            />
+        </Drawer>
 
         <Dialog v-model:visible="assignVisible" header="إسناد سيارة" modal style="width: min(420px, 100vw)">
             <Select
@@ -63,15 +88,17 @@
 </template>
 
 <script setup>
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
+import Drawer from 'primevue/drawer';
 import Select from 'primevue/select';
 import AdminPageHeader from '../../components/AdminPageHeader.vue';
+import ManualVehicleForm from '../../components/ManualVehicleForm.vue';
 import VehicleListPanel from '../../components/VehicleListPanel.vue';
 import VehicleDetailDrawer from '../../components/VehicleDetailDrawer.vue';
 import api from '../../api/client';
@@ -86,6 +113,11 @@ const page = ref(1);
 const perPage = ref(15);
 const total = ref(0);
 
+const manualFormVisible = ref(false);
+const editingVehicle = ref(null);
+const manualFormHeader = computed(() =>
+    editingVehicle.value ? 'تعديل سيارة يدوية' : 'إضافة سيارة يدوياً',
+);
 const assignVisible = ref(false);
 const detailVisible = ref(false);
 const detailVehicleId = ref(null);
@@ -113,7 +145,7 @@ async function load() {
             },
         });
         vehicles.value = data.data;
-        total.value = data.total;
+        total.value = data.meta?.total ?? data.total ?? 0;
     } finally {
         loading.value = false;
     }
@@ -128,6 +160,40 @@ function onPage(event) {
     page.value = event.page + 1;
     perPage.value = event.rows;
     load();
+}
+
+function openCreateManual() {
+    editingVehicle.value = null;
+    manualFormVisible.value = true;
+}
+
+function openEdit(vehicle) {
+    if (vehicle?.source !== 'manual') {
+        return;
+    }
+
+    editingVehicle.value = vehicle;
+    manualFormVisible.value = true;
+}
+
+function closeManualForm() {
+    manualFormVisible.value = false;
+}
+
+function onManualDrawerHide() {
+    editingVehicle.value = null;
+}
+
+async function onManualSaved() {
+    closeManualForm();
+    editingVehicle.value = null;
+    await load();
+}
+
+async function onManualDeleted() {
+    closeManualForm();
+    editingVehicle.value = null;
+    await load();
 }
 
 function openAssign(vehicle) {

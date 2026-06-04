@@ -124,7 +124,6 @@ const navGroups = [
         label: 'الأعمال',
         items: [
             { name: 'admin.dealers', label: 'التجار', icon: 'pi pi-building' },
-            { name: 'admin.invoices', label: 'الفواتير', icon: 'pi pi-file' },
         ],
     },
     {

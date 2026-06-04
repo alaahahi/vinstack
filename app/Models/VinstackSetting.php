@@ -12,6 +12,7 @@ class VinstackSetting extends Model
         'sync_enabled',
         'last_sync_at',
         'support_phone',
+        'vehicle_options',
     ];
 
     protected function casts(): array
@@ -20,6 +21,7 @@ class VinstackSetting extends Model
             'api_token' => 'encrypted',
             'sync_enabled' => 'boolean',
             'last_sync_at' => 'datetime',
+            'vehicle_options' => 'array',
         ];
     }
 

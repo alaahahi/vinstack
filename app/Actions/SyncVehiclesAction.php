@@ -2,9 +2,10 @@
 
 namespace App\Actions;
 
+use App\Enums\VehicleSource;
 use App\Enums\VehicleStatus;
-use App\Models\VinstackSetting;
 use App\Models\Vehicle;
+use App\Models\VinstackSetting;
 use App\Services\VinstackService;
 use App\Support\VehicleImageStages;
 use Illuminate\Support\Arr;
@@ -16,7 +17,7 @@ class SyncVehiclesAction
     ) {}
 
     /**
-     * @return array{created: int, updated: int, total: int}
+     * @return array{created: int, updated: int, total: int, restorable: list<array{id: int, vin: string|null}>}
      */
     public function execute(): array
     {
@@ -24,6 +25,7 @@ class SyncVehiclesAction
 
         $created = 0;
         $updated = 0;
+        $restorableById = [];
 
         foreach ($items as $item) {
             if (! is_array($item)) {
@@ -37,20 +39,44 @@ class SyncVehiclesAction
             }
 
             $payload = $this->mapAuto($item);
+            $vin = Arr::get($item, 'vin');
 
-            $vehicle = Vehicle::query()->where('vinstack_id', $vinstackId)->first();
+            $vehicle = Vehicle::withTrashed()->where('vinstack_id', $vinstackId)->first();
 
             if ($vehicle) {
+                if ($vehicle->trashed()) {
+                    $this->trackRestorable($restorableById, $vehicle);
+
+                    continue;
+                }
+
+                if ($vehicle->source === VehicleSource::Manual) {
+                    continue;
+                }
+
                 $vehicle->update($payload);
                 $updated++;
-            } else {
-                Vehicle::query()->create([
-                    ...$payload,
-                    'vinstack_id' => $vinstackId,
-                    'status' => VehicleStatus::Available,
-                ]);
-                $created++;
+
+                continue;
             }
+
+            if (is_string($vin) && $vin !== '') {
+                $trashedByVin = Vehicle::onlyTrashed()->where('vin', strtoupper($vin))->first();
+
+                if ($trashedByVin) {
+                    $this->trackRestorable($restorableById, $trashedByVin);
+
+                    continue;
+                }
+            }
+
+            Vehicle::query()->create([
+                ...$payload,
+                'source' => VehicleSource::Vinstack,
+                'vinstack_id' => $vinstackId,
+                'status' => VehicleStatus::Available,
+            ]);
+            $created++;
         }
 
         VinstackSetting::current()->update([
@@ -61,6 +87,18 @@ class SyncVehiclesAction
             'created' => $created,
             'updated' => $updated,
             'total' => count($items),
+            'restorable' => array_values($restorableById),
+        ];
+    }
+
+    /**
+     * @param  array<int, array{id: int, vin: string|null}>  $restorableById
+     */
+    protected function trackRestorable(array &$restorableById, Vehicle $vehicle): void
+    {
+        $restorableById[$vehicle->id] = [
+            'id' => $vehicle->id,
+            'vin' => $vehicle->vin,
         ];
     }
 

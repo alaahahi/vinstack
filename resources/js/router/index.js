@@ -59,17 +59,16 @@ const routes = [
             {
                 path: 'invoices',
                 name: 'admin.invoices',
-                component: () => import('../pages/admin/InvoicesPage.vue'),
-                meta: {
-                    title: 'الفواتير',
-                    subtitle: 'عرض فقط — البيانات من Vinstack API',
-                },
+                redirect: { name: 'admin.vehicles' },
             },
             {
                 path: 'settings',
                 name: 'admin.settings',
                 component: () => import('../pages/admin/SettingsPage.vue'),
-                meta: { title: 'إعدادات Vinstack', subtitle: 'اتصال API والمزامنة' },
+                meta: {
+                    title: 'إعدادات Vinstack',
+                    subtitle: 'اتصال API والمزامنة وقاعدة البيانات وسجل الأخطاء',
+                },
             },
             {
                 path: 'profile',

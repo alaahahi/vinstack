@@ -21,7 +21,7 @@
                     <Tag v-if="detail.local_status" :value="detail.local_status" class="local-tag" />
                 </div>
                 <VinCopyLabel :vin="detail.vin" class="drawer-vin" />
-                <div v-if="!detail.vinstack_fresh" class="stale-note">
+                <div v-if="!detail.vinstack_fresh && detail.source !== 'manual'" class="stale-note">
                     <i class="pi pi-info-circle" />
                     Showing cached data — Vinstack live fetch unavailable.
                 </div>

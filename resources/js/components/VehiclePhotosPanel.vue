@@ -92,7 +92,7 @@
 
                         :loading="uploadingStage === stage.key"
 
-                        class="upload-btn"
+                        class="upload-btn btn-add"
 
                         @click="triggerUpload(stage.key)"
 

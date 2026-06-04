@@ -67,6 +67,7 @@ class VinstackSettingsController extends Controller
             'created' => $result['created'],
             'updated' => $result['updated'],
             'total' => $result['total'],
+            'restorable' => $result['restorable'],
         ]);
     }
 }

@@ -1,11 +1,15 @@
 <?php
 
 use App\Http\Controllers\Admin\ContainerController as AdminContainerController;
+use App\Http\Controllers\Admin\DatabaseBackupController;
 use App\Http\Controllers\Admin\DealerController;
+use App\Http\Controllers\Admin\ManualVehicleController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
-use App\Http\Controllers\Admin\VinstackBrowseController;
+use App\Http\Controllers\Admin\SystemController;
 use App\Http\Controllers\Admin\VehicleController as AdminVehicleController;
+use App\Http\Controllers\Admin\VehicleOptionsController;
 use App\Http\Controllers\Admin\VehicleUploadedImageController;
+use App\Http\Controllers\Admin\VinstackBrowseController;
 use App\Http\Controllers\Admin\VinstackSettingsController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PublicSettingsController;
@@ -40,11 +44,30 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dealers/{dealer}/recovery-codes', [DealerController::class, 'recoveryCodes']);
 
         Route::get('/vehicles', [AdminVehicleController::class, 'index']);
+        Route::get('/vehicles/check-vin/{vin}', [ManualVehicleController::class, 'checkVin']);
+        Route::get('/vehicles/decode-vin/{vin}', [ManualVehicleController::class, 'decodeVin']);
+        Route::post('/vehicles', [ManualVehicleController::class, 'store']);
+        Route::put('/vehicles/{vehicle}', [ManualVehicleController::class, 'update']);
+        Route::delete('/vehicles/{vehicle}', [ManualVehicleController::class, 'destroy']);
+        Route::post('/vehicles/{vehicle}/restore', [ManualVehicleController::class, 'restore']);
         Route::get('/vehicles/{vehicle}/details', [AdminVehicleController::class, 'details']);
         Route::get('/vehicles/{vehicle}/images/download', [VehicleImageDownloadController::class, 'download']);
         Route::post('/vehicles/{vehicle}/images', [VehicleUploadedImageController::class, 'store']);
         Route::delete('/vehicles/{vehicle}/images/{image}', [VehicleUploadedImageController::class, 'destroy']);
         Route::post('/vehicles/{vehicle}/assign', [AdminVehicleController::class, 'assign']);
+
+        Route::get('/settings/vehicle-options', [VehicleOptionsController::class, 'show']);
+        Route::put('/settings/vehicle-options', [VehicleOptionsController::class, 'update']);
+
+        Route::get('/system/migrations', [SystemController::class, 'migrations']);
+        Route::post('/system/migrate', [SystemController::class, 'migrate']);
+        Route::get('/system/logs', [SystemController::class, 'logs']);
+        Route::delete('/system/logs', [SystemController::class, 'clearLogs']);
+
+        Route::post('/system/backup', [DatabaseBackupController::class, 'backup']);
+        Route::get('/system/backups', [DatabaseBackupController::class, 'index']);
+        Route::get('/system/backups/{filename}/download', [DatabaseBackupController::class, 'download']);
+        Route::post('/system/restore', [DatabaseBackupController::class, 'restore']);
 
         Route::get('/vinstack/settings', [VinstackSettingsController::class, 'show']);
         Route::put('/vinstack/settings', [VinstackSettingsController::class, 'update']);

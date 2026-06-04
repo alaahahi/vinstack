@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Dealer;
 use App\Models\Vehicle;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class ContainerService
@@ -29,16 +30,18 @@ class ContainerService
         $keys = $this->dealerMatchKeys($dealer);
         $items = $this->fetchNormalized();
 
-        $filtered = array_values(array_filter(
+        $fromApi = array_values(array_filter(
             $items,
             fn (array $container) => $this->matchesDealer($container, $keys),
         ));
 
-        if ($filtered !== []) {
-            return $filtered;
-        }
+        $fromVehicles = $this->deriveFromDealerVehicles($dealer);
 
-        return $this->deriveFromDealerVehicles($dealer);
+        $merged = $this->mergeDealerContainerLists($fromApi, $fromVehicles);
+
+        $this->logDealerContainerEdgeCases($dealer, $keys, $items, $fromApi, $fromVehicles, $merged);
+
+        return $merged;
     }
 
     public function trackingAvailable(): bool
@@ -154,23 +157,24 @@ class ContainerService
         $bookingNumbers = [];
 
         foreach ($vehicles as $vehicle) {
-            $vin = strtoupper(trim((string) $vehicle->vin));
+            $raw = is_array($vehicle->raw_data) ? $vehicle->raw_data : [];
+            $shipping = $this->extractShippingFromRaw($raw);
+
+            $vin = $this->normalizeVin((string) ($vehicle->vin ?: ($shipping['vin'] ?? '')));
 
             if ($vin !== '') {
                 $vins[] = $vin;
             }
 
-            $raw = is_array($vehicle->raw_data) ? $vehicle->raw_data : [];
+            $container = $this->normalizeContainerNumber($shipping['container_number'] ?? null);
 
-            $container = strtoupper(trim((string) Arr::get($raw, 'container_number', '')));
-
-            if ($container !== '') {
+            if ($container !== null && $container !== '') {
                 $containerNumbers[] = $container;
             }
 
-            $booking = strtoupper(trim((string) Arr::get($raw, 'booking_number', '')));
+            $booking = $this->normalizeBookingNumber($shipping['booking_number'] ?? null);
 
-            if ($booking !== '') {
+            if ($booking !== null && $booking !== '') {
                 $bookingNumbers[] = $booking;
             }
         }
@@ -188,19 +192,21 @@ class ContainerService
      */
     protected function matchesDealer(array $container, array $keys): bool
     {
-        $containerNumber = strtoupper(trim((string) ($container['container_number'] ?? '')));
-        $bookingNumber = strtoupper(trim((string) ($container['booking_number'] ?? '')));
+        $containerNumber = $this->normalizeContainerNumber($container['container_number'] ?? null);
+        $bookingNumber = $this->normalizeBookingNumber($container['booking_number'] ?? null);
 
-        if ($containerNumber !== '' && in_array($containerNumber, $keys['container_numbers'], true)) {
+        if ($containerNumber !== null && $containerNumber !== ''
+            && in_array($containerNumber, $keys['container_numbers'], true)) {
             return true;
         }
 
-        if ($bookingNumber !== '' && in_array($bookingNumber, $keys['booking_numbers'], true)) {
+        if ($bookingNumber !== null && $bookingNumber !== ''
+            && in_array($bookingNumber, $keys['booking_numbers'], true)) {
             return true;
         }
 
         foreach ($container['vehicles'] ?? [] as $vehicle) {
-            $vin = strtoupper(trim((string) ($vehicle['vin'] ?? '')));
+            $vin = $this->normalizeVin((string) ($vehicle['vin'] ?? ''));
 
             if ($vin !== '' && in_array($vin, $keys['vins'], true)) {
                 return true;
@@ -228,35 +234,39 @@ class ContainerService
 
         foreach ($vehicles as $vehicle) {
             $raw = is_array($vehicle->raw_data) ? $vehicle->raw_data : [];
-            $containerNumber = trim((string) Arr::get($raw, 'container_number', ''));
+            $shipping = $this->extractShippingFromRaw($raw);
+            $groupKey = $this->containerListKey([
+                'container_number' => $shipping['container_number'] ?? null,
+                'booking_number' => $shipping['booking_number'] ?? null,
+            ]);
 
-            if ($containerNumber === '') {
+            if ($groupKey === '') {
                 continue;
             }
 
-            $groups[$containerNumber][] = $vehicle;
+            $groups[$groupKey][] = $vehicle;
         }
 
         $containers = [];
 
-        foreach ($groups as $containerNumber => $group) {
+        foreach ($groups as $groupKey => $group) {
             $firstRaw = is_array($group[0]->raw_data) ? $group[0]->raw_data : [];
+            $shipping = $this->extractShippingFromRaw($firstRaw);
+            $containerNumber = $shipping['container_number'] ?? null;
+            $bookingNumber = $shipping['booking_number'] ?? null;
 
             $containers[] = [
                 'id' => null,
                 'container_number' => $containerNumber,
-                'booking_number' => $this->string($firstRaw, 'booking_number'),
-                'seal_number' => $this->string($firstRaw, 'seal_number') ?: $this->string($firstRaw, 'seal'),
-                'customer_name' => $this->string($firstRaw, 'buyer')
-                    ?: $this->string($firstRaw, 'customer_name'),
-                'loading_point' => $this->string($firstRaw, 'loading_point'),
-                'destination' => $this->string($firstRaw, 'destination'),
-                'shipping_line' => $this->string($firstRaw, 'shipping_line'),
-                'size' => $this->string($firstRaw, 'size'),
-                'loading_date' => $this->string($firstRaw, 'loading_date'),
-                'eta' => $this->string($firstRaw, 'eta')
-                    ?: $this->string($firstRaw, 'estimated_arrival')
-                    ?: $this->string($firstRaw, 'eta_date'),
+                'booking_number' => $bookingNumber,
+                'seal_number' => $shipping['seal_number'] ?? null,
+                'customer_name' => $shipping['customer_name'] ?? null,
+                'loading_point' => $shipping['loading_point'] ?? null,
+                'destination' => $shipping['destination'] ?? null,
+                'shipping_line' => $shipping['shipping_line'] ?? null,
+                'size' => $shipping['size'] ?? null,
+                'loading_date' => $shipping['loading_date'] ?? null,
+                'eta' => $shipping['eta'] ?? null,
                 'status' => $this->normalizeListStatus($firstRaw),
                 'released' => (bool) Arr::get($firstRaw, 'released', false),
                 'bol_url' => null,
@@ -282,9 +292,9 @@ class ContainerService
                     ];
                 }, $group),
                 'tracking_available' => $this->rowTrackingAvailable([
-                    'container_number' => $containerNumber,
-                    'loading_point' => $this->string($firstRaw, 'loading_point'),
-                    'destination' => $this->string($firstRaw, 'destination'),
+                    'container_number' => $containerNumber ?? $bookingNumber,
+                    'loading_point' => $shipping['loading_point'] ?? null,
+                    'destination' => $shipping['destination'] ?? null,
                 ]),
                 'source' => 'vehicles',
             ];
@@ -427,5 +437,219 @@ class ContainerService
         }
 
         return trim((string) $value);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $fromApi
+     * @param  list<array<string, mixed>>  $fromVehicles
+     * @return list<array<string, mixed>>
+     */
+    protected function mergeDealerContainerLists(array $fromApi, array $fromVehicles): array
+    {
+        /** @var array<string, array<string, mixed>> $byKey */
+        $byKey = [];
+
+        foreach ($fromApi as $row) {
+            $key = $this->containerListKey($row);
+
+            if ($key === '') {
+                continue;
+            }
+
+            $byKey[$key] = $row;
+        }
+
+        foreach ($fromVehicles as $row) {
+            $key = $this->containerListKey($row);
+
+            if ($key === '') {
+                continue;
+            }
+
+            if (! isset($byKey[$key])) {
+                $byKey[$key] = $row;
+            }
+        }
+
+        $merged = array_values($byKey);
+
+        usort($merged, fn ($a, $b) => strcmp(
+            (string) ($b['loading_date'] ?? ''),
+            (string) ($a['loading_date'] ?? ''),
+        ));
+
+        return $merged;
+    }
+
+    /**
+     * @param  array<string, mixed>  $row
+     */
+    protected function containerListKey(array $row): string
+    {
+        $container = $this->normalizeContainerNumber($row['container_number'] ?? null);
+
+        if ($container !== null && $container !== '') {
+            return 'cn:'.$container;
+        }
+
+        $booking = $this->normalizeBookingNumber($row['booking_number'] ?? null);
+
+        if ($booking !== null && $booking !== '') {
+            return 'bk:'.$booking;
+        }
+
+        return '';
+    }
+
+    protected function normalizeVin(string $vin): string
+    {
+        return strtoupper(trim($vin));
+    }
+
+    protected function normalizeContainerNumber(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $normalized = strtoupper(preg_replace('/\s+/', '', trim((string) $value)) ?? '');
+
+        return $normalized !== '' ? $normalized : null;
+    }
+
+    protected function normalizeBookingNumber(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $normalized = strtoupper(preg_replace('/\s+/', '', trim((string) $value)) ?? '');
+
+        return $normalized !== '' ? $normalized : null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $raw
+     * @return array{
+     *     container_number: ?string,
+     *     booking_number: ?string,
+     *     seal_number: ?string,
+     *     customer_name: ?string,
+     *     loading_point: ?string,
+     *     destination: ?string,
+     *     shipping_line: ?string,
+     *     size: ?string,
+     *     loading_date: ?string,
+     *     eta: ?string,
+     *     vin: ?string,
+     * }
+     */
+    protected function extractShippingFromRaw(array $raw): array
+    {
+        $nested = Arr::get($raw, 'shipping', Arr::get($raw, 'shipment', []));
+        $containerObj = Arr::get($raw, 'container', []);
+
+        if (! is_array($nested)) {
+            $nested = [];
+        }
+
+        if (! is_array($containerObj)) {
+            $containerObj = [];
+        }
+
+        $containerNumber = $this->string($raw, 'container_number')
+            ?: $this->string($nested, 'container_number')
+            ?: $this->string($containerObj, 'number')
+            ?: $this->string($containerObj, 'container_number');
+
+        $bookingNumber = $this->string($raw, 'booking_number')
+            ?: $this->string($nested, 'booking_number')
+            ?: $this->string($containerObj, 'booking_number');
+
+        return [
+            'container_number' => $containerNumber,
+            'booking_number' => $bookingNumber,
+            'seal_number' => $this->string($raw, 'seal_number') ?: $this->string($raw, 'seal'),
+            'customer_name' => $this->string($raw, 'buyer')
+                ?: $this->string($raw, 'customer_name')
+                ?: $this->string($raw, 'customer'),
+            'loading_point' => $this->string($raw, 'loading_point') ?: $this->string($nested, 'loading_point'),
+            'destination' => $this->string($raw, 'destination') ?: $this->string($nested, 'destination'),
+            'shipping_line' => $this->string($raw, 'shipping_line') ?: $this->string($nested, 'shipping_line'),
+            'size' => $this->string($raw, 'size'),
+            'loading_date' => $this->string($raw, 'loading_date'),
+            'eta' => $this->string($raw, 'eta')
+                ?: $this->string($raw, 'estimated_arrival')
+                ?: $this->string($raw, 'eta_date'),
+            'vin' => $this->string($raw, 'vin'),
+        ];
+    }
+
+    /**
+     * @param  array{vins: list<string>, container_numbers: list<string>, booking_numbers: list<string>}  $keys
+     * @param  list<array<string, mixed>>  $apiItems
+     * @param  list<array<string, mixed>>  $fromApi
+     * @param  list<array<string, mixed>>  $fromVehicles
+     * @param  list<array<string, mixed>>  $merged
+     */
+    protected function logDealerContainerEdgeCases(
+        Dealer $dealer,
+        array $keys,
+        array $apiItems,
+        array $fromApi,
+        array $fromVehicles,
+        array $merged,
+    ): void {
+        $hasKeys = $keys['vins'] !== [] || $keys['container_numbers'] !== [] || $keys['booking_numbers'] !== [];
+
+        if ($hasKeys && $fromApi === [] && $fromVehicles !== []) {
+            Log::debug('dealer.containers: vehicle-derived rows (no Vinstack API match)', [
+                'dealer_id' => $dealer->id,
+                'derived_count' => count($fromVehicles),
+                'dealer_container_numbers' => $keys['container_numbers'],
+                'dealer_booking_numbers' => $keys['booking_numbers'],
+            ]);
+        }
+
+        if ($hasKeys && $fromApi !== [] && $fromVehicles !== []) {
+            $apiKeys = array_map(fn (array $row) => $this->containerListKey($row), $fromApi);
+            $derivedOnly = array_values(array_filter(
+                $fromVehicles,
+                fn (array $row) => ! in_array($this->containerListKey($row), $apiKeys, true),
+            ));
+
+            if ($derivedOnly !== []) {
+                Log::debug('dealer.containers: merged vehicle-derived rows missing from API filter', [
+                    'dealer_id' => $dealer->id,
+                    'added_count' => count($derivedOnly),
+                    'keys' => array_map(fn (array $row) => $this->containerListKey($row), $derivedOnly),
+                ]);
+            }
+        }
+
+        if (! $hasKeys || $merged !== []) {
+            return;
+        }
+
+        Log::debug('dealer.containers: assigned vehicles have no container/booking/VIN keys', [
+            'dealer_id' => $dealer->id,
+        ]);
+
+        if ($apiItems === []) {
+            return;
+        }
+
+        $apiNumbers = array_values(array_filter(array_map(
+            fn (array $row) => $this->normalizeContainerNumber($row['container_number'] ?? null),
+            $apiItems,
+        )));
+
+        Log::debug('dealer.containers: Vinstack list returned but no row matched dealer keys', [
+            'dealer_id' => $dealer->id,
+            'dealer_container_numbers' => $keys['container_numbers'],
+            'dealer_booking_numbers' => $keys['booking_numbers'],
+            'dealer_vins' => $keys['vins'],
+            'vinstack_container_numbers_sample' => array_slice($apiNumbers, 0, 10),
+        ]);
     }
 }

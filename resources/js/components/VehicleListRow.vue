@@ -9,6 +9,7 @@
                         {{ title || '—' }}
                     </button>
                     <span v-if="fuel" class="fuel-badge" :class="fuelClass">{{ fuel }}</span>
+                    <span class="source-pill" :class="sourcePillClass">{{ sourceLabel }}</span>
                     <i
                         v-if="mode === 'admin' && hasLocalUploads"
                         class="pi pi-images local-upload-hint"
@@ -92,6 +93,16 @@
                 {{ vehicle.status }}
             </span>
             <div v-if="dealerName" class="dealer-name">{{ dealerName }}</div>
+            <Button
+                v-if="isManual"
+                icon="pi pi-pencil"
+                label="تعديل"
+                size="small"
+                severity="secondary"
+                outlined
+                title="تعديل سيارة يدوية"
+                @click="$emit('edit', vehicle)"
+            />
             <Button label="Assign" size="small" outlined @click="$emit('assign', vehicle)" />
         </div>
 
@@ -148,7 +159,13 @@ const props = defineProps({
     },
 });
 
-defineEmits(['assign', 'update-status', 'open-detail']);
+defineEmits(['assign', 'update-status', 'open-detail', 'edit']);
+
+const isManual = computed(() => props.vehicle?.source === 'manual');
+const sourceLabel = computed(() => (isManual.value ? 'يدوية' : 'مستوردة'));
+const sourcePillClass = computed(() =>
+    isManual.value ? 'source-pill--manual' : 'source-pill--vinstack',
+);
 
 const title = computed(() => vehicleTitle(props.vehicle));
 const hasLocalUploads = computed(() => (props.vehicle?.uploaded_images?.length ?? 0) > 0);
@@ -265,6 +282,25 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
 .fuel-default {
     background: #f4f4f5;
     color: #52525b;
+}
+
+.source-pill {
+    display: inline-block;
+    padding: 0.12rem 0.45rem;
+    border-radius: 4px;
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+.source-pill--vinstack {
+    background: #dbeafe;
+    color: #1d4ed8;
+}
+
+.source-pill--manual {
+    background: #e0e7ff;
+    color: #3730a3;
 }
 
 .vehicle-vin-line {

@@ -2,7 +2,7 @@
     <div class="admin-page">
         <AdminPageHeader>
             <template #actions>
-                <Button label="تاجر جديد" icon="pi pi-plus" @click="showForm = true" />
+                <Button label="تاجر جديد" icon="pi pi-plus" class="btn-add" @click="showForm = true" />
                 <Button icon="pi pi-refresh" label="تحديث" outlined :loading="loading" @click="load()" />
             </template>
         </AdminPageHeader>
@@ -16,7 +16,7 @@
                 <i class="pi pi-building" />
                 <p class="admin-empty-title">لا يوجد تجار بعد</p>
                 <p class="admin-empty-hint">أنشئ أول حساب تاجر لبدء إسناد السيارات من قائمة السيارات.</p>
-                <Button label="تاجر جديد" icon="pi pi-plus" @click="showForm = true" />
+                <Button label="تاجر جديد" icon="pi pi-plus" class="btn-add" @click="showForm = true" />
             </div>
 
             <ul v-else class="dealer-list" role="list">

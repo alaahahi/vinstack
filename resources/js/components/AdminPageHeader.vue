@@ -1,6 +1,11 @@
 <template>
     <header class="admin-page-header">
-        <div v-if="subtitle || $slots.lead" class="admin-page-header__lead">
+        <div v-if="subtitle || count != null || $slots.lead" class="admin-page-header__lead">
+            <div v-if="count != null" class="admin-page-header__count-row">
+                <span class="admin-page-header__count-badge">
+                    {{ count }} {{ countLabel }}
+                </span>
+            </div>
             <p v-if="subtitle" class="admin-page-header__subtitle">{{ subtitle }}</p>
             <slot name="lead" />
         </div>
@@ -16,6 +21,8 @@
 <script setup>
 defineProps({
     subtitle: { type: String, default: '' },
+    count: { type: Number, default: null },
+    countLabel: { type: String, default: 'سيارة' },
 });
 </script>
 
@@ -31,6 +38,23 @@ defineProps({
 .admin-page-header__lead {
     flex: 1;
     min-width: min(100%, 12rem);
+}
+
+.admin-page-header__count-row {
+    margin-bottom: 0.35rem;
+}
+
+.admin-page-header__count-badge {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.2rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--admin-accent, #15803d);
+    background: var(--admin-sidebar-active, rgba(22, 163, 74, 0.12));
+    border: 1px solid var(--admin-border, rgba(22, 163, 74, 0.2));
 }
 
 .admin-page-header__subtitle {
