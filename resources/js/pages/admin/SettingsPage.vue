@@ -88,7 +88,12 @@
                     </div>
                     <div v-if="settings.last_sync_at" class="vs-sync-status">
                         <i class="pi pi-clock" />
-                        <span>آخر مزامنة: <strong>{{ settings.last_sync_at }}</strong></span>
+                        <span>
+                            آخر مزامنة:
+                            <strong>
+                                <span dir="ltr" class="datetime-ltr">{{ formatDateTime(settings.last_sync_at) }}</span>
+                            </strong>
+                        </span>
                     </div>
                     <div v-else class="vs-sync-status vs-sync-status--muted">
                         <i class="pi pi-info-circle" />
@@ -96,7 +101,16 @@
                     </div>
                     <div v-if="settings.last_auto_sync_at" class="vs-sync-status">
                         <i class="pi pi-calendar-clock" />
-                        <span>آخر مزامنة تلقائية: <strong>{{ settings.last_auto_sync_at }}</strong></span>
+                        <span>
+                            آخر مزامنة تلقائية:
+                            <strong>
+                                <span dir="ltr" class="datetime-ltr">{{ formatDateTime(settings.last_auto_sync_at) }}</span>
+                            </strong>
+                        </span>
+                    </div>
+                    <div v-else class="vs-sync-status vs-sync-status--muted">
+                        <i class="pi pi-info-circle" />
+                        <span>آخر مزامنة تلقائية: لم تُنفَّذ بعد</span>
                     </div>
                     <p class="sync-cron-help">
                         لتشغيل المزامنة التلقائية على السيرفر، فعِّل «تفعيل المزامنة التلقائية» واحفظ الإعدادات، ثم أضِف مهمة
@@ -734,19 +748,23 @@ async function clearLogs() {
     }
 }
 
-function formatBackupDate(iso) {
+function formatDateTime(iso) {
     if (!iso) {
         return '—';
     }
 
     try {
-        return new Date(iso).toLocaleString('ar-SA', {
-            dateStyle: 'short',
+        return new Intl.DateTimeFormat('ar', {
+            dateStyle: 'medium',
             timeStyle: 'short',
-        });
+        }).format(new Date(iso));
     } catch {
         return iso;
     }
+}
+
+function formatBackupDate(iso) {
+    return formatDateTime(iso);
 }
 
 async function loadBackups() {
@@ -1222,6 +1240,10 @@ onMounted(async () => {
     margin: 0;
     font-size: 0.8125rem;
     color: var(--vs-text-muted);
+}
+
+.datetime-ltr {
+    unicode-bidi: isolate;
 }
 
 .sync-cron-help {
