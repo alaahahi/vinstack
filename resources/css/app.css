@@ -163,6 +163,22 @@
     --vs-btn-assign-hover-border: #a16207;
     --vs-btn-assign-outlined-bg: rgba(255, 255, 255, 0.65);
     --vs-btn-assign-outlined-hover-bg: rgba(202, 138, 4, 0.12);
+    --vs-btn-danger-bg: #dc2626;
+    --vs-btn-danger-border: #dc2626;
+    --vs-btn-danger-color: #ffffff;
+    --vs-btn-danger-hover-bg: #b91c1c;
+    --vs-btn-danger-hover-border: #b91c1c;
+    --vs-btn-danger-outlined-hover-bg: rgba(220, 38, 38, 0.08);
+    --vs-btn-primary-bg: var(--admin-accent);
+    --vs-btn-primary-border: var(--admin-accent);
+    --vs-btn-primary-color: #ffffff;
+    --vs-btn-primary-hover-bg: #2563eb;
+    --vs-btn-primary-hover-border: #2563eb;
+    --vs-btn-success-bg: #15803d;
+    --vs-btn-success-border: #15803d;
+    --vs-btn-success-color: #ffffff;
+    --vs-btn-success-hover-bg: #166534;
+    --vs-btn-success-hover-border: #166534;
 
     --vs-input-bg: #ffffff;
     --vs-input-hover-border: var(--vs-zinc-300);
@@ -280,6 +296,22 @@
     --vs-btn-assign-hover-border: #eab308;
     --vs-btn-assign-outlined-bg: rgba(255, 255, 255, 0.04);
     --vs-btn-assign-outlined-hover-bg: rgba(234, 179, 8, 0.18);
+    --vs-btn-danger-bg: #ef4444;
+    --vs-btn-danger-border: #dc2626;
+    --vs-btn-danger-color: #ffffff;
+    --vs-btn-danger-hover-bg: #dc2626;
+    --vs-btn-danger-hover-border: #b91c1c;
+    --vs-btn-danger-outlined-hover-bg: rgba(239, 68, 68, 0.16);
+    --vs-btn-primary-bg: var(--admin-accent);
+    --vs-btn-primary-border: var(--admin-accent);
+    --vs-btn-primary-color: #f8fafc;
+    --vs-btn-primary-hover-bg: #2563eb;
+    --vs-btn-primary-hover-border: #2563eb;
+    --vs-btn-success-bg: #166534;
+    --vs-btn-success-border: #15803d;
+    --vs-btn-success-color: #ffffff;
+    --vs-btn-success-hover-bg: #15803d;
+    --vs-btn-success-hover-border: #22c55e;
 
     --vs-input-bg: var(--vs-zinc-900);
     --vs-input-border: var(--vs-zinc-600);
@@ -609,12 +641,14 @@ body,
     border-radius: var(--vs-btn-radius);
 }
 
-/* Default solid primary → light outlined pill */
+/* Default solid primary → light outlined pill (exclude semantic severities) */
 .p-button:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(
         .p-button-icon-only
     ):not(.login-submit):not(.btn-cta):not(.btn-add):not(.btn-assign):not(.btn-pill--filled):not(
         .form-footer__btn--next
-    ):not(.form-footer__btn--save):not(.form-footer__btn--prev) {
+    ):not(.form-footer__btn--save):not(.form-footer__btn--prev):not(.p-button-danger):not(
+        .p-button-primary
+    ):not(.p-button-success):not(.p-confirmdialog-accept-button):not(.p-confirmdialog-reject-button) {
     background: var(--vs-btn-bg);
     border: 1px solid var(--vs-btn-border);
     color: var(--vs-btn-color);
@@ -625,7 +659,11 @@ body,
         .p-button-icon-only
     ):not(.login-submit):not(.btn-cta):not(.btn-add):not(.btn-assign):not(.btn-pill--filled):not(
         .form-footer__btn--next
-    ):not(.form-footer__btn--save):not(.form-footer__btn--prev):not(:disabled):hover {
+    ):not(.form-footer__btn--save):not(.form-footer__btn--prev):not(.p-button-danger):not(
+        .p-button-primary
+    ):not(.p-button-success):not(.p-confirmdialog-accept-button):not(.p-confirmdialog-reject-button):not(
+        :disabled
+    ):hover {
     background: var(--vs-btn-hover-bg);
     border-color: var(--vs-btn-hover-border);
     color: var(--vs-text);
@@ -635,7 +673,11 @@ body,
         .p-button-icon-only
     ):not(.login-submit):not(.btn-cta):not(.btn-add):not(.btn-assign):not(.btn-pill--filled):not(
         .form-footer__btn--next
-    ):not(.form-footer__btn--save):not(.form-footer__btn--prev):not(:disabled):active {
+    ):not(.form-footer__btn--save):not(.form-footer__btn--prev):not(.p-button-danger):not(
+        .p-button-primary
+    ):not(.p-button-success):not(.p-confirmdialog-accept-button):not(.p-confirmdialog-reject-button):not(
+        :disabled
+    ):active {
     background: var(--vs-surface-hover);
     border-color: var(--vs-btn-hover-border);
     color: var(--vs-text);
@@ -774,6 +816,128 @@ form .p-button[type='submit']:not(.p-button-outlined):not(.p-button-text):not(:d
     background: var(--vs-btn-success-hover-bg);
     border-color: var(--vs-btn-success-border);
     color: var(--vs-btn-success-color);
+}
+
+/* Primary severity — filled accent pill */
+.p-button-primary:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(
+        .p-button-icon-only
+    ) {
+    background: var(--vs-btn-primary-bg);
+    border: 1px solid var(--vs-btn-primary-border);
+    color: var(--vs-btn-primary-color);
+}
+
+.p-button-primary:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(
+        .p-button-icon-only
+    ):not(:disabled):hover {
+    background: var(--vs-btn-primary-hover-bg);
+    border-color: var(--vs-btn-primary-hover-border);
+    color: var(--vs-btn-primary-color);
+}
+
+.p-button-primary:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(
+        .p-button-icon-only
+    ):not(:disabled):active {
+    filter: brightness(0.95);
+}
+
+/* Danger severity — destructive actions */
+.p-button-danger:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(
+        .p-button-icon-only
+    ) {
+    background: var(--vs-btn-danger-bg);
+    border: 1px solid var(--vs-btn-danger-border);
+    color: var(--vs-btn-danger-color);
+}
+
+.p-button-danger:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(
+        .p-button-icon-only
+    ):not(:disabled):hover {
+    background: var(--vs-btn-danger-hover-bg);
+    border-color: var(--vs-btn-danger-hover-border);
+    color: var(--vs-btn-danger-color);
+}
+
+.p-button-danger:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(
+        .p-button-icon-only
+    ):not(:disabled):active {
+    filter: brightness(0.95);
+}
+
+.p-button-outlined.p-button-danger:not(.p-button-icon-only) {
+    background: var(--vs-btn-bg);
+    border-color: var(--vs-btn-danger-border);
+    color: var(--vs-btn-danger-bg);
+}
+
+.p-button-outlined.p-button-danger:not(.p-button-icon-only):not(:disabled):hover {
+    background: var(--vs-btn-danger-outlined-hover-bg);
+    border-color: var(--vs-btn-danger-hover-border);
+    color: var(--vs-btn-danger-hover-bg);
+}
+
+/* Success severity — filled green pill */
+.p-button-success:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(
+        .p-button-icon-only
+    ) {
+    background: var(--vs-btn-success-bg);
+    border: 1px solid var(--vs-btn-success-border);
+    color: var(--vs-btn-success-color);
+}
+
+.p-button-success:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(
+        .p-button-icon-only
+    ):not(:disabled):hover {
+    background: var(--vs-btn-success-hover-bg);
+    border-color: var(--vs-btn-success-hover-border);
+    color: var(--vs-btn-success-color);
+}
+
+.p-button-success:not(.p-button-outlined):not(.p-button-text):not(.p-button-link):not(
+        .p-button-icon-only
+    ):not(:disabled):active {
+    filter: brightness(0.95);
+}
+
+/* ConfirmDialog — reject=cancel (text), accept=primary or danger */
+.p-confirmdialog-reject-button.p-button {
+    background: transparent;
+    border: 1px solid transparent;
+    color: var(--vs-text-muted);
+    box-shadow: none;
+}
+
+.p-confirmdialog-reject-button.p-button:not(:disabled):hover {
+    background: var(--vs-btn-hover-bg);
+    border-color: var(--vs-btn-border);
+    color: var(--vs-text-secondary);
+}
+
+.p-confirmdialog-reject-button.p-button:not(:disabled):active {
+    background: var(--vs-surface-hover);
+    border-color: var(--vs-btn-hover-border);
+}
+
+.p-confirmdialog-accept-button.p-button:not(.p-button-danger):not(.p-button-outlined):not(
+        .p-button-text
+    ) {
+    background: var(--vs-btn-primary-bg);
+    border: 1px solid var(--vs-btn-primary-border);
+    color: var(--vs-btn-primary-color);
+}
+
+.p-confirmdialog-accept-button.p-button:not(.p-button-danger):not(.p-button-outlined):not(
+        .p-button-text
+    ):not(:disabled):hover {
+    background: var(--vs-btn-primary-hover-bg);
+    border-color: var(--vs-btn-primary-hover-border);
+    color: var(--vs-btn-primary-color);
+}
+
+.p-confirmdialog-accept-button.p-button:not(.p-button-danger):not(.p-button-outlined):not(
+        .p-button-text
+    ):not(:disabled):active {
+    filter: brightness(0.95);
 }
 
 /* Secondary severity — muted outlined pill */

@@ -76,6 +76,8 @@
 
                 :icon="readOnly ? 'pi pi-times' : 'pi pi-check'"
 
+                class="btn-cta"
+
                 @click="close"
 
             />

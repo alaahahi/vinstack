@@ -44,7 +44,7 @@
             <Textarea v-model="notes" rows="4" class="w-full mt" placeholder="ملاحظات" />
             <template #footer>
                 <Button label="إلغاء" text @click="statusVisible = false" />
-                <Button label="حفظ" :loading="saving" @click="saveStatus" />
+                <Button label="حفظ" class="btn-cta" :loading="saving" @click="saveStatus" />
             </template>
         </Dialog>
     </div>

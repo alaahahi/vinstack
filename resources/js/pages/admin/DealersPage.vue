@@ -118,7 +118,7 @@
             </div>
             <template #footer>
                 <Button label="إلغاء" text @click="showForm = false" />
-                <Button label="حفظ" :loading="saving" @click="save" />
+                <Button label="حفظ" class="btn-cta" :loading="saving" @click="save" />
             </template>
         </Dialog>
 
@@ -149,7 +149,7 @@
             </div>
             <template #footer>
                 <Button label="إلغاء" text @click="showEdit = false" />
-                <Button label="حفظ التعديلات" :loading="editing" @click="saveEdit" />
+                <Button label="حفظ التعديلات" class="btn-cta" :loading="editing" @click="saveEdit" />
             </template>
         </Dialog>
 

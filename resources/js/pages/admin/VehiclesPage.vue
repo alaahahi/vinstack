@@ -92,7 +92,7 @@
             />
             <template #footer>
                 <Button label="إلغاء" text @click="assignVisible = false" />
-                <Button label="تأكيد" :loading="assigning" @click="confirmAssign" />
+                <Button label="تأكيد" class="btn-assign" :loading="assigning" @click="confirmAssign" />
             </template>
         </Dialog>
     </div>
@@ -295,6 +295,7 @@ function confirmUnassign(vehicle) {
         icon: 'pi pi-times-circle',
         rejectLabel: 'إلغاء',
         acceptLabel: 'تأكيد',
+        acceptClass: 'p-button-danger',
         accept: () => unassignVehicle(vehicle),
     });
 }
