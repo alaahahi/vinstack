@@ -49,7 +49,7 @@ export function dealerLoginPhoneLine(dealer) {
 }
 
 /**
- * @param {{ phone?: string }} dealer
+ * @param {{ copy_password?: string }} dealer
  * @param {string} [passwordOverride] Plain password (e.g. right after create).
  * @returns {string}
  */
@@ -58,11 +58,13 @@ export function dealerLoginPasswordLine(dealer, passwordOverride) {
         return passwordOverride.trim();
     }
 
-    if (dealer?.phone?.trim()) {
-        return '— (الدخول برقم الهاتف — بدون كلمة مرور)';
+    const copyPassword = dealer?.copy_password?.trim();
+
+    if (copyPassword) {
+        return copyPassword;
     }
 
-    return '— (عُيّنت عند الإنشاء — غير قابلة للاسترجاع)';
+    return '—';
 }
 
 /**

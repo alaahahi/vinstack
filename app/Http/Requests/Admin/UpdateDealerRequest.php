@@ -27,6 +27,7 @@ class UpdateDealerRequest extends FormRequest
             'name' => ['sometimes', 'required', 'string', 'max:255'],
             'company_name' => ['sometimes', 'required', 'string', 'max:255'],
             'phone' => ['nullable', 'string', 'max:50'],
+            'password' => ['sometimes', 'nullable', 'string', 'min:8'],
         ];
     }
 

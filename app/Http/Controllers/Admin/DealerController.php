@@ -47,6 +47,7 @@ class DealerController extends Controller
             'user_id' => $user->id,
             'company_name' => $request->string('company_name'),
             'phone' => $request->input('phone'),
+            'login_password_encrypted' => $request->string('password')->toString(),
         ]);
 
         $dealer->load('user:id,name,email,phone,last_seen_at,recovery_codes_archive,two_factor_confirmed_at');
@@ -90,6 +91,13 @@ class DealerController extends Controller
 
         if ($dealerUpdates !== []) {
             $dealer->update($dealerUpdates);
+        }
+
+        if (! empty($validated['password'] ?? null)) {
+            $user->password = Hash::make($validated['password']);
+            $user->save();
+            $dealer->login_password_encrypted = $validated['password'];
+            $dealer->save();
         }
 
         $dealer->load('user:id,name,email,phone,last_seen_at,recovery_codes_archive,two_factor_confirmed_at');
@@ -161,6 +169,7 @@ class DealerController extends Controller
             'phone' => $dealer->phone,
             'login_identifier' => $this->loginIdentifier($dealer),
             'login_url' => $this->loginPageUrl(),
+            'copy_password' => $this->copyPasswordForAdmin($dealer),
             'user' => $user ? [
                 'id' => $user->id,
                 'name' => $user->name,
@@ -179,6 +188,17 @@ class DealerController extends Controller
     protected function loginPageUrl(): string
     {
         return rtrim(config('app.url', url('/')), '/').'/login';
+    }
+
+    protected function copyPasswordForAdmin(Dealer $dealer): ?string
+    {
+        $password = $dealer->login_password_encrypted;
+
+        if (! is_string($password) || trim($password) === '') {
+            return null;
+        }
+
+        return $password;
     }
 
     protected function loginIdentifier(Dealer $dealer): string

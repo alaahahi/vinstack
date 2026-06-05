@@ -141,6 +141,11 @@
                     <label class="vs-form-label">الهاتف</label>
                     <InputText v-model="editForm.phone" class="w-full" />
                 </div>
+                <div class="field">
+                    <label class="vs-form-label">كلمة مرور جديدة (اختياري)</label>
+                    <Password v-model="editForm.password" toggle-mask input-class="w-full" class="w-full" />
+                    <small class="field-hint">اتركها فارغة للإبقاء على كلمة المرور الحالية. عيّن كلمة جديدة لتحديث النسخ.</small>
+                </div>
             </div>
             <template #footer>
                 <Button label="إلغاء" text @click="showEdit = false" />
@@ -204,6 +209,7 @@ const editForm = reactive({
     name: '',
     company_name: '',
     phone: '',
+    password: '',
 });
 
 function presenceLabel(dealer) {
@@ -325,6 +331,7 @@ function openEdit(dealer) {
         name: dealer.user?.name || '',
         company_name: dealer.company_name || '',
         phone: dealer.phone || '',
+        password: '',
     });
     showEdit.value = true;
 }
@@ -418,8 +425,18 @@ async function saveEdit() {
 
     editing.value = true;
 
+    const payload = {
+        name: editForm.name,
+        company_name: editForm.company_name,
+        phone: editForm.phone,
+    };
+
+    if (editForm.password?.trim()) {
+        payload.password = editForm.password;
+    }
+
     try {
-        const { data } = await api.put(`/admin/dealers/${editingDealerId.value}`, { ...editForm });
+        const { data } = await api.put(`/admin/dealers/${editingDealerId.value}`, payload);
         showEdit.value = false;
         toast.add({
             severity: 'success',

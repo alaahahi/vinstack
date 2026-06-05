@@ -13,7 +13,15 @@ class Dealer extends Model
         'user_id',
         'company_name',
         'phone',
+        'login_password_encrypted',
     ];
+
+    protected function casts(): array
+    {
+        return [
+            'login_password_encrypted' => 'encrypted',
+        ];
+    }
 
     public function setPhoneAttribute(?string $value): void
     {
