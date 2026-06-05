@@ -11,6 +11,7 @@ class VinstackSetting extends Model
         'api_token',
         'sync_enabled',
         'last_sync_at',
+        'last_auto_sync_at',
         'support_phone',
         'vehicle_options',
     ];
@@ -21,6 +22,7 @@ class VinstackSetting extends Model
             'api_token' => 'encrypted',
             'sync_enabled' => 'boolean',
             'last_sync_at' => 'datetime',
+            'last_auto_sync_at' => 'datetime',
             'vehicle_options' => 'array',
         ];
     }

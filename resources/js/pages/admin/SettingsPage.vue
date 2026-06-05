@@ -94,6 +94,28 @@
                         <i class="pi pi-info-circle" />
                         <span>لم تُنفَّذ مزامنة بعد</span>
                     </div>
+                    <div v-if="settings.last_auto_sync_at" class="vs-sync-status">
+                        <i class="pi pi-calendar-clock" />
+                        <span>آخر مزامنة تلقائية: <strong>{{ settings.last_auto_sync_at }}</strong></span>
+                    </div>
+                    <p class="sync-cron-help">
+                        لتشغيل المزامنة التلقائية على السيرفر، فعِّل «تفعيل المزامنة التلقائية» واحفظ الإعدادات، ثم أضِف مهمة
+                        cron في cPanel (أو ما يعادلها):
+                    </p>
+                    <ul class="sync-cron-help__list" dir="ltr">
+                        <li>
+                            <code>* * * * * php /path/to/artisan schedule:run</code>
+                            — يُشغِّل جدولة Laravel كل دقيقة (المزامنة كل 6 ساعات)
+                        </li>
+                        <li>
+                            <code>0 */6 * * * php /path/to/artisan vinstack:sync</code>
+                            — بديل مباشر دون <code>schedule:run</code>
+                        </li>
+                    </ul>
+                    <p class="sync-cron-help sync-cron-help--muted">
+                        على استضافة مشتركة بدون cron: زر «مزامنة الآن» يبقى يعمل يدوياً. بدون cron لن تُنفَّذ المزامنة
+                        تلقائياً حتى مع تفعيل الخيار أعلاه.
+                    </p>
                 </div>
             </section>
                 </div>
@@ -443,7 +465,7 @@ import api from '../../api/client';
 
 const toast = useToast();
 const confirm = useConfirm();
-const settings = ref({ has_token: false, last_sync_at: null });
+const settings = ref({ has_token: false, last_sync_at: null, last_auto_sync_at: null });
 const saving = ref(false);
 const savingOptions = ref(false);
 const syncing = ref(false);
@@ -1200,6 +1222,33 @@ onMounted(async () => {
     margin: 0;
     font-size: 0.8125rem;
     color: var(--vs-text-muted);
+}
+
+.sync-cron-help {
+    margin: 0.85rem 0 0;
+    font-size: 0.8125rem;
+    line-height: 1.55;
+    color: var(--vs-text-muted);
+}
+
+.sync-cron-help--muted {
+    margin-top: 0.5rem;
+}
+
+.sync-cron-help__list {
+    margin: 0.5rem 0 0;
+    padding-inline-start: 1.15rem;
+    font-size: 0.8125rem;
+    line-height: 1.6;
+    color: var(--vs-text-muted);
+}
+
+.sync-cron-help__list code {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.75rem;
+    background: var(--admin-sidebar-active, rgba(0, 0, 0, 0.04));
+    padding: 0.1rem 0.35rem;
+    border-radius: 4px;
 }
 
 @media (max-width: 640px) {

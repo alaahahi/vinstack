@@ -20,6 +20,7 @@ class VinstackSettingsController extends Controller
                 'has_token' => (bool) $settings->api_token,
                 'sync_enabled' => $settings->sync_enabled,
                 'last_sync_at' => $settings->last_sync_at,
+                'last_auto_sync_at' => $settings->last_auto_sync_at,
                 'support_phone' => $settings->support_phone ?? '',
             ],
         ]);
@@ -46,6 +47,7 @@ class VinstackSettingsController extends Controller
                 'has_token' => (bool) $settings->api_token,
                 'sync_enabled' => $settings->sync_enabled,
                 'last_sync_at' => $settings->last_sync_at,
+                'last_auto_sync_at' => $settings->last_auto_sync_at,
                 'support_phone' => $settings->support_phone ?? '',
             ],
             'message' => 'Settings saved.',
