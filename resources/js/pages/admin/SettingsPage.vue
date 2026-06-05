@@ -91,7 +91,7 @@
                         <span>
                             آخر مزامنة:
                             <strong>
-                                <span dir="ltr" class="datetime-ltr">{{ formatDateTime(settings.last_sync_at) }}</span>
+                                <span class="sync-datetime" dir="ltr">{{ formatDateTime(settings.last_sync_at) }}</span>
                             </strong>
                         </span>
                     </div>
@@ -104,7 +104,7 @@
                         <span>
                             آخر مزامنة تلقائية:
                             <strong>
-                                <span dir="ltr" class="datetime-ltr">{{ formatDateTime(settings.last_auto_sync_at) }}</span>
+                                <span class="sync-datetime" dir="ltr">{{ formatDateTime(settings.last_auto_sync_at) }}</span>
                             </strong>
                         </span>
                     </div>
@@ -282,7 +282,9 @@
                                         <tr v-for="row in backups" :key="row.filename">
                                             <td class="migrations-table__name" dir="ltr">{{ row.filename }}</td>
                                             <td>{{ row.size_human }}</td>
-                                            <td dir="ltr">{{ formatBackupDate(row.created_at) }}</td>
+                                            <td>
+                                                <span class="sync-datetime" dir="ltr">{{ formatDateTime(row.created_at) }}</span>
+                                            </td>
                                             <td>
                                                 <div class="backup-row-actions">
                                                     <Button
@@ -476,6 +478,7 @@ import AdminPageHeader from '../../components/AdminPageHeader.vue';
 import VehicleOptionsEditor from '../../components/VehicleOptionsEditor.vue';
 import { restoreVehicle } from '../../api/vehicles';
 import api from '../../api/client';
+import { formatDateTime } from '../../utils/formatDateTime';
 
 const toast = useToast();
 const confirm = useConfirm();
@@ -746,25 +749,6 @@ async function clearLogs() {
     } finally {
         clearingLogs.value = false;
     }
-}
-
-function formatDateTime(iso) {
-    if (!iso) {
-        return '—';
-    }
-
-    try {
-        return new Intl.DateTimeFormat('ar', {
-            dateStyle: 'medium',
-            timeStyle: 'short',
-        }).format(new Date(iso));
-    } catch {
-        return iso;
-    }
-}
-
-function formatBackupDate(iso) {
-    return formatDateTime(iso);
 }
 
 async function loadBackups() {
@@ -1242,8 +1226,10 @@ onMounted(async () => {
     color: var(--vs-text-muted);
 }
 
-.datetime-ltr {
+.sync-datetime {
     unicode-bidi: isolate;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
 }
 
 .sync-cron-help {
