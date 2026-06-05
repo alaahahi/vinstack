@@ -105,10 +105,10 @@
                     <ul class="sync-cron-help__list" dir="ltr">
                         <li>
                             <code>* * * * * php /path/to/artisan schedule:run</code>
-                            — يُشغِّل جدولة Laravel كل دقيقة (المزامنة كل 6 ساعات)
+                            — يُشغِّل جدولة Laravel كل دقيقة (المزامنة كل ساعة)
                         </li>
                         <li>
-                            <code>0 */6 * * * php /path/to/artisan vinstack:sync</code>
+                            <code>0 * * * * php /path/to/artisan vinstack:sync</code>
                             — بديل مباشر دون <code>schedule:run</code>
                         </li>
                     </ul>

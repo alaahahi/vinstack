@@ -9,6 +9,6 @@ Artisan::command('inspire', function () {
 })->purpose('Display an inspiring quote');
 
 Schedule::command('vinstack:sync')
-    ->everySixHours()
+    ->hourly()
     ->name('vinstack-auto-sync')
     ->withoutOverlapping();
