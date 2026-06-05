@@ -18,35 +18,6 @@
                         @keyup.enter="resetAndLoad"
                     />
                 </IconField>
-                <Select
-                    v-model="statusFilter"
-                    :options="statusOptions"
-                    option-label="label"
-                    option-value="value"
-                    placeholder="الحالة"
-                    show-clear
-                    @change="resetAndLoad"
-                />
-                <Select
-                    v-model="sourceFilter"
-                    :options="sourceOptions"
-                    option-label="label"
-                    option-value="value"
-                    placeholder="المصدر"
-                    show-clear
-                    @change="resetAndLoad"
-                />
-                <Select
-                    v-model="dealerFilter"
-                    :options="dealerOptions"
-                    option-label="label"
-                    option-value="value"
-                    placeholder="التاجر"
-                    filter
-                    filter-placeholder="بحث عن تاجر..."
-                    show-clear
-                    @change="onDealerSelectChange"
-                />
                 <Button icon="pi pi-refresh" label="تحديث" outlined :loading="loading" @click="resetAndLoad" />
                 <DealerFilterBadges
                     :dealers="dealerSummary"
@@ -144,8 +115,6 @@ const dealerSummary = ref([]);
 const loading = ref(false);
 const loadingMore = ref(false);
 const search = ref('');
-const statusFilter = ref(null);
-const sourceFilter = ref(null);
 const dealerFilter = ref(null);
 const page = ref(1);
 const perPage = ref(50);
@@ -162,25 +131,7 @@ const detailVisible = ref(false);
 const detailVehicleId = ref(null);
 const selectedVehicle = ref(null);
 const selectedDealerId = ref(null);
-const statusOptions = [
-    { label: 'متاحة', value: 'available' },
-    { label: 'مسندة', value: 'assigned' },
-    { label: 'محجوزة', value: 'reserved' },
-];
-
-const sourceOptions = [
-    { label: 'مستوردة (Vinstack)', value: 'vinstack' },
-    { label: 'يدوية', value: 'manual' },
-];
-
 const assigning = ref(false);
-
-const dealerOptions = computed(() =>
-    dealerSummary.value.map((dealer) => ({
-        label: `${dealer.company_name} (${dealer.vehicles_count})`,
-        value: dealer.id,
-    })),
-);
 
 function listParams(nextPage = page.value) {
     const dealerId = dealerFilter.value;
@@ -189,8 +140,6 @@ function listParams(nextPage = page.value) {
         page: nextPage,
         per_page: perPage.value,
         search: search.value || undefined,
-        status: statusFilter.value || undefined,
-        source: sourceFilter.value || undefined,
         dealer_id: Number.isFinite(dealerId) && dealerId > 0 ? dealerId : undefined,
     };
 }
@@ -242,10 +191,6 @@ async function loadMore() {
     }
 
     await fetchPage(page.value + 1, true);
-}
-
-function onDealerSelectChange() {
-    resetAndLoad();
 }
 
 function onDealerBadgeSelect(dealerId) {
