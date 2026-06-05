@@ -30,16 +30,6 @@ class AdminVehicleIndexTest extends TestCase
 
         Sanctum::actingAs($admin);
 
-        $this->assertSame(1, Vehicle::query()->count());
-
-        $paginatedTotal = Vehicle::query()
-            ->with(['activeAssignment.dealer.user:id,name,email', 'uploadedImages'])
-            ->newestFirst()
-            ->paginate(50)
-            ->total();
-
-        $this->assertSame(1, $paginatedTotal, 'Controller query should see the seeded vehicle.');
-
         $response = $this->getJson('/api/admin/vehicles');
 
         $response->assertOk()

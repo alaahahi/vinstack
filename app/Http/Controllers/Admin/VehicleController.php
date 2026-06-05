@@ -21,7 +21,8 @@ class VehicleController extends Controller
         $query = Vehicle::query()
             ->with(['activeAssignment.dealer.user:id,name,email', 'uploadedImages']);
 
-        if ($search = $request->string('search')->trim()) {
+        $search = $request->string('search')->trim()->toString();
+        if ($search !== '') {
             $query->where(function ($q) use ($search) {
                 $q->where('vin', 'like', "%{$search}%")
                     ->orWhere('make', 'like', "%{$search}%")
@@ -52,7 +53,7 @@ class VehicleController extends Controller
             if ($dealerId > 0) {
                 $query->whereHas('activeAssignment', fn ($q) => $q->where('dealer_id', $dealerId));
             }
-        } elseif ($dealerName = $request->string('dealer_name')->trim()) {
+        } elseif (($dealerName = $request->string('dealer_name')->trim()->toString()) !== '') {
             $query->whereHas('activeAssignment.dealer', fn ($q) => $q->where(
                 'company_name',
                 'like',
