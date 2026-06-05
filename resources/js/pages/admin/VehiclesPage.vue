@@ -18,6 +18,15 @@
                         @keyup.enter="resetAndLoad"
                     />
                 </IconField>
+                <Select
+                    v-model="statusFilter"
+                    :options="statusOptions"
+                    option-label="label"
+                    option-value="value"
+                    placeholder="الحالة"
+                    show-clear
+                    @change="resetAndLoad"
+                />
                 <Button icon="pi pi-refresh" label="تحديث" outlined :loading="loading" @click="resetAndLoad" />
                 <DealerFilterBadges
                     :dealers="dealerSummary"
@@ -115,6 +124,7 @@ const dealerSummary = ref([]);
 const loading = ref(false);
 const loadingMore = ref(false);
 const search = ref('');
+const statusFilter = ref(null);
 const dealerFilter = ref(null);
 const page = ref(1);
 const perPage = ref(50);
@@ -131,6 +141,12 @@ const detailVisible = ref(false);
 const detailVehicleId = ref(null);
 const selectedVehicle = ref(null);
 const selectedDealerId = ref(null);
+const statusOptions = [
+    { label: 'متاحة', value: 'available' },
+    { label: 'مسندة', value: 'assigned' },
+    { label: 'محجوزة', value: 'reserved' },
+];
+
 const assigning = ref(false);
 
 function listParams(nextPage = page.value) {
@@ -140,6 +156,7 @@ function listParams(nextPage = page.value) {
         page: nextPage,
         per_page: perPage.value,
         search: search.value || undefined,
+        status: statusFilter.value || undefined,
         dealer_id: Number.isFinite(dealerId) && dealerId > 0 ? dealerId : undefined,
     };
 }
