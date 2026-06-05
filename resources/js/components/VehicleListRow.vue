@@ -92,7 +92,18 @@
                 <span class="status-dot" />
                 {{ vehicle.status }}
             </span>
-            <div v-if="dealerName" class="dealer-name">{{ dealerName }}</div>
+            <div v-if="dealerName" class="dealer-tag">
+                <span class="dealer-tag__name">{{ dealerName }}</span>
+                <button
+                    type="button"
+                    class="dealer-tag__remove"
+                    title="إلغاء الإسناد"
+                    aria-label="إلغاء إسناد التاجر"
+                    @click.stop="$emit('unassign', vehicle)"
+                >
+                    <i class="pi pi-times" />
+                </button>
+            </div>
             <Button
                 v-if="isManual"
                 icon="pi pi-pencil"
@@ -159,7 +170,7 @@ const props = defineProps({
     },
 });
 
-defineEmits(['assign', 'update-status', 'open-detail', 'edit']);
+defineEmits(['assign', 'update-status', 'open-detail', 'edit', 'unassign']);
 
 const isManual = computed(() => props.vehicle?.source === 'manual');
 const sourceLabel = computed(() => (isManual.value ? 'يدوية' : 'مستوردة'));
@@ -487,7 +498,7 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     flex-shrink: 0;
 }
 
-.cell-admin .dealer-name {
+.cell-admin .dealer-tag {
     margin-top: 0;
 }
 
@@ -502,12 +513,48 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     gap: 0.4rem;
 }
 
-.dealer-name {
-    font-size: 0.75rem;
-    color: var(--vs-text-muted);
-    text-align: end;
+.dealer-tag {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
     max-width: 100%;
-    word-break: break-word;
+    padding: 0.15rem 0.35rem 0.15rem 0.55rem;
+    border-radius: 999px;
+    border: 1px solid var(--vs-border);
+    background: var(--vs-surface-hover);
+    font-size: 0.72rem;
+    color: var(--vs-text-secondary);
+}
+
+.dealer-tag__name {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: 8rem;
+}
+
+.dealer-tag__remove {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    width: 1.35rem;
+    height: 1.35rem;
+    padding: 0;
+    border: none;
+    border-radius: 999px;
+    background: transparent;
+    color: var(--vs-text-muted);
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.dealer-tag__remove:hover {
+    background: #fee2e2;
+    color: #dc2626;
+}
+
+.dealer-tag__remove i {
+    font-size: 0.65rem;
 }
 
 .local-tag {

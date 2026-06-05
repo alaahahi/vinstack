@@ -19,7 +19,50 @@ class ContainerService
      */
     public function listForAdmin(): array
     {
-        return $this->fetchNormalized();
+        return $this->listForAdminFiltered();
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    public function listForAdminFiltered(?int $dealerId = null, ?string $chassis = null): array
+    {
+        if ($dealerId !== null) {
+            $dealer = Dealer::query()->findOrFail($dealerId);
+            $items = $this->listForDealer($dealer);
+        } else {
+            $items = $this->fetchNormalized();
+        }
+
+        if ($chassis !== null && trim($chassis) !== '') {
+            $needle = strtoupper(trim($chassis));
+            $items = array_values(array_filter(
+                $items,
+                fn (array $container) => $this->containerMatchesChassis($container, $needle),
+            ));
+        }
+
+        return $items;
+    }
+
+    /**
+     * @param  array<string, mixed>  $container
+     */
+    protected function containerMatchesChassis(array $container, string $needle): bool
+    {
+        foreach ($container['vehicles'] ?? [] as $vehicle) {
+            if (! is_array($vehicle)) {
+                continue;
+            }
+
+            $vin = strtoupper(trim((string) ($vehicle['vin'] ?? '')));
+
+            if ($vin !== '' && str_contains($vin, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

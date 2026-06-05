@@ -15,7 +15,7 @@
                     <InputText
                         v-model="search"
                         placeholder="بحث برقم الشاصي أو الموديل..."
-                        @keyup.enter="load"
+                        @keyup.enter="resetAndLoad"
                     />
                 </IconField>
                 <Select
@@ -25,28 +25,50 @@
                     option-value="value"
                     placeholder="الحالة"
                     show-clear
-                    @change="load"
+                    @change="resetAndLoad"
                 />
-                <Button icon="pi pi-refresh" label="تحديث" outlined :loading="loading" @click="load" />
+                <Select
+                    v-model="dealerFilter"
+                    :options="dealerOptions"
+                    option-label="label"
+                    option-value="value"
+                    placeholder="التاجر"
+                    filter
+                    filter-placeholder="بحث عن تاجر..."
+                    show-clear
+                    @change="onDealerSelectChange"
+                />
+                <Button icon="pi pi-refresh" label="تحديث" outlined :loading="loading" @click="resetAndLoad" />
+                <DealerFilterBadges
+                    :dealers="dealerSummary"
+                    :selected-id="dealerFilter"
+                    count-key="vehicles_count"
+                    :total-count="dealerFilter ? null : total"
+                    @select="onDealerBadgeSelect"
+                />
             </template>
         </AdminPageHeader>
 
         <VehicleListPanel
-                :vehicles="vehicles"
-                :loading="loading"
-                :total="total"
-                :page="page"
-                :per-page="perPage"
-                mode="admin"
-                empty-text="لا توجد سيارات"
-                empty-hint="ستظهر السيارات بعد المزامنة من Vinstack أو الإضافة اليدوية."
-                empty-action-label="تحديث القائمة"
-                @assign="openAssign"
-                @edit="openEdit"
-                @open-detail="openDetail"
-                @page="onPage"
-                @empty-action="load"
-            />
+            :vehicles="vehicles"
+            :loading="loading"
+            :loading-more="loadingMore"
+            :total="total"
+            :page="page"
+            :per-page="perPage"
+            mode="admin"
+            infinite-scroll
+            :has-more="hasMore"
+            empty-text="لا توجد سيارات"
+            empty-hint="ستظهر السيارات بعد المزامنة من Vinstack أو الإضافة اليدوية."
+            empty-action-label="تحديث القائمة"
+            @assign="openAssign"
+            @unassign="confirmUnassign"
+            @edit="openEdit"
+            @open-detail="openDetail"
+            @load-more="loadMore"
+            @empty-action="resetAndLoad"
+        />
 
         <VehicleDetailDrawer
             v-model:visible="detailVisible"
@@ -90,6 +112,7 @@
 <script setup>
 import { computed, onMounted, ref } from 'vue';
 import { useToast } from 'primevue/usetoast';
+import { useConfirm } from 'primevue/useconfirm';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
@@ -98,20 +121,26 @@ import Dialog from 'primevue/dialog';
 import Drawer from 'primevue/drawer';
 import Select from 'primevue/select';
 import AdminPageHeader from '../../components/AdminPageHeader.vue';
+import DealerFilterBadges from '../../components/DealerFilterBadges.vue';
 import ManualVehicleForm from '../../components/ManualVehicleForm.vue';
 import VehicleListPanel from '../../components/VehicleListPanel.vue';
 import VehicleDetailDrawer from '../../components/VehicleDetailDrawer.vue';
 import api from '../../api/client';
 
 const toast = useToast();
+const confirm = useConfirm();
 const vehicles = ref([]);
 const dealers = ref([]);
+const dealerSummary = ref([]);
 const loading = ref(false);
+const loadingMore = ref(false);
 const search = ref('');
 const statusFilter = ref(null);
+const dealerFilter = ref(null);
 const page = ref(1);
-const perPage = ref(15);
+const perPage = ref(50);
 const total = ref(0);
+const hasMore = ref(false);
 
 const manualFormVisible = ref(false);
 const editingVehicle = ref(null);
@@ -132,23 +161,26 @@ const statusOptions = [
 
 const assigning = ref(false);
 
-async function load() {
-    loading.value = true;
+const dealerOptions = computed(() =>
+    dealerSummary.value.map((dealer) => ({
+        label: `${dealer.company_name} (${dealer.vehicles_count})`,
+        value: dealer.id,
+    })),
+);
 
-    try {
-        const { data } = await api.get('/admin/vehicles', {
-            params: {
-                page: page.value,
-                per_page: perPage.value,
-                search: search.value || undefined,
-                status: statusFilter.value || undefined,
-            },
-        });
-        vehicles.value = data.data;
-        total.value = data.meta?.total ?? data.total ?? 0;
-    } finally {
-        loading.value = false;
-    }
+function listParams(nextPage = page.value) {
+    return {
+        page: nextPage,
+        per_page: perPage.value,
+        search: search.value || undefined,
+        status: statusFilter.value || undefined,
+        dealer_id: dealerFilter.value || undefined,
+    };
+}
+
+async function loadDealerSummary() {
+    const { data } = await api.get('/admin/dealers/summary');
+    dealerSummary.value = data.data ?? [];
 }
 
 async function loadDealers() {
@@ -156,10 +188,52 @@ async function loadDealers() {
     dealers.value = data.data;
 }
 
-function onPage(event) {
-    page.value = event.page + 1;
-    perPage.value = event.rows;
-    load();
+async function fetchPage(nextPage, append = false) {
+    const isFirstPage = nextPage === 1 && ! append;
+
+    if (isFirstPage) {
+        loading.value = true;
+    } else {
+        loadingMore.value = true;
+    }
+
+    try {
+        const { data } = await api.get('/admin/vehicles', {
+            params: listParams(nextPage),
+        });
+        const rows = data.data ?? [];
+
+        vehicles.value = append ? [...vehicles.value, ...rows] : rows;
+        total.value = data.meta?.total ?? data.total ?? rows.length;
+        hasMore.value = Boolean(data.meta?.has_more);
+        page.value = nextPage;
+    } finally {
+        loading.value = false;
+        loadingMore.value = false;
+    }
+}
+
+async function resetAndLoad() {
+    page.value = 1;
+    hasMore.value = false;
+    await Promise.all([loadDealerSummary(), fetchPage(1)]);
+}
+
+async function loadMore() {
+    if (loading.value || loadingMore.value || ! hasMore.value) {
+        return;
+    }
+
+    await fetchPage(page.value + 1, true);
+}
+
+function onDealerSelectChange() {
+    resetAndLoad();
+}
+
+function onDealerBadgeSelect(dealerId) {
+    dealerFilter.value = dealerId;
+    resetAndLoad();
 }
 
 function openCreateManual() {
@@ -187,13 +261,13 @@ function onManualDrawerHide() {
 async function onManualSaved() {
     closeManualForm();
     editingVehicle.value = null;
-    await load();
+    await resetAndLoad();
 }
 
 async function onManualDeleted() {
     closeManualForm();
     editingVehicle.value = null;
-    await load();
+    await resetAndLoad();
 }
 
 function openAssign(vehicle) {
@@ -220,7 +294,7 @@ async function confirmAssign() {
         });
         assignVisible.value = false;
         toast.add({ severity: 'success', summary: 'تم الإسناد', life: 3000 });
-        await load();
+        await resetAndLoad();
     } catch (e) {
         toast.add({
             severity: 'error',
@@ -233,9 +307,37 @@ async function confirmAssign() {
     }
 }
 
+function confirmUnassign(vehicle) {
+    const dealerName = vehicle.active_assignment?.dealer?.company_name ?? 'التاجر';
+
+    confirm.require({
+        message: `هل تريد إلغاء إسناد هذه السيارة من «${dealerName}»؟`,
+        header: 'إلغاء الإسناد',
+        icon: 'pi pi-times-circle',
+        rejectLabel: 'إلغاء',
+        acceptLabel: 'تأكيد',
+        accept: () => unassignVehicle(vehicle),
+    });
+}
+
+async function unassignVehicle(vehicle) {
+    try {
+        await api.delete(`/admin/vehicles/${vehicle.id}/unassign`);
+        toast.add({ severity: 'success', summary: 'تم إلغاء الإسناد', life: 3000 });
+        await resetAndLoad();
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: 'خطأ',
+            detail: e.response?.data?.message || 'فشل إلغاء الإسناد',
+            life: 4000,
+        });
+    }
+}
+
 onMounted(async () => {
     await loadDealers();
-    await load();
+    await resetAndLoad();
 });
 </script>
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Actions\AssignVehicleAction;
+use App\Actions\UnassignVehicleAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AssignVehicleRequest;
 use App\Models\Dealer;
@@ -32,6 +33,17 @@ class VehicleController extends Controller
             $query->where('status', $status);
         }
 
+        if ($request->filled('dealer_id')) {
+            $dealerId = (int) $request->input('dealer_id');
+            $query->whereHas('activeAssignment', fn ($q) => $q->where('dealer_id', $dealerId));
+        } elseif ($dealerName = $request->string('dealer_name')->trim()) {
+            $query->whereHas('activeAssignment.dealer', fn ($q) => $q->where(
+                'company_name',
+                'like',
+                "%{$dealerName}%",
+            ));
+        }
+
         if ($request->filled('sort_field')) {
             $sortField = $request->input('sort_field');
             $sortOrder = $request->input('sort_order', 'desc') === 'asc' ? 'asc' : 'desc';
@@ -45,7 +57,7 @@ class VehicleController extends Controller
         }
 
         $vehicles = $query->paginate(
-            perPage: min((int) $request->input('per_page', 15), 100),
+            perPage: min((int) $request->input('per_page', 50), 100),
             page: (int) $request->input('page', 1),
         );
 
@@ -60,6 +72,7 @@ class VehicleController extends Controller
                 'total' => $vehicles->total(),
                 'from' => $vehicles->firstItem(),
                 'to' => $vehicles->lastItem(),
+                'has_more' => $vehicles->hasMorePages(),
             ],
         ]);
     }
@@ -83,6 +96,21 @@ class VehicleController extends Controller
         return response()->json([
             'data' => $assignment,
             'message' => 'Vehicle assigned successfully.',
+        ]);
+    }
+
+    public function unassign(Vehicle $vehicle, UnassignVehicleAction $action): JsonResponse
+    {
+        if (! $vehicle->activeAssignment()->exists()) {
+            return response()->json([
+                'message' => 'السيارة غير مسندة لأي تاجر.',
+            ], 422);
+        }
+
+        $action->execute($vehicle);
+
+        return response()->json([
+            'message' => 'تم إلغاء إسناد السيارة.',
         ]);
     }
 }

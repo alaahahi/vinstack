@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\StoreDealerRequest;
 use App\Http\Requests\Admin\UpdateDealerRequest;
 use App\Models\Dealer;
 use App\Models\User;
+use App\Services\ContainerService;
 use App\Support\DealerPresence;
 use App\Support\RecoveryCodesArchive;
 use Illuminate\Http\JsonResponse;
@@ -30,6 +31,27 @@ class DealerController extends Controller
             'meta' => [
                 'login_url' => $this->loginPageUrl(),
             ],
+        ]);
+    }
+
+    public function summary(ContainerService $containers): JsonResponse
+    {
+        $dealers = Dealer::query()
+            ->withCount('activeAssignments as vehicles_count')
+            ->orderBy('company_name')
+            ->get(['id', 'company_name']);
+
+        $data = $dealers->map(function (Dealer $dealer) use ($containers) {
+            return [
+                'id' => $dealer->id,
+                'company_name' => $dealer->company_name,
+                'vehicles_count' => (int) $dealer->vehicles_count,
+                'containers_count' => count($containers->listForDealer($dealer)),
+            ];
+        });
+
+        return response()->json([
+            'data' => $data,
         ]);
     }
 

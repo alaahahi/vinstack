@@ -40,6 +40,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/profile/password', [AdminProfileController::class, 'updatePassword']);
 
         Route::get('/dealers', [DealerController::class, 'index']);
+        Route::get('/dealers/summary', [DealerController::class, 'summary']);
         Route::post('/dealers', [DealerController::class, 'store']);
         Route::put('/dealers/{dealer}', [DealerController::class, 'update']);
         Route::delete('/dealers/{dealer}', [DealerController::class, 'destroy']);
@@ -57,6 +58,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/vehicles/{vehicle}/images', [VehicleUploadedImageController::class, 'store']);
         Route::delete('/vehicles/{vehicle}/images/{image}', [VehicleUploadedImageController::class, 'destroy']);
         Route::post('/vehicles/{vehicle}/assign', [AdminVehicleController::class, 'assign']);
+        Route::delete('/vehicles/{vehicle}/unassign', [AdminVehicleController::class, 'unassign']);
 
         Route::get('/settings/vehicle-options', [VehicleOptionsController::class, 'show']);
         Route::put('/settings/vehicle-options', [VehicleOptionsController::class, 'update']);
