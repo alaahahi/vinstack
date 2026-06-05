@@ -33,6 +33,22 @@ export function dealerLoginUsername(dealer) {
 }
 
 /**
+ * @param {{ user?: { email?: string } }} dealer
+ * @returns {string}
+ */
+export function dealerLoginEmailLine(dealer) {
+    return dealer?.user?.email?.trim() || '—';
+}
+
+/**
+ * @param {{ phone?: string }} dealer
+ * @returns {string}
+ */
+export function dealerLoginPhoneLine(dealer) {
+    return dealer?.phone?.trim() || '—';
+}
+
+/**
  * @param {{ phone?: string }} dealer
  * @param {string} [passwordOverride] Plain password (e.g. right after create).
  * @returns {string}
@@ -56,9 +72,10 @@ export function dealerLoginPasswordLine(dealer, passwordOverride) {
  * @returns {string}
  */
 export function formatDealerLoginCopy(dealer, loginUrl, passwordOverride) {
-    const username = dealerLoginUsername(dealer);
+    const email = dealerLoginEmailLine(dealer);
     const password = dealerLoginPasswordLine(dealer, passwordOverride);
+    const phone = dealerLoginPhoneLine(dealer);
     const url = loginUrl || dealerLoginPageUrl('');
 
-    return `username: ${username}\npassword: ${password}\n${url}`;
+    return `البريد الإلكتروني: ${email}\nكلمة المرور: ${password}\nالهاتف: ${phone}\n${url}`;
 }

@@ -360,16 +360,16 @@ watch(
 }
 
 .admin-nav__theme :deep(.theme-toggle) {
-    display: flex;
+    display: inline-flex;
     justify-content: center;
-    width: 100%;
+    align-items: center;
 }
 
-.admin-nav__theme :deep(.p-button) {
+.admin-nav__theme :deep(.theme-toggle .p-button) {
     color: var(--admin-sidebar-text);
 }
 
-.admin-nav__theme :deep(.p-button:hover) {
+.admin-nav__theme :deep(.theme-toggle .p-button:hover) {
     background: rgba(255, 255, 255, 0.08);
     color: #fff;
 }

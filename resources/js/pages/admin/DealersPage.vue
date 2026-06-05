@@ -246,9 +246,10 @@ function resolveLoginUrl(dealer) {
 }
 
 async function copyLoginInfo(dealer, passwordOverride) {
-    const username = dealer.login_identifier || dealer.phone || dealer.user?.email;
+    const email = dealer.user?.email?.trim();
+    const phone = dealer.phone?.trim();
 
-    if (!username?.trim()) {
+    if (!email && !phone) {
         toast.add({
             severity: 'warn',
             summary: 'لا توجد بيانات',

@@ -265,6 +265,13 @@ onUnmounted(() => {
 
 .header-actions :deep(.theme-toggle .p-button) {
     color: var(--dealer-header-text);
+    width: 2.5rem;
+    height: 2.5rem;
+    min-width: 2.5rem;
+    min-height: 2.5rem;
+    padding: 0;
+    border-radius: 50%;
+    aspect-ratio: 1;
 }
 
 .header-actions :deep(.theme-toggle .p-button:hover) {
@@ -357,6 +364,8 @@ onUnmounted(() => {
     }
 
     .header-actions :deep(.theme-toggle .p-button) {
+        width: 44px;
+        height: 44px;
         min-width: 44px;
         min-height: 44px;
     }
