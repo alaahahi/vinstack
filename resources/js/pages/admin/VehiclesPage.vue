@@ -28,6 +28,15 @@
                     @change="resetAndLoad"
                 />
                 <Select
+                    v-model="sourceFilter"
+                    :options="sourceOptions"
+                    option-label="label"
+                    option-value="value"
+                    placeholder="المصدر"
+                    show-clear
+                    @change="resetAndLoad"
+                />
+                <Select
                     v-model="dealerFilter"
                     :options="dealerOptions"
                     option-label="label"
@@ -136,6 +145,7 @@ const loading = ref(false);
 const loadingMore = ref(false);
 const search = ref('');
 const statusFilter = ref(null);
+const sourceFilter = ref(null);
 const dealerFilter = ref(null);
 const page = ref(1);
 const perPage = ref(50);
@@ -156,7 +166,11 @@ const statusOptions = [
     { label: 'متاحة', value: 'available' },
     { label: 'مسندة', value: 'assigned' },
     { label: 'محجوزة', value: 'reserved' },
-    { label: 'مستوردة', value: 'imported' },
+];
+
+const sourceOptions = [
+    { label: 'مستوردة (Vinstack)', value: 'vinstack' },
+    { label: 'يدوية', value: 'manual' },
 ];
 
 const assigning = ref(false);
@@ -169,12 +183,15 @@ const dealerOptions = computed(() =>
 );
 
 function listParams(nextPage = page.value) {
+    const dealerId = dealerFilter.value;
+
     return {
         page: nextPage,
         per_page: perPage.value,
         search: search.value || undefined,
         status: statusFilter.value || undefined,
-        dealer_id: dealerFilter.value || undefined,
+        source: sourceFilter.value || undefined,
+        dealer_id: Number.isFinite(dealerId) && dealerId > 0 ? dealerId : undefined,
     };
 }
 

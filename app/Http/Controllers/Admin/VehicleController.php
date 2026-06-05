@@ -6,6 +6,7 @@ use App\Actions\AssignVehicleAction;
 use App\Actions\UnassignVehicleAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AssignVehicleRequest;
+use App\Enums\VehicleSource;
 use App\Models\Dealer;
 use App\Models\Vehicle;
 use App\Services\VehicleDetailService;
@@ -29,13 +30,28 @@ class VehicleController extends Controller
             });
         }
 
-        if ($status = $request->input('status')) {
+        $status = $request->input('status');
+        if ($status === 'imported') {
+            // Legacy UI: «مستوردة» refers to Vinstack sync source, not local status.
+            $query->where('source', VehicleSource::Vinstack);
+        } elseif ($status) {
             $query->where('status', $status);
+        }
+
+        if ($source = $request->input('source')) {
+            $allowedSources = [VehicleSource::Vinstack->value, VehicleSource::Manual->value];
+
+            if (in_array($source, $allowedSources, true)) {
+                $query->where('source', $source);
+            }
         }
 
         if ($request->filled('dealer_id')) {
             $dealerId = (int) $request->input('dealer_id');
-            $query->whereHas('activeAssignment', fn ($q) => $q->where('dealer_id', $dealerId));
+
+            if ($dealerId > 0) {
+                $query->whereHas('activeAssignment', fn ($q) => $q->where('dealer_id', $dealerId));
+            }
         } elseif ($dealerName = $request->string('dealer_name')->trim()) {
             $query->whereHas('activeAssignment.dealer', fn ($q) => $q->where(
                 'company_name',
