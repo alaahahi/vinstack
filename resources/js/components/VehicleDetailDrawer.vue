@@ -174,13 +174,10 @@ function onPhotosUpdated(vehiclePayload) {
         return;
     }
 
-    detail.value = {
-        ...detail.value,
-        images: vehiclePayload.images ?? detail.value.images,
-        images_by_stage: vehiclePayload.images_by_stage ?? detail.value.images_by_stage,
-        uploaded_images: vehiclePayload.uploaded_images ?? detail.value.uploaded_images,
-        thumbnail_url: vehiclePayload.thumbnail_url ?? detail.value.thumbnail_url,
-    };
+    detail.value.images = vehiclePayload.images ?? detail.value.images;
+    detail.value.images_by_stage = vehiclePayload.images_by_stage ?? detail.value.images_by_stage;
+    detail.value.uploaded_images = vehiclePayload.uploaded_images ?? detail.value.uploaded_images;
+    detail.value.thumbnail_url = vehiclePayload.thumbnail_url ?? detail.value.thumbnail_url;
 }
 
 const detailsPath = computed(() => {

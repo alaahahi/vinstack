@@ -27,6 +27,12 @@ function normalizeUrl(url) {
         return null;
     }
 
+    const storageMatch = url.match(/^(?:https?:\/\/[^/]+)?(\/storage\/.*)$/i);
+
+    if (storageMatch) {
+        return storageMatch[1];
+    }
+
     return url;
 }
 

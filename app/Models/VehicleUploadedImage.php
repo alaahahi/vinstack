@@ -5,7 +5,6 @@ namespace App\Models;
 use App\Support\VehicleImageStages;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
-use Illuminate\Support\Facades\Storage;
 
 class VehicleUploadedImage extends Model
 {
@@ -29,7 +28,7 @@ class VehicleUploadedImage extends Model
 
     public function publicUrl(): string
     {
-        return Storage::disk('public')->url($this->path);
+        return '/storage/'.str_replace('\\', '/', $this->path);
     }
 
     public static function isValidStage(string $stage): bool

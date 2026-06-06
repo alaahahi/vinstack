@@ -37,16 +37,37 @@ export function uploadedImagesByStage(uploadedImages = []) {
     return map;
 }
 
+function normalizeStorageUrl(url) {
+    if (typeof url !== 'string' || url === '') {
+        return '';
+    }
+
+    const match = url.match(/^(?:https?:\/\/[^/]+)?(\/storage\/.*)$/i);
+
+    return match ? match[1] : url;
+}
+
 export function isLocalUploadedUrl(url, uploadedImages = []) {
     if (! url || ! Array.isArray(uploadedImages)) {
         return false;
     }
 
-    return uploadedImages.some((image) => image?.url === url);
+    const normalized = normalizeStorageUrl(url);
+
+    return uploadedImages.some((image) => {
+        const imageUrl = image?.url;
+
+        return imageUrl === url || normalizeStorageUrl(imageUrl) === normalized;
+    });
 }
 
 export function localImageIdForUrl(url, uploadedImages = []) {
-    const match = uploadedImages.find((image) => image?.url === url);
+    const normalized = normalizeStorageUrl(url);
+    const match = uploadedImages.find((image) => {
+        const imageUrl = image?.url;
+
+        return imageUrl === url || normalizeStorageUrl(imageUrl) === normalized;
+    });
 
     return match?.id ?? null;
 }
