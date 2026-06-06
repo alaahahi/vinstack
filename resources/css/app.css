@@ -65,6 +65,8 @@
     --vs-text-secondary: var(--vs-zinc-700);
     --vs-text-muted: var(--vs-zinc-500);
     --vs-text-subtle: var(--vs-zinc-400);
+    --text-primary: var(--vs-text);
+    --text-muted: var(--vs-text-muted);
     --vs-border: #ececef;
 
     --status-terminal-bg: #eff6ff;
@@ -198,6 +200,8 @@
     --vs-text-secondary: var(--vs-zinc-300);
     --vs-text-muted: var(--vs-zinc-400);
     --vs-text-subtle: var(--vs-zinc-500);
+    --text-primary: var(--vs-zinc-50);
+    --text-muted: var(--vs-zinc-300);
     --vs-border: var(--vs-zinc-700);
 
     --status-terminal-bg: rgba(59, 130, 246, 0.2);
@@ -1031,6 +1035,23 @@ form .p-button[type='submit']:not(.p-button-outlined):not(.p-button-text):not(:d
 [data-theme='dark'] .vin-copy-label__btn:hover,
 [data-theme='dark'] .vin-copy-label__btn:hover .p-button-icon {
     color: var(--vs-zinc-200);
+}
+
+/* Vehicle detail drawer — portaled PrimeVue shell */
+.p-drawer.vehicle-detail-drawer .p-drawer-header {
+    border-bottom: 1px solid var(--vs-border);
+}
+
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer,
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .p-drawer-header,
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .p-drawer-content {
+    background: var(--admin-surface);
+    color: var(--vs-text);
+    border-color: var(--vs-border);
+}
+
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .p-drawer-header {
+    border-bottom-color: var(--vs-border);
 }
 
 /* Login page — split brand panel, logo frame, CSS animations */

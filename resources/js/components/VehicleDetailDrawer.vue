@@ -3,7 +3,7 @@
         v-model:visible="drawerVisible"
         position="right"
         :style="{ width: 'min(480px, 100vw)' }"
-        class="vehicle-detail-drawer"
+        :pt="{ root: { class: 'vehicle-detail-drawer' } }"
         :showCloseIcon="false"
         @hide="onHide"
     >
@@ -274,7 +274,7 @@ function documentLabel(doc) {
 <style scoped>
 .drawer-header {
     width: 100%;
-    padding-right: 0.25rem;
+    padding-inline-end: 0.25rem;
 }
 
 .drawer-header-top {
@@ -288,7 +288,7 @@ function documentLabel(doc) {
     margin: 0;
     font-size: 1.15rem;
     font-weight: 700;
-    color: #18181b;
+    color: var(--text-primary, var(--vs-text));
     line-height: 1.35;
 }
 
@@ -309,11 +309,13 @@ function documentLabel(doc) {
     align-items: center;
     gap: 0.4rem;
     margin-top: 0.65rem;
-    padding: 0.45rem 0.6rem;
-    border-radius: 8px;
-    background: #fff7ed;
-    color: #9a3412;
+    padding: 0.45rem 0.65rem;
+    border-radius: var(--admin-radius-sm);
+    background: var(--status-transit-bg);
+    color: var(--status-transit-fg);
     font-size: 0.75rem;
+    line-height: 1.4;
+    border: 1px solid transparent;
 }
 
 .drawer-loading,
@@ -324,54 +326,65 @@ function documentLabel(doc) {
     justify-content: center;
     gap: 0.75rem;
     padding: 2rem 1rem;
-    color: #71717a;
+    color: var(--text-muted, var(--vs-text-muted));
+    text-align: center;
 }
 
 .drawer-body {
     display: flex;
     flex-direction: column;
-    gap: 1.25rem;
-    padding-bottom: 1rem;
+    gap: 1.5rem;
+    padding-bottom: 1.25rem;
 }
 
 .detail-section {
-    border-top: 1px solid #ececef;
-    padding-top: 1rem;
+    border-top: 1px solid var(--vs-border);
+    padding-top: 1.1rem;
+}
+
+.detail-section:first-of-type {
+    border-top: none;
+    padding-top: 0;
 }
 
 .section-title {
-    margin: 0 0 0.75rem;
-    font-size: 0.78rem;
+    margin: 0 0 0.85rem;
+    font-size: 0.72rem;
     font-weight: 700;
     text-transform: uppercase;
-    letter-spacing: 0.04em;
-    color: #71717a;
+    letter-spacing: 0.06em;
+    color: var(--text-muted, var(--vs-text-muted));
 }
 
 .field-grid {
     display: grid;
-    grid-template-columns: minmax(120px, 42%) 1fr;
-    gap: 0.45rem 0.75rem;
+    grid-template-columns: minmax(7.5rem, 38%) 1fr;
+    gap: 0.55rem 1rem;
     margin: 0;
+    align-items: baseline;
 }
 
 .field-grid dt {
     margin: 0;
-    font-size: 0.78rem;
-    color: #71717a;
+    font-size: 0.8rem;
+    font-weight: 500;
+    color: var(--text-muted, var(--vs-text-muted));
+    line-height: 1.45;
 }
 
 .field-grid dd {
     margin: 0;
-    font-size: 0.84rem;
-    color: #18181b;
+    font-size: 0.875rem;
+    font-weight: 500;
+    color: var(--text-primary, var(--vs-text));
+    line-height: 1.45;
     word-break: break-word;
 }
 
 .empty-section {
     margin: 0;
-    color: #a1a1aa;
-    font-size: 0.84rem;
+    color: var(--vs-text-subtle);
+    font-size: 0.875rem;
 }
 
 .record-list {
@@ -381,35 +394,36 @@ function documentLabel(doc) {
 }
 
 .record-item {
-    padding: 0.55rem 0.65rem;
-    border: 1px solid #ececef;
-    border-radius: 8px;
-    background: #fafafa;
+    padding: 0.65rem 0.75rem;
+    border: 1px solid var(--vs-border);
+    border-radius: var(--admin-radius-sm);
+    background: var(--vs-surface-elevated);
 }
 
 .record-title {
-    font-size: 0.84rem;
+    font-size: 0.875rem;
     font-weight: 600;
-    color: #18181b;
+    color: var(--text-primary, var(--vs-text));
 }
 
 .record-sub {
-    margin-top: 0.15rem;
+    margin-top: 0.2rem;
     font-size: 0.75rem;
-    color: #71717a;
+    color: var(--text-muted, var(--vs-text-muted));
 }
 
 .record-link {
     display: inline-flex;
     align-items: center;
     gap: 0.45rem;
-    color: #2563eb;
+    color: var(--admin-accent);
     text-decoration: none;
-    font-size: 0.84rem;
+    font-size: 0.875rem;
+    transition: background 0.15s ease;
 }
 
 .record-link:hover {
-    background: #eff6ff;
+    background: var(--vs-surface-hover);
 }
 
 .status-pill {
@@ -424,18 +438,18 @@ function documentLabel(doc) {
 
 .status-terminal,
 .status-default {
-    background: #eff6ff;
-    color: #2563eb;
+    background: var(--status-terminal-bg);
+    color: var(--status-terminal-fg);
 }
 
 .status-new {
-    background: #f0fdf4;
-    color: #16a34a;
+    background: var(--status-new-bg);
+    color: var(--status-new-fg);
 }
 
 .status-transit {
-    background: #fff7ed;
-    color: #ea580c;
+    background: var(--status-transit-bg);
+    color: var(--status-transit-fg);
 }
 
 .status-dot {
@@ -460,16 +474,92 @@ function documentLabel(doc) {
 
     .field-grid {
         grid-template-columns: 1fr;
-        gap: 0.2rem 0;
+        gap: 0.15rem 0;
     }
 
     .field-grid dt {
         font-weight: 600;
-        margin-top: 0.35rem;
+        margin-top: 0.5rem;
+        font-size: 0.75rem;
+    }
+
+    .field-grid dd {
+        padding-inline-start: 0;
+        font-size: 0.875rem;
     }
 
     .field-grid dt:first-of-type {
         margin-top: 0;
     }
+}
+</style>
+
+<style>
+/* Portaled drawer — class on root via :pt; unscoped for [data-theme] */
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer,
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .p-drawer-header,
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .p-drawer-content {
+    background: var(--admin-surface);
+    color: var(--vs-text);
+    border-color: var(--vs-border);
+}
+
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .p-drawer-header {
+    border-bottom: 1px solid var(--vs-border);
+}
+
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .drawer-title {
+    color: var(--text-primary, var(--vs-zinc-50));
+}
+
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .section-title {
+    color: var(--vs-zinc-300);
+}
+
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .field-grid dt {
+    color: var(--text-muted, var(--vs-zinc-300));
+}
+
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .field-grid dd {
+    color: var(--text-primary, var(--vs-zinc-50));
+}
+
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .record-item {
+    background: var(--vs-surface-elevated);
+    border-color: var(--vs-border);
+}
+
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .record-title {
+    color: var(--text-primary, var(--vs-zinc-50));
+}
+
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .record-sub,
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .empty-section {
+    color: var(--text-muted, var(--vs-zinc-300));
+}
+
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .record-link {
+    color: #93c5fd;
+}
+
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .record-link:hover {
+    background: var(--vs-surface-hover);
+}
+
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .stale-note {
+    border-color: rgb(234 88 12 / 0.35);
+}
+
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .drawer-header-top .p-button {
+    color: var(--vs-zinc-400);
+}
+
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .drawer-header-top .p-button:not(:disabled):hover {
+    color: var(--vs-zinc-100);
+    background: var(--vs-surface-hover);
+}
+
+[data-theme='light'] .p-drawer.vehicle-detail-drawer .p-drawer-header {
+    border-bottom: 1px solid var(--vs-border);
 }
 </style>
