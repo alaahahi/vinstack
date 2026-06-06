@@ -119,14 +119,14 @@ async function submit() {
 
         const data = await auth.login(payload);
 
-        if (data.two_factor_setup) {
+        if (activeTab.value === 1 && data.two_factor_setup) {
             sessionStorage.setItem('setup_token', data.setup_token);
             await router.push({ name: 'two-factor.setup' });
 
             return;
         }
 
-        if (data.two_factor) {
+        if (activeTab.value === 1 && data.two_factor) {
             sessionStorage.setItem('challenge_token', data.challenge_token);
             await router.push({ name: 'two-factor.challenge' });
 

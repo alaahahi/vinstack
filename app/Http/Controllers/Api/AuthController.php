@@ -97,7 +97,7 @@ class AuthController extends Controller
         $user = Auth::user();
         Auth::logout();
 
-        return $this->respondForUser($user);
+        return response()->json($this->issueToken($user));
     }
 
     private function respondForUser(User $user): JsonResponse
