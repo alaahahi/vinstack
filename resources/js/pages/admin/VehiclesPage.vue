@@ -3,6 +3,13 @@
         <AdminPageHeader :count="total" count-label="سيارة">
             <template #actions>
                 <Button
+                    label="استيراد نجوم الجزيرة"
+                    icon="pi pi-file-excel"
+                    severity="secondary"
+                    outlined
+                    @click="nujoomImportVisible = true"
+                />
+                <Button
                     label="إضافة سيارة يدوياً"
                     icon="pi pi-plus"
                     class="btn-add"
@@ -55,6 +62,7 @@
             @unassign="confirmUnassign"
             @edit="openEdit"
             @open-detail="openDetail"
+            @gallery-updated="onGalleryUpdated"
             @load-more="loadMore"
             @empty-action="resetAndLoad"
         />
@@ -80,6 +88,11 @@
                 @cancel="closeManualForm"
             />
         </Drawer>
+
+        <NujoomImportDialog
+            v-model:visible="nujoomImportVisible"
+            @applied="resetAndLoad"
+        />
 
         <Dialog v-model:visible="assignVisible" header="إسناد سيارة" modal style="width: min(420px, 100vw)">
             <Select
@@ -114,7 +127,9 @@ import DealerFilterBadges from '../../components/DealerFilterBadges.vue';
 import ManualVehicleForm from '../../components/ManualVehicleForm.vue';
 import VehicleListPanel from '../../components/VehicleListPanel.vue';
 import VehicleDetailDrawer from '../../components/VehicleDetailDrawer.vue';
+import NujoomImportDialog from '../../components/NujoomImportDialog.vue';
 import api from '../../api/client';
+import { replaceVehicleInList } from '../../utils/vehicleGalleryLive';
 
 const toast = useToast();
 const confirm = useConfirm();
@@ -132,6 +147,7 @@ const total = ref(0);
 const hasMore = ref(false);
 
 const manualFormVisible = ref(false);
+const nujoomImportVisible = ref(false);
 const editingVehicle = ref(null);
 const manualFormHeader = computed(() =>
     editingVehicle.value ? 'تعديل سيارة يدوية' : 'إضافة سيارة يدوياً',
@@ -141,24 +157,38 @@ const detailVisible = ref(false);
 const detailVehicleId = ref(null);
 const selectedVehicle = ref(null);
 const selectedDealerId = ref(null);
+const SOURCE_FILTER_VALUES = new Set(['vinstack', 'manual', 'nujoom_al_jazeera']);
+
 const statusOptions = [
     { label: 'متاحة', value: 'available' },
     { label: 'مسندة', value: 'assigned' },
     { label: 'محجوزة', value: 'reserved' },
+    { label: 'المستورد', value: 'vinstack' },
+    { label: 'اليدوي', value: 'manual' },
+    { label: 'نجوم الجزيرة', value: 'nujoom_al_jazeera' },
 ];
 
 const assigning = ref(false);
 
 function listParams(nextPage = page.value) {
     const dealerId = dealerFilter.value;
-
-    return {
+    const filter = statusFilter.value;
+    const params = {
         page: nextPage,
         per_page: perPage.value,
         search: search.value || undefined,
-        status: statusFilter.value || undefined,
         dealer_id: Number.isFinite(dealerId) && dealerId > 0 ? dealerId : undefined,
     };
+
+    if (filter) {
+        if (SOURCE_FILTER_VALUES.has(filter)) {
+            params.source = filter;
+        } else {
+            params.status = filter;
+        }
+    }
+
+    return params;
 }
 
 async function loadDealerSummary() {
@@ -258,6 +288,10 @@ function openAssign(vehicle) {
 function openDetail(vehicle) {
     detailVehicleId.value = vehicle.id;
     detailVisible.value = true;
+}
+
+function onGalleryUpdated(updatedVehicle) {
+    vehicles.value = replaceVehicleInList(vehicles.value, updatedVehicle);
 }
 
 async function confirmAssign() {

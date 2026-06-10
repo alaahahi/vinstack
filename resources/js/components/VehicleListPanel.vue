@@ -78,6 +78,8 @@
 
                 @edit="$emit('edit', $event)"
 
+                @gallery-updated="$emit('gallery-updated', $event)"
+
             />
 
 
@@ -242,7 +244,7 @@ const props = defineProps({
 
 
 
-const emit = defineEmits(['assign', 'unassign', 'update-status', 'open-detail', 'edit', 'page', 'empty-action', 'load-more']);
+const emit = defineEmits(['assign', 'unassign', 'update-status', 'open-detail', 'edit', 'gallery-updated', 'page', 'empty-action', 'load-more']);
 
 
 

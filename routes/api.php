@@ -4,6 +4,7 @@ use App\Http\Controllers\Admin\ContainerController as AdminContainerController;
 use App\Http\Controllers\Admin\DatabaseBackupController;
 use App\Http\Controllers\Admin\DealerController;
 use App\Http\Controllers\Admin\ManualVehicleController;
+use App\Http\Controllers\Admin\NujoomAlJazeeraImportController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\Admin\SystemController;
 use App\Http\Controllers\Admin\VehicleController as AdminVehicleController;
@@ -54,6 +55,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/vehicles/{vehicle}', [ManualVehicleController::class, 'update']);
         Route::delete('/vehicles/{vehicle}', [ManualVehicleController::class, 'destroy']);
         Route::post('/vehicles/{vehicle}/restore', [ManualVehicleController::class, 'restore']);
+        Route::post('/vehicles/import/nujoom/preview', [NujoomAlJazeeraImportController::class, 'preview']);
+        Route::post('/vehicles/import/nujoom/apply', [NujoomAlJazeeraImportController::class, 'apply']);
         Route::get('/vehicles/{vehicle}/details', [AdminVehicleController::class, 'details']);
         Route::get('/vehicles/{vehicle}/gallery', [VehicleGalleryController::class, 'show']);
         Route::get('/vehicles/{vehicle}/images/download', [VehicleImageDownloadController::class, 'download']);

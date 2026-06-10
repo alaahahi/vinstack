@@ -50,7 +50,7 @@ class SyncVehiclesAction
                     continue;
                 }
 
-                if ($vehicle->source === VehicleSource::Manual) {
+                if (in_array($vehicle->source, [VehicleSource::Manual, VehicleSource::NujoomAlJazeera], true)) {
                     continue;
                 }
 

@@ -82,6 +82,29 @@ export function summarizeGalleryApiResponse(payload) {
     };
 }
 
+/**
+ * Replace a vehicle in a list array after a live gallery fetch merged new image data.
+ * @param {Array<object>} vehicles
+ * @param {object} updated
+ * @returns {Array<object>}
+ */
+export function replaceVehicleInList(vehicles, updated) {
+    if (! Array.isArray(vehicles) || ! updated?.id) {
+        return vehicles;
+    }
+
+    const index = vehicles.findIndex((vehicle) => vehicle.id === updated.id);
+
+    if (index === -1) {
+        return vehicles;
+    }
+
+    const next = [...vehicles];
+    next[index] = updated;
+
+    return next;
+}
+
 export function mergeGalleryIntoVehicle(vehicle, galleryPayload) {
     if (! galleryPayload || ! vehicle) {
         return vehicle;

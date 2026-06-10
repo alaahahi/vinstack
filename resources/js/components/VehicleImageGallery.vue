@@ -44,7 +44,7 @@
 
             </span>
 
-            <span v-if="galleryCount > 0" class="count-badge">{{ galleryCount }}</span>
+            <span v-if="showCountBadge" class="count-badge">{{ galleryCount }}</span>
 
         </button>
 
@@ -52,7 +52,7 @@
 
         <Button
 
-            v-if="showButton"
+            v-if="showGalleryButton"
 
             :label="buttonLabel"
 
@@ -153,7 +153,7 @@ const props = defineProps({
 
 });
 
-
+const emit = defineEmits(['gallery-updated']);
 
 const visible = ref(false);
 
@@ -171,16 +171,33 @@ const label = computed(() => vehicleLabel(props.vehicle));
 
 const hasPreview = computed(() => hasVehiclePreview(props.vehicle));
 
-const canOpenGallery = computed(() => hasVehicleGallery(props.vehicle));
+const canOpenGallery = computed(() => {
+    if (hasVehicleGallery(props.vehicle)) {
+        return true;
+    }
+
+    return (
+        vehicleUsesLiveGallery(props.vehicle)
+        && hasPreview.value
+        && Boolean(props.vehicle?.id)
+        && Boolean(props.vehicle?.vin)
+    );
+});
+
+const showCountBadge = computed(() => galleryCount.value > 1);
+
+const showGalleryButton = computed(() => props.showButton && galleryCount.value > 1);
 
 
 
 const thumbTitle = computed(() => {
 
     if (canOpenGallery.value) {
+        if (galleryCount.value > 0) {
+            return `معاينة — ${galleryCount.value} صورة HD`;
+        }
 
-        return `معاينة — ${galleryCount.value} صورة HD`;
-
+        return 'معاينة — فتح صور HD';
     }
 
 
@@ -223,7 +240,9 @@ async function openGallery() {
 
         try {
             const payload = await fetchLiveVehicleGallery(vehicleId, props.apiMode);
-            lightboxVehicle.value = mergeGalleryIntoVehicle(props.vehicle, payload);
+            const merged = mergeGalleryIntoVehicle(props.vehicle, payload);
+            lightboxVehicle.value = merged;
+            emit('gallery-updated', merged);
         } catch {
             lightboxVehicle.value = props.vehicle;
         } finally {

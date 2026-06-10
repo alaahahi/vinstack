@@ -64,7 +64,7 @@ class VehicleDetailService
      */
     protected function fetchVinstackData(Vehicle $vehicle): array
     {
-        if ($vehicle->source === VehicleSource::Manual) {
+        if (in_array($vehicle->source, [VehicleSource::Manual, VehicleSource::NujoomAlJazeera], true)) {
             return [];
         }
 

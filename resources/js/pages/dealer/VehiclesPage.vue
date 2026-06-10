@@ -22,6 +22,7 @@
             empty-action-label="تحديث القائمة"
             @update-status="openStatus"
             @open-detail="openDetail"
+            @gallery-updated="onGalleryUpdated"
             @page="onPage"
             @empty-action="load"
         />
@@ -65,6 +66,7 @@ import VehicleListPanel from '../../components/VehicleListPanel.vue';
 import VehicleDetailDrawer from '../../components/VehicleDetailDrawer.vue';
 import VehiclePhotosPanel from '../../components/VehiclePhotosPanel.vue';
 import api from '../../api/client';
+import { replaceVehicleInList } from '../../utils/vehicleGalleryLive';
 
 const toast = useToast();
 const vehicles = ref([]);
@@ -129,6 +131,10 @@ function openStatus(vehicle) {
 function openDetail(vehicle) {
     detailVehicleId.value = vehicle.id;
     detailVisible.value = true;
+}
+
+function onGalleryUpdated(updatedVehicle) {
+    vehicles.value = replaceVehicleInList(vehicles.value, updatedVehicle);
 }
 
 async function saveStatus() {

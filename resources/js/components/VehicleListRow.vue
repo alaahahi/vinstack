@@ -2,7 +2,12 @@
     <div class="vehicle-row">
         <!-- Vehicle -->
         <div class="cell cell-vehicle">
-            <VehicleImageGallery :vehicle="vehicle" variant="row" :api-mode="mode" />
+            <VehicleImageGallery
+                :vehicle="vehicle"
+                variant="row"
+                :api-mode="mode"
+                @gallery-updated="$emit('gallery-updated', $event)"
+            />
             <div class="vehicle-info">
                 <div class="title-line">
                     <button type="button" class="title title-link" @click="$emit('open-detail', vehicle)">
@@ -152,6 +157,8 @@ import {
     vehicleLot,
     vehicleOrigin,
     vehiclePurchaseDate,
+    vehicleSourceLabel,
+    vehicleSourcePillClass,
     vehicleStatusClass,
     vehicleTitle,
     vehicleTitleStatus,
@@ -170,13 +177,11 @@ const props = defineProps({
     },
 });
 
-defineEmits(['assign', 'update-status', 'open-detail', 'edit', 'unassign']);
+defineEmits(['assign', 'update-status', 'open-detail', 'edit', 'unassign', 'gallery-updated']);
 
 const isManual = computed(() => props.vehicle?.source === 'manual');
-const sourceLabel = computed(() => (isManual.value ? 'يدوية' : 'مستوردة'));
-const sourcePillClass = computed(() =>
-    isManual.value ? 'source-pill--manual' : 'source-pill--vinstack',
-);
+const sourceLabel = computed(() => vehicleSourceLabel(props.vehicle?.source));
+const sourcePillClass = computed(() => vehicleSourcePillClass(props.vehicle?.source));
 
 const title = computed(() => vehicleTitle(props.vehicle));
 const hasLocalUploads = computed(() => (props.vehicle?.uploaded_images?.length ?? 0) > 0);
@@ -312,6 +317,11 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
 .source-pill--manual {
     background: #e0e7ff;
     color: #3730a3;
+}
+
+.source-pill--nujoom {
+    background: #fef3c7;
+    color: #b45309;
 }
 
 .vehicle-vin-line {

@@ -169,4 +169,68 @@ class VinstackGalleryServiceTest extends TestCase
 
         $this->assertTrue($method->invoke($service, $before, $after));
     }
+
+    public function test_build_gallery_payload_persists_new_images_to_raw_data(): void
+    {
+        $vin = '1HGBH41JXMN109186';
+        $vinstackId = '507f1f77bcf86cd799439011';
+
+        VinstackSetting::query()->create([
+            'gallery_api_base_url' => 'https://app.vinstack.com/api/client-portal',
+            'gallery_api_token' => 'gallery-token',
+        ]);
+
+        Http::fake([
+            'https://app.vinstack.com/api/client-portal/autos/'.$vin.'/gallery' => Http::response([
+                'data' => [
+                    'terminal' => [
+                        'urls' => ['https://cdn.example.com/terminal-1.jpg', 'https://cdn.example.com/terminal-2.jpg'],
+                    ],
+                    'pickup' => [
+                        'urls' => ['https://cdn.example.com/pickup.jpg'],
+                    ],
+                    'destination' => [
+                        'urls' => [],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $vehicle = Vehicle::query()->create([
+            'source' => VehicleSource::Vinstack,
+            'vinstack_id' => $vinstackId,
+            'vin' => $vin,
+            'status' => VehicleStatus::Available,
+            'images' => ['https://cdn.example.com/terminal-1.jpg'],
+            'raw_data' => [
+                'id' => $vinstackId,
+                'images_by_stage' => [
+                    'terminal' => ['https://cdn.example.com/terminal-1.jpg'],
+                    'pickup' => [],
+                    'destination' => [],
+                ],
+            ],
+        ]);
+
+        $payload = $this->galleryService()->buildGalleryPayload($vehicle->fresh());
+
+        $this->assertTrue($payload['gallery_fresh']);
+        $this->assertTrue($payload['gallery_stored']);
+        $this->assertSame(2, $payload['gallery_new_images_count']);
+        $this->assertCount(2, $payload['images_by_stage']['terminal']);
+        $this->assertCount(1, $payload['images_by_stage']['pickup']);
+
+        $vehicle->refresh();
+
+        $this->assertCount(3, $vehicle->images);
+        $this->assertSame(
+            ['https://cdn.example.com/terminal-1.jpg', 'https://cdn.example.com/terminal-2.jpg'],
+            $vehicle->raw_data['images_by_stage']['terminal'] ?? [],
+        );
+        $this->assertSame(
+            ['https://cdn.example.com/pickup.jpg'],
+            $vehicle->raw_data['images_by_stage']['pickup'] ?? [],
+        );
+        $this->assertArrayHasKey('gallery_synced_at', $vehicle->raw_data);
+    }
 }

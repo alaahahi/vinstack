@@ -123,7 +123,13 @@
             />
         </template>
 
-        <VehicleImageGallery v-else-if="compact" :vehicle="displayVehicle ?? vehicle" :api-mode="apiMode" show-button />
+        <VehicleImageGallery
+            v-else-if="compact"
+            :vehicle="displayVehicle ?? vehicle"
+            :api-mode="apiMode"
+            show-button
+            @gallery-updated="onCompactGalleryUpdated"
+        />
 
         <template v-else>
             <header class="photos-section-header photos-section-header--dealer">
@@ -327,6 +333,11 @@ async function loadLiveGallery() {
     } finally {
         galleryLoading.value = false;
     }
+}
+
+function onCompactGalleryUpdated(mergedVehicle) {
+    displayVehicle.value = mergedVehicle;
+    emit('updated', mergedVehicle);
 }
 
 onMounted(loadLiveGallery);

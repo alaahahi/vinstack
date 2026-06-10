@@ -109,6 +109,33 @@ class AdminVehicleIndexTest extends TestCase
         $this->assertContains($assigned->vin, $vins);
     }
 
+    public function test_source_filter_returns_nujoom_al_jazeera_vehicles(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        Vehicle::query()->create([
+            'source' => VehicleSource::NujoomAlJazeera,
+            'vinstack_id' => 'nujoom-1',
+            'vin' => '1HGCM82633A004359',
+            'status' => VehicleStatus::Available,
+        ]);
+
+        Vehicle::query()->create([
+            'source' => VehicleSource::Vinstack,
+            'vinstack_id' => 'vs-2',
+            'vin' => '1HGCM82633A004360',
+            'status' => VehicleStatus::Available,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson('/api/admin/vehicles?source=nujoom_al_jazeera');
+
+        $response->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.source', 'nujoom_al_jazeera');
+    }
+
     public function test_dealer_filter_only_shows_assigned_vehicles(): void
     {
         $admin = User::factory()->create(['role' => UserRole::Admin]);

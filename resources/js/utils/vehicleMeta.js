@@ -150,6 +150,28 @@ export function vehicleAssignmentBadgeClass(vehicle) {
     return vehicleIsAssigned(vehicle) ? 'assignment-pill--assigned' : 'assignment-pill--unassigned';
 }
 
+const VEHICLE_SOURCE_LABELS = {
+    vinstack: 'المستورد',
+    manual: 'اليدوي',
+    nujoom_al_jazeera: 'نجوم الجزيرة',
+};
+
+export function vehicleSourceLabel(source) {
+    return VEHICLE_SOURCE_LABELS[source] ?? VEHICLE_SOURCE_LABELS.vinstack;
+}
+
+export function vehicleSourcePillClass(source) {
+    if (source === 'manual') {
+        return 'source-pill--manual';
+    }
+
+    if (source === 'nujoom_al_jazeera') {
+        return 'source-pill--nujoom';
+    }
+
+    return 'source-pill--vinstack';
+}
+
 export function vehicleEnteredBy(vehicle) {
     const dealer = vehicle?.active_assignment?.dealer?.company_name;
 
