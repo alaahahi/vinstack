@@ -351,6 +351,7 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     display: flex;
     flex-direction: column;
     gap: 0.3rem;
+    overflow: hidden;
 }
 
 .route-line {
@@ -359,6 +360,15 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     gap: 0.4rem;
     font-size: 0.84rem;
     color: var(--vs-text-secondary);
+    min-width: 0;
+    max-width: 100%;
+}
+
+.route-line span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
 }
 
 .route-dot {
@@ -430,6 +440,15 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     color: var(--vs-text-secondary);
     font-family: ui-monospace, monospace;
     margin-bottom: 0.2rem;
+    min-width: 0;
+    max-width: 100%;
+}
+
+.ref-line span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
 }
 
 .ref-icon {
@@ -476,19 +495,31 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     background: var(--vs-surface-hover);
 }
 
+.cell-refs,
+.cell-dates {
+    overflow: hidden;
+}
+
 .date-row {
     display: flex;
     justify-content: space-between;
     gap: 0.75rem;
     font-size: 0.78rem;
     line-height: 1.6;
+    min-width: 0;
 }
 
 .date-label {
     color: var(--vs-text-muted);
+    flex-shrink: 0;
 }
 
 .date-value {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+    flex-shrink: 1;
     color: var(--vs-text);
     font-variant-numeric: tabular-nums;
 }

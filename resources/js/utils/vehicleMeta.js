@@ -4,6 +4,18 @@ function vehicleRawString(vehicle, key) {
     return scalarString(vehicle?.raw_data?.[key]);
 }
 
+function vehicleLocationLabel(vehicle, key) {
+    const value = vehicle?.raw_data?.[key];
+
+    if (value && typeof value === 'object' && ! Array.isArray(value) && Array.isArray(value.urls)) {
+        return scalarString(
+            value.name ?? value.label ?? value.title ?? value.port ?? value.city ?? null,
+        );
+    }
+
+    return scalarString(value);
+}
+
 function formatVehicleDate(value) {
     if (! value) {
         return null;
@@ -61,11 +73,11 @@ export function vehicleAuction(vehicle) {
 }
 
 export function vehicleOrigin(vehicle) {
-    return vehicleRawString(vehicle, 'loading_point');
+    return vehicleLocationLabel(vehicle, 'loading_point');
 }
 
 export function vehicleDestination(vehicle) {
-    return vehicleRawString(vehicle, 'destination');
+    return vehicleLocationLabel(vehicle, 'destination');
 }
 
 export function vehicleVinstackStatus(vehicle) {
