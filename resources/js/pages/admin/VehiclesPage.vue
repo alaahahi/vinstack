@@ -138,7 +138,8 @@ const dealerSummary = ref([]);
 const loading = ref(false);
 const loadingMore = ref(false);
 const search = ref('');
-const statusFilter = ref(null);
+const ALL_STATUS_FILTER = '';
+const statusFilter = ref(ALL_STATUS_FILTER);
 const dealerFilter = ref(null);
 const page = ref(1);
 const perPage = ref(50);
@@ -159,6 +160,7 @@ const selectedDealerId = ref(null);
 const SOURCE_FILTER_VALUES = new Set(['vinstack', 'manual', 'nujoom_al_jazeera']);
 
 const statusOptions = [
+    { label: 'عرض الكل', value: ALL_STATUS_FILTER },
     { label: 'متاحة', value: 'available' },
     { label: 'مسندة', value: 'assigned' },
     { label: 'محجوزة', value: 'reserved' },
@@ -179,7 +181,7 @@ function listParams(nextPage = page.value) {
         dealer_id: Number.isFinite(dealerId) && dealerId > 0 ? dealerId : undefined,
     };
 
-    if (filter) {
+    if (filter && filter !== ALL_STATUS_FILTER) {
         if (SOURCE_FILTER_VALUES.has(filter)) {
             params.source = filter;
         } else {
