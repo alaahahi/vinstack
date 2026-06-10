@@ -183,6 +183,19 @@ function hasClientPortalGalleryBlocks(raw) {
     });
 }
 
+function stagesFromPrecomputed(precomputed, vehicle) {
+    const stages = emptyStages();
+    const exclude = vehicleThumbnail(vehicle);
+
+    for (const { key } of GALLERY_STAGES) {
+        if (Array.isArray(precomputed[key])) {
+            collectFromList(stages[key], precomputed[key], exclude);
+        }
+    }
+
+    return stages;
+}
+
 export function vehicleGalleryByStage(vehicle) {
     if (! vehicle) {
         return emptyStages();
@@ -191,21 +204,15 @@ export function vehicleGalleryByStage(vehicle) {
     const raw = vehicle.raw_data ?? {};
     const liveGallery = hasClientPortalGalleryBlocks(raw) || (raw.gallery && typeof raw.gallery === 'object');
 
-    // Prefer fresh API payload over stale raw_data.images_by_stage
-    const precomputed = vehicle.gallery_fresh && vehicle.images_by_stage
-        ? vehicle.images_by_stage
-        : (vehicle.images_by_stage ?? vehicle.raw_data?.images_by_stage);
+    // Live gallery endpoint returns merged images_by_stage — trust it over re-parsing raw_data blocks.
+    if (vehicle.gallery_fresh && vehicle.images_by_stage && typeof vehicle.images_by_stage === 'object') {
+        return stagesFromPrecomputed(vehicle.images_by_stage, vehicle);
+    }
+
+    const precomputed = vehicle.images_by_stage ?? vehicle.raw_data?.images_by_stage;
 
     if (precomputed && typeof precomputed === 'object' && ! liveGallery) {
-        const stages = emptyStages();
-
-        for (const { key } of GALLERY_STAGES) {
-            if (Array.isArray(precomputed[key])) {
-                collectFromList(stages[key], precomputed[key], vehicleThumbnail(vehicle));
-            }
-        }
-
-        return stages;
+        return stagesFromPrecomputed(precomputed, vehicle);
     }
 
     const thumbnail = vehicleThumbnail(vehicle);

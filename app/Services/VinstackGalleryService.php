@@ -49,6 +49,7 @@ class VinstackGalleryService
                     is_array($vehicle->raw_data) ? $vehicle->raw_data : [],
                     $live,
                 );
+                $source = $this->applyClientPortalStageBlocks($source, $live);
                 $galleryFresh = true;
             } catch (GalleryTokenExpiredException) {
                 $galleryTokenExpired = true;
@@ -115,6 +116,7 @@ class VinstackGalleryService
         }
 
         $rawData = array_merge($existingRaw, $livePayload);
+        $rawData = $this->applyClientPortalStageBlocks($rawData, $livePayload);
         $rawData['images_by_stage'] = $nextStages;
         $rawData['images'] = $nextUrls;
 
@@ -149,12 +151,36 @@ class VinstackGalleryService
     protected function stagesChanged(array $before, array $after): bool
     {
         foreach (VehicleImageStages::STAGES as $stage) {
-            if (count($before[$stage] ?? []) !== count($after[$stage] ?? [])) {
+            if (($before[$stage] ?? []) !== ($after[$stage] ?? [])) {
                 return true;
             }
         }
 
         return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $target
+     * @param  array<string, mixed>  $livePayload
+     * @return array<string, mixed>
+     */
+    protected function applyClientPortalStageBlocks(array $target, array $livePayload): array
+    {
+        $source = $this->isClientPortalGalleryPayload($livePayload)
+            ? $livePayload
+            : (is_array($livePayload['gallery'] ?? null) ? $livePayload['gallery'] : null);
+
+        if (! is_array($source)) {
+            return $target;
+        }
+
+        foreach (VehicleImageStages::STAGES as $stage) {
+            if (isset($source[$stage]) && is_array($source[$stage])) {
+                $target[$stage] = $source[$stage];
+            }
+        }
+
+        return $target;
     }
 
     /**
@@ -231,11 +257,11 @@ class VinstackGalleryService
      */
     protected function normalizeGalleryPayload(array $payload): array
     {
-        $normalized = $payload;
+        $normalized = $this->applyClientPortalStageBlocks($payload, $payload);
 
-        if ($this->isClientPortalGalleryPayload($payload)) {
-            $normalized['gallery'] = $payload;
-            $normalized['images_by_stage'] = $this->stageUrlsFromClientPortalPayload($payload);
+        if ($this->isClientPortalGalleryPayload($normalized)) {
+            $normalized['gallery'] = Arr::except($normalized, ['gallery']);
+            $normalized['images_by_stage'] = $this->stageUrlsFromClientPortalPayload($normalized);
 
             if (! isset($normalized['images']) && isset($payload['urls']) && is_array($payload['urls'])) {
                 $normalized['images'] = $payload['urls'];

@@ -21,4 +21,27 @@ class VinstackGalleryServiceTest extends TestCase
         $this->assertTrue($service->usesLiveGalleryApi($vinstack));
         $this->assertFalse($service->usesLiveGalleryApi($manual));
     }
+
+    public function test_stages_changed_detects_replaced_urls_with_same_count(): void
+    {
+        $service = new VinstackGalleryService(
+            uploadedImages: $this->createMock(\App\Services\VehicleUploadedImageService::class),
+        );
+
+        $method = new \ReflectionMethod(VinstackGalleryService::class, 'stagesChanged');
+        $method->setAccessible(true);
+
+        $before = [
+            'terminal' => ['https://cdn.example/old-1.jpg'],
+            'pickup' => [],
+            'destination' => [],
+        ];
+        $after = [
+            'terminal' => ['https://cdn.example/new-1.jpg'],
+            'pickup' => [],
+            'destination' => [],
+        ];
+
+        $this->assertTrue($method->invoke($service, $before, $after));
+    }
 }
