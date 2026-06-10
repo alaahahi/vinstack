@@ -111,48 +111,51 @@
                     <l-polyline
                         v-if="routeLatLngs.length"
                         :lat-lngs="routeLatLngs"
-                        color="#14b8a6"
+                        color="#22c55e"
                         :weight="4"
                         :opacity="0.9"
                     />
-                    <l-circle-marker
+                    <l-marker
                         v-if="originLatLng"
                         :lat-lng="originLatLng"
-                        :radius="8"
-                        color="#22c55e"
-                        :fill="true"
-                        fill-color="#22c55e"
-                        :fill-opacity="1"
+                        :icon="originIcon"
                     />
-                    <l-circle-marker
+                    <l-marker
                         v-for="(wp, index) in waypointLatLngs"
                         :key="`wp-${index}`"
                         :lat-lng="wp"
-                        :radius="7"
-                        color="#f59e0b"
-                        :fill="true"
-                        fill-color="#f59e0b"
-                        :fill-opacity="1"
+                        :icon="transshipmentIcon"
                     />
-                    <l-circle-marker
+                    <l-marker
                         v-if="destinationLatLng"
                         :lat-lng="destinationLatLng"
-                        :radius="8"
-                        color="#ef4444"
-                        :fill="true"
-                        fill-color="#ef4444"
-                        :fill-opacity="1"
+                        :icon="destinationIcon"
                     />
-                    <l-circle-marker
+                    <l-marker
                         v-if="currentPositionLatLng"
                         :lat-lng="currentPositionLatLng"
-                        :radius="11"
-                        color="#2563eb"
-                        :fill="true"
-                        fill-color="#3b82f6"
-                        :fill-opacity="1"
+                        :icon="currentPositionIcon"
+                        :z-index-offset="1000"
                     />
                 </l-map>
+                <div v-if="mapReady" class="map-legend" aria-label="دليل رموز الخريطة">
+                    <div v-if="currentPositionLatLng" class="map-legend-item">
+                        <span class="map-legend-icon map-legend-icon--current" aria-hidden="true" />
+                        <span>الموقع الحالي للحاوية</span>
+                    </div>
+                    <div v-if="originLatLng" class="map-legend-item">
+                        <span class="map-legend-icon map-legend-icon--origin" aria-hidden="true" />
+                        <span>المنشأ</span>
+                    </div>
+                    <div v-if="waypointLatLngs.length" class="map-legend-item">
+                        <span class="map-legend-icon map-legend-icon--transshipment" aria-hidden="true" />
+                        <span>محطة ترانزيت</span>
+                    </div>
+                    <div v-if="destinationLatLng" class="map-legend-item">
+                        <span class="map-legend-icon map-legend-icon--destination" aria-hidden="true" />
+                        <span>الوجهة</span>
+                    </div>
+                </div>
                 <div
                     v-if="mapReady && mapTilesLoading"
                     class="map-tiles-loading"
@@ -274,7 +277,8 @@ import Drawer from 'primevue/drawer';
 import Button from 'primevue/button';
 import Skeleton from 'primevue/skeleton';
 import ProgressSpinner from 'primevue/progressspinner';
-import { LMap, LTileLayer, LPolyline, LCircleMarker } from '@vue-leaflet/vue-leaflet';
+import { LMap, LTileLayer, LPolyline, LMarker } from '@vue-leaflet/vue-leaflet';
+import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import api from '../api/client';
 import { containerRefs, formatContainerDate } from '../utils/containerMeta';
@@ -313,6 +317,49 @@ const headerRef = ref(null);
 const bodyRef = ref(null);
 
 const drawerTitleId = 'container-tracking-title';
+
+const NAV_ARROW_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="#fff" d="M12 2.5l1.2 6.3 5.8 1.5-5.8 1.5L12 18.1l-1.2-6.3-5.8-1.5 5.8-1.5z"/></svg>';
+const TRANSFER_ARROWS_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="#fff" d="M6 7h12.5l-2.5-2.5L18 3l5 5-5 5-1.5-1.5L18.5 9H6V7zm12 10H5.5l2.5 2.5L6 21l-5-5 5-5 1.5 1.5L5.5 15H18v2z"/></svg>';
+const PIN_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="#fff" d="M12 2a5.5 5.5 0 0 0-5.5 5.5c0 4.1 5.5 10.5 5.5 10.5S17.5 11.6 17.5 7.5A5.5 5.5 0 0 0 12 2zm0 7.5a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg>';
+
+function trackingDivIcon(kind) {
+    const configs = {
+        origin: {
+            html: '<span class="ct-map-marker ct-map-marker--origin"></span>',
+            size: [16, 16],
+            anchor: [8, 8],
+        },
+        current: {
+            html: `<span class="ct-map-marker ct-map-marker--current">${NAV_ARROW_SVG}</span>`,
+            size: [36, 36],
+            anchor: [18, 18],
+        },
+        transshipment: {
+            html: `<span class="ct-map-marker ct-map-marker--transshipment">${TRANSFER_ARROWS_SVG}</span>`,
+            size: [30, 30],
+            anchor: [15, 15],
+        },
+        destination: {
+            html: `<span class="ct-map-marker ct-map-marker--destination">${PIN_SVG}</span>`,
+            size: [30, 30],
+            anchor: [15, 15],
+        },
+    };
+
+    const config = configs[kind];
+
+    return L.divIcon({
+        className: 'ct-map-marker-wrap',
+        html: config.html,
+        iconSize: config.size,
+        iconAnchor: config.anchor,
+    });
+}
+
+const originIcon = trackingDivIcon('origin');
+const currentPositionIcon = trackingDivIcon('current');
+const transshipmentIcon = trackingDivIcon('transshipment');
+const destinationIcon = trackingDivIcon('destination');
 
 const refs = computed(() => (props.container ? containerRefs(props.container) : { container: null }));
 
@@ -512,11 +559,14 @@ watch(
     },
 );
 
-watch(routeLatLngs, () => {
-    if (leafletMap.value && mapReady.value) {
-        fitMapBounds(leafletMap.value);
-    }
-});
+watch(
+    [routeLatLngs, originLatLng, destinationLatLng, currentPositionLatLng, waypointLatLngs],
+    () => {
+        if (leafletMap.value && mapReady.value) {
+            fitMapBounds(leafletMap.value);
+        }
+    },
+);
 
 function resetState() {
     tracking.value = null;
@@ -994,12 +1044,14 @@ onUnmounted(removeFocusTrap);
     min-height: 280px;
     background: var(--vs-zinc-200);
     position: relative;
+    display: flex;
+    flex-direction: column;
 }
 
 .tracking-map {
     width: 100%;
-    height: 100%;
-    min-height: 320px;
+    flex: 1;
+    min-height: 280px;
     z-index: 1;
 }
 
@@ -1060,6 +1112,93 @@ onUnmounted(removeFocusTrap);
     max-width: 26rem;
     line-height: 1.5;
     color: var(--vs-text-muted);
+}
+
+.map-legend {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem 1.25rem;
+    padding: 0.55rem 0.85rem;
+    background: rgb(255 255 255 / 0.94);
+    border-top: 1px solid var(--vs-border);
+    font-size: 0.74rem;
+    color: var(--vs-text-secondary);
+}
+
+.map-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    white-space: nowrap;
+}
+
+.map-legend-icon {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    flex-shrink: 0;
+    border-radius: 50%;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
+}
+
+.map-legend-icon--current {
+    width: 22px;
+    height: 22px;
+    background: #2563eb;
+    border: 2px solid #fff;
+    position: relative;
+}
+
+.map-legend-icon--current::after {
+    content: '';
+    position: absolute;
+    width: 0;
+    height: 0;
+    border-left: 4px solid transparent;
+    border-right: 4px solid transparent;
+    border-bottom: 7px solid #fff;
+    transform: rotate(25deg);
+    top: 4px;
+}
+
+.map-legend-icon--origin {
+    width: 12px;
+    height: 12px;
+    background: #22c55e;
+    border: 2px solid #fff;
+}
+
+.map-legend-icon--transshipment {
+    width: 20px;
+    height: 20px;
+    background: #f59e0b;
+    border: 2px solid #fff;
+    font-size: 0.55rem;
+    color: #fff;
+    font-weight: 700;
+    letter-spacing: -0.05em;
+}
+
+.map-legend-icon--transshipment::after {
+    content: '⇄';
+}
+
+.map-legend-icon--destination {
+    width: 20px;
+    height: 20px;
+    background: #64748b;
+    border: 2px solid #fff;
+    position: relative;
+}
+
+.map-legend-icon--destination::after {
+    content: '';
+    width: 6px;
+    height: 6px;
+    border-radius: 50%;
+    background: #fff;
+    box-shadow: 0 3px 0 0 #fff;
 }
 
 .tracking-sidebar {
@@ -1144,7 +1283,7 @@ onUnmounted(removeFocusTrap);
 }
 
 .route-dot--dest {
-    background: #ef4444;
+    background: #64748b;
 }
 
 .route-end-label {
@@ -1383,6 +1522,46 @@ onUnmounted(removeFocusTrap);
 </style>
 
 <style>
+/* Leaflet divIcon markers — unscoped (rendered inside map pane) */
+.ct-map-marker-wrap {
+    background: transparent;
+    border: none;
+}
+
+.ct-map-marker {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 50%;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.28);
+    border: 2.5px solid #fff;
+    box-sizing: border-box;
+}
+
+.ct-map-marker--origin {
+    width: 16px;
+    height: 16px;
+    background: #22c55e;
+}
+
+.ct-map-marker--current {
+    width: 36px;
+    height: 36px;
+    background: #2563eb;
+}
+
+.ct-map-marker--transshipment {
+    width: 30px;
+    height: 30px;
+    background: #f59e0b;
+}
+
+.ct-map-marker--destination {
+    width: 30px;
+    height: 30px;
+    background: #64748b;
+}
+
 /* Portaled drawer — class on root via :pt; unscoped for [data-theme] */
 [data-theme='dark'] .p-drawer.container-tracking-drawer,
 [data-theme='dark'] .p-drawer.container-tracking-drawer .p-drawer-header,
@@ -1460,6 +1639,12 @@ onUnmounted(removeFocusTrap);
 [data-theme='dark'] .p-drawer.container-tracking-drawer .tracking-header-top .p-button:not(:disabled):hover {
     color: var(--vs-text);
     background: var(--vs-surface-hover);
+}
+
+[data-theme='dark'] .p-drawer.container-tracking-drawer .map-legend {
+    background: rgb(24 24 27 / 0.94);
+    border-top-color: var(--vs-border);
+    color: var(--vs-text-secondary);
 }
 
 [data-theme='dark'] .p-drawer.container-tracking-drawer .tracking-skeleton-map,

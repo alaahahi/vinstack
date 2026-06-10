@@ -210,7 +210,6 @@ class ContainerTrackingService
         }
 
         $events = [];
-        $currentPosition = null;
         $rawEvents = Arr::get($tracking, 'events', []);
 
         if (is_array($rawEvents)) {
@@ -220,13 +219,7 @@ class ContainerTrackingService
                 }
 
                 $location = Arr::get($event, 'location');
-                $locationLabel = null;
-
-                if (is_array($location)) {
-                    $name = $this->stringFrom($location, 'name');
-                    $country = $this->stringFrom($location, 'country');
-                    $locationLabel = $name && $country ? "{$name}, {$country}" : ($name ?: $country);
-                }
+                $locationLabel = $this->locationLabelFromRaw($location);
 
                 $isActual = (bool) ($event['actual'] ?? false);
 
@@ -236,12 +229,13 @@ class ContainerTrackingService
                     'location' => $locationLabel,
                     'type' => $isActual ? 'actual' : 'estimated',
                 ];
-
-                if ($isActual && is_array($location) && isset($location['lat'], $location['lng'])) {
-                    $currentPosition = $this->locationFromPort($location);
-                }
             }
         }
+
+        $currentPosition = $this->resolveCurrentPosition(
+            $tracking,
+            is_array($rawEvents) ? $rawEvents : [],
+        );
 
         $status = $this->mapClientPortalStatus($this->stringFrom($tracking, 'status'));
 
@@ -297,6 +291,68 @@ class ContainerTrackingService
         }
 
         return $this->locationFromRaw($name, $name);
+    }
+
+    /**
+     * @param  array<string, mixed>  $tracking
+     * @param  list<array<string, mixed>>  $rawEvents
+     * @return array{name: string, lat: float, lng: float, label?: string}|null
+     */
+    protected function resolveCurrentPosition(array $tracking, array $rawEvents): ?array
+    {
+        $explicit = Arr::get($tracking, 'current_position') ?: Arr::get($tracking, 'currentPosition');
+
+        if (is_array($explicit)) {
+            $resolved = $this->locationFromPort($explicit);
+
+            if ($resolved !== null) {
+                return $resolved;
+            }
+        }
+
+        $currentPosition = null;
+
+        foreach ($rawEvents as $event) {
+            if (! is_array($event) || ! ($event['actual'] ?? false)) {
+                continue;
+            }
+
+            $location = Arr::get($event, 'location');
+
+            if (is_array($location) && isset($location['lat'], $location['lng'])) {
+                $currentPosition = $this->locationFromPort($location);
+
+                continue;
+            }
+
+            $label = $this->locationLabelFromRaw($location);
+
+            if ($label) {
+                $geocoded = $this->locationFromRaw($label, $label);
+
+                if ($geocoded !== null) {
+                    $currentPosition = $geocoded;
+                }
+            }
+        }
+
+        return $currentPosition;
+    }
+
+    protected function locationLabelFromRaw(mixed $location): ?string
+    {
+        if (is_array($location)) {
+            $name = $this->stringFrom($location, 'name');
+            $country = $this->stringFrom($location, 'country');
+
+            return $name && $country ? "{$name}, {$country}" : ($name ?: $country);
+        }
+
+        if (is_string($location) && trim($location) !== '') {
+            return trim($location);
+        }
+
+        return null;
     }
 
     protected function mapClientPortalStatus(?string $status): string
