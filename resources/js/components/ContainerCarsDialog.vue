@@ -79,6 +79,10 @@
                 outlined
                 @click="openContainerGallery"
             />
+            <span v-if="uploadProgress !== null" class="zip-upload-progress">
+                <ProgressSpinner style="width: 1.1rem; height: 1.1rem" />
+                رفع إلى Cloudinary {{ uploadProgress }}%
+            </span>
         </div>
 
         <div v-if="loading" class="cars-dialog-loading">
@@ -259,9 +263,14 @@ import {
     extractZipImagesForContainer,
     getContainerZipImages,
     mergeZipImagesIntoVehicle,
+    applyCloudinaryContainerPayload,
     saveContainerZipImages,
     vehicleZipImageCount,
 } from '../utils/containerZipImages';
+import {
+    fetchContainerCloudImages,
+    uploadContainerImagesToCloud,
+} from '../utils/containerCloudinaryUpload';
 
 const props = defineProps({
     visible: {
@@ -293,6 +302,7 @@ const headerMeta = ref(null);
 const vehicleRows = ref([]);
 const zipInputRef = ref(null);
 const zipLoading = ref(false);
+const uploadProgress = ref(null);
 const zipPayload = ref(null);
 const galleryVisible = ref(false);
 const galleryVehicle = ref(null);
@@ -467,6 +477,7 @@ async function load() {
         headerMeta.value = data.data?.container ?? props.container;
         vehicleRows.value = data.data?.vehicles ?? [];
         hydrateZipFromMemory();
+        await loadCloudImages();
     } catch (e) {
         error.value = e.response?.data?.message || 'تعذّر جلب سيارات الحاوية';
         vehicleRows.value = [];
@@ -477,6 +488,24 @@ async function load() {
 
 function hydrateZipFromMemory() {
     zipPayload.value = getContainerZipImages(containerKey.value);
+}
+
+async function loadCloudImages() {
+    const ref = containerApiRef();
+
+    if (! ref) {
+        return;
+    }
+
+    try {
+        const payload = await fetchContainerCloudImages(ref, apiPrefix.value);
+
+        if (payload?.images?.length) {
+            zipPayload.value = applyCloudinaryContainerPayload(containerKey.value, payload);
+        }
+    } catch {
+        // Cloudinary may be unconfigured or no images yet
+    }
 }
 
 function onShow() {
@@ -510,14 +539,34 @@ async function onZipSelected(event) {
     zipLoading.value = true;
 
     try {
-        const payload = await extractZipImagesForContainer(file, vehicleRows.value);
-        saveContainerZipImages(containerKey.value, payload);
-        zipPayload.value = payload;
+        const extracted = await extractZipImagesForContainer(file, vehicleRows.value);
+        const ref = containerApiRef();
+
+        uploadProgress.value = 0;
+
+        const payload = await uploadContainerImagesToCloud({
+            containerRef: ref,
+            images: extracted.images,
+            apiPrefix: apiPrefix.value,
+            replace: true,
+            onProgress: ({ percent }) => {
+                uploadProgress.value = percent;
+            },
+        });
+
+        applyCloudinaryContainerPayload(containerKey.value, payload);
+        zipPayload.value = getContainerZipImages(containerKey.value);
+
+        for (const image of extracted.images) {
+            if (image.url?.startsWith('blob:')) {
+                URL.revokeObjectURL(image.url);
+            }
+        }
 
         toast.add({
             severity: 'success',
-            summary: 'تم استخراج الصور',
-            detail: `${payload.images.length} صورة — ${Object.keys(payload.byVin).length} مطابقة لشاصي`,
+            summary: 'تم رفع الصور إلى Cloudinary',
+            detail: `${payload.meta?.count ?? payload.images?.length ?? 0} صورة — ${payload.meta?.matched ?? Object.keys(payload.byVin ?? {}).length} مطابقة لشاصي`,
             life: 5000,
         });
 
@@ -529,15 +578,16 @@ async function onZipSelected(event) {
                 life: 7000,
             });
         }, 400);
-    } catch {
+    } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'تعذّر فتح ملف ZIP',
-            detail: 'تأكد من صحة الملف وأنه يحتوي صوراً',
-            life: 4000,
+            summary: 'تعذّر رفع الصور',
+            detail: e.response?.data?.message || e.message || 'تأكد من إعداد Cloudinary وصحة ملف ZIP',
+            life: 5000,
         });
     } finally {
         zipLoading.value = false;
+        uploadProgress.value = null;
     }
 }
 
@@ -651,6 +701,14 @@ onBeforeUnmount(() => {
 
 .zip-meta--link:hover {
     background: rgb(37 99 235 / 15%);
+}
+
+.zip-upload-progress {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.8rem;
+    color: #2563eb;
 }
 
 .cars-dialog-loading,

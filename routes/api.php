@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ContainerController as AdminContainerController;
+use App\Http\Controllers\Admin\ContainerImageController as AdminContainerImageController;
 use App\Http\Controllers\Admin\DatabaseBackupController;
 use App\Http\Controllers\Admin\DealerController;
 use App\Http\Controllers\Admin\ManualVehicleController;
@@ -18,6 +19,7 @@ use App\Http\Controllers\Api\TwoFactorController;
 use App\Http\Controllers\Api\VehicleImageDownloadController;
 use App\Http\Controllers\VehicleGalleryController;
 use App\Http\Controllers\Dealer\ContainerController as DealerContainerController;
+use App\Http\Controllers\Dealer\ContainerImageController as DealerContainerImageController;
 use App\Http\Controllers\Dealer\HeartbeatController as DealerHeartbeatController;
 use App\Http\Controllers\Dealer\ProfileController as DealerProfileController;
 use App\Http\Controllers\Dealer\TwoFactorController as DealerTwoFactorController;
@@ -82,9 +84,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/vinstack/settings', [VinstackSettingsController::class, 'show']);
         Route::put('/vinstack/settings', [VinstackSettingsController::class, 'update']);
         Route::post('/vinstack/settings/gallery-test', [VinstackSettingsController::class, 'testGallery']);
+        Route::post('/vinstack/settings/cloudinary-test', [VinstackSettingsController::class, 'testCloudinary']);
         Route::post('/vinstack/sync', [VinstackSettingsController::class, 'sync']);
 
         Route::get('/containers', [AdminContainerController::class, 'index']);
+        Route::get('/containers/{container}/images', [AdminContainerImageController::class, 'index']);
+        Route::post('/containers/{container}/images/upload', [AdminContainerImageController::class, 'upload']);
         Route::get('/containers/{container}/vehicles', [AdminContainerController::class, 'vehicles']);
         Route::get('/containers/{container}/tracking', [AdminContainerController::class, 'tracking']);
         Route::get('/vinstack/containers', [VinstackBrowseController::class, 'containers']);
@@ -102,6 +107,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/two-factor/recovery-codes', [DealerTwoFactorController::class, 'regenerateRecoveryCodes']);
         Route::get('/stats', [DealerProfileController::class, 'stats']);
         Route::get('/containers', [DealerContainerController::class, 'index']);
+        Route::get('/containers/{container}/images', [DealerContainerImageController::class, 'index']);
         Route::get('/containers/{container}/vehicles', [DealerContainerController::class, 'vehicles']);
         Route::get('/containers/{container}/tracking', [DealerContainerController::class, 'tracking']);
         Route::get('/vehicles', [DealerVehicleController::class, 'index']);

@@ -123,6 +123,98 @@
                 </div>
             </section>
 
+            <section class="admin-surface settings-card settings-card--gallery">
+                <header class="settings-card__head">
+                    <i class="pi pi-cloud-upload" />
+                    <div>
+                        <h2 class="vs-card-title">Cloudinary — صور الحاويات</h2>
+                        <p class="vs-card-subtitle">رفع صور ZIP إلى Cloudinary بدلاً من تخزينها على السيرفر</p>
+                    </div>
+                    <Tag
+                        v-if="settings.cloudinary_configured"
+                        severity="success"
+                        value="جاهز"
+                        class="gallery-expired-tag"
+                    />
+                </header>
+
+                <div class="settings-card__body">
+                    <div class="gallery-status-row">
+                        <span class="gallery-status-chip" :class="cloudinaryNameReady ? 'gallery-status-chip--ok' : 'gallery-status-chip--warn'">
+                            {{ cloudinaryNameReady ? 'Cloud ✓' : 'Cloud ✗' }}
+                        </span>
+                        <span class="gallery-status-chip" :class="cloudinaryKeyReady ? 'gallery-status-chip--ok' : 'gallery-status-chip--warn'">
+                            {{ cloudinaryKeyReady ? 'Key ✓' : 'Key ✗' }}
+                        </span>
+                        <span class="gallery-status-chip" :class="cloudinarySecretReady ? 'gallery-status-chip--ok' : 'gallery-status-chip--warn'">
+                            {{ cloudinarySecretReady ? 'Secret/Preset ✓' : 'Secret/Preset ✗' }}
+                        </span>
+                    </div>
+
+                    <div class="field">
+                        <label for="cloudinary-cloud-name" class="vs-form-label">Cloud Name</label>
+                        <InputText
+                            id="cloudinary-cloud-name"
+                            v-model="form.cloudinary_cloud_name"
+                            class="w-full gallery-input"
+                            dir="ltr"
+                            placeholder="my-cloud"
+                        />
+                    </div>
+                    <div class="field">
+                        <label for="cloudinary-api-key" class="vs-form-label">API Key</label>
+                        <InputText
+                            id="cloudinary-api-key"
+                            v-model="form.cloudinary_api_key"
+                            class="w-full gallery-input"
+                            dir="ltr"
+                        />
+                    </div>
+                    <div class="field">
+                        <label for="cloudinary-api-secret" class="vs-form-label">API Secret</label>
+                        <Password
+                            id="cloudinary-api-secret"
+                            v-model="form.cloudinary_api_secret"
+                            :placeholder="settings.has_cloudinary_api_secret ? '•••••• (اتركه فارغاً للإبقاء)' : 'أدخل API Secret'"
+                            toggle-mask
+                            input-class="w-full gallery-input"
+                            class="w-full"
+                        />
+                    </div>
+                    <div class="field">
+                        <label for="cloudinary-upload-preset" class="vs-form-label">Upload Preset (اختياري — للرفع بدون Secret)</label>
+                        <InputText
+                            id="cloudinary-upload-preset"
+                            v-model="form.cloudinary_upload_preset"
+                            class="w-full gallery-input"
+                            dir="ltr"
+                            placeholder="unsigned-preset"
+                        />
+                    </div>
+                    <div class="field">
+                        <label for="cloudinary-folder" class="vs-form-label">Folder</label>
+                        <InputText
+                            id="cloudinary-folder"
+                            v-model="form.cloudinary_folder"
+                            class="w-full gallery-input"
+                            dir="ltr"
+                            placeholder="vinstack/containers"
+                        />
+                    </div>
+
+                    <Button
+                        label="اختبار Cloudinary"
+                        icon="pi pi-bolt"
+                        size="small"
+                        outlined
+                        severity="secondary"
+                        class="gallery-test-btn"
+                        :loading="testingCloudinary"
+                        @click="testCloudinaryConnection"
+                    />
+                </div>
+            </section>
+
             <section class="admin-surface settings-card">
                 <header class="settings-card__head">
                     <i class="pi pi-headphones" />
@@ -560,6 +652,7 @@ const confirm = useConfirm();
 const settings = ref({ has_token: false, last_sync_at: null, last_auto_sync_at: null });
 const saving = ref(false);
 const testingGallery = ref(false);
+const testingCloudinary = ref(false);
 const savingOptions = ref(false);
 const syncing = ref(false);
 const restorableVisible = ref(false);
@@ -615,6 +708,20 @@ const galleryTokenReady = computed(() => (
     || settings.value.has_token
 ));
 
+const cloudinaryNameReady = computed(() => Boolean(
+    (form.cloudinary_cloud_name || settings.value.cloudinary_cloud_name || '').trim(),
+));
+
+const cloudinaryKeyReady = computed(() => Boolean(
+    (form.cloudinary_api_key || '').trim() || settings.value.has_cloudinary_api_key,
+));
+
+const cloudinarySecretReady = computed(() => Boolean(
+    (form.cloudinary_api_secret || '').trim()
+    || settings.value.has_cloudinary_api_secret
+    || (form.cloudinary_upload_preset || settings.value.cloudinary_upload_preset || '').trim(),
+));
+
 const form = reactive({
     api_base_url: '',
     api_token: '',
@@ -622,6 +729,11 @@ const form = reactive({
     gallery_api_token: '',
     sync_enabled: true,
     support_phone: '',
+    cloudinary_cloud_name: '',
+    cloudinary_api_key: '',
+    cloudinary_api_secret: '',
+    cloudinary_upload_preset: '',
+    cloudinary_folder: '',
 });
 
 async function load() {
@@ -634,8 +746,13 @@ async function load() {
     form.gallery_api_base_url = settingsRes.data.data.gallery_api_base_url || '';
     form.sync_enabled = settingsRes.data.data.sync_enabled ?? true;
     form.support_phone = settingsRes.data.data.support_phone || '';
+    form.cloudinary_cloud_name = settingsRes.data.data.cloudinary_cloud_name || '';
+    form.cloudinary_upload_preset = settingsRes.data.data.cloudinary_upload_preset || '';
+    form.cloudinary_folder = settingsRes.data.data.cloudinary_folder || '';
     form.api_token = '';
     form.gallery_api_token = '';
+    form.cloudinary_api_key = '';
+    form.cloudinary_api_secret = '';
     vehicleOptions.value = optionsRes.data.data;
 }
 
@@ -680,6 +797,29 @@ async function testGalleryConnection() {
     }
 }
 
+async function testCloudinaryConnection() {
+    testingCloudinary.value = true;
+
+    try {
+        const { data } = await api.post('/admin/vinstack/settings/cloudinary-test');
+        toast.add({
+            severity: 'success',
+            summary: 'Cloudinary',
+            detail: data.message || data.data?.message,
+            life: 5000,
+        });
+    } catch (e) {
+        toast.add({
+            severity: 'warn',
+            summary: 'Cloudinary',
+            detail: e.response?.data?.message || e.response?.data?.data?.message || 'تحقق من الإعدادات ثم احفظ',
+            life: 6000,
+        });
+    } finally {
+        testingCloudinary.value = false;
+    }
+}
+
 async function save() {
     saving.value = true;
 
@@ -689,6 +829,9 @@ async function save() {
             gallery_api_base_url: form.gallery_api_base_url,
             sync_enabled: form.sync_enabled,
             support_phone: form.support_phone,
+            cloudinary_cloud_name: form.cloudinary_cloud_name,
+            cloudinary_upload_preset: form.cloudinary_upload_preset,
+            cloudinary_folder: form.cloudinary_folder,
         };
 
         if (form.api_token) {
@@ -697,6 +840,14 @@ async function save() {
 
         if (form.gallery_api_token) {
             payload.gallery_api_token = form.gallery_api_token;
+        }
+
+        if (form.cloudinary_api_key) {
+            payload.cloudinary_api_key = form.cloudinary_api_key;
+        }
+
+        if (form.cloudinary_api_secret) {
+            payload.cloudinary_api_secret = form.cloudinary_api_secret;
         }
 
         await api.put('/admin/vinstack/settings', payload);

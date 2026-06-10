@@ -129,7 +129,7 @@ export async function extractZipImagesForContainer(file, vehicles = []) {
         const match = matchImageToVehicle(name, vehicles, vehicles.length ? seq : null);
         seq += 1;
 
-        const record = { name, url, vin: match.vin, lot: match.lot };
+        const record = { name, url, vin: match.vin, lot: match.lot, file: blob };
         images.push(record);
 
         if (match.vin) {
@@ -177,10 +177,28 @@ export function saveContainerZipImages(containerKey, payload) {
             matched: Object.keys(payload.byVin ?? {}).length,
             unmatched: payload.unmatched?.length ?? 0,
             uploadedAt: new Date().toISOString(),
+            storage: payload.meta?.storage ?? payload.storage ?? 'local',
         }));
     } catch {
         // sessionStorage may be unavailable or full
     }
+}
+
+/** Apply Cloudinary payload from API (no blob URLs). */
+export function applyCloudinaryContainerPayload(containerKey, payload) {
+    if (! payload) {
+        return null;
+    }
+
+    saveContainerZipImages(containerKey, {
+        images: payload.images ?? [],
+        byVin: payload.byVin ?? {},
+        unmatched: payload.unmatched ?? [],
+        meta: payload.meta ?? { storage: 'cloudinary' },
+        storage: 'cloudinary',
+    });
+
+    return getContainerZipImages(containerKey);
 }
 
 export function clearContainerZipImages(containerKey) {
@@ -236,7 +254,7 @@ export function mergeZipImagesIntoVehicle(vehicle, zipPayload) {
         stage: 'destination',
         url,
         original_name: `zip-${index + 1}`,
-        source: 'zip',
+        source: zipPayload.storage === 'cloudinary' || zipPayload.meta?.storage === 'cloudinary' ? 'cloudinary' : 'zip',
     }));
 
     const existing = vehicle.uploaded_images ?? vehicle?.raw_data?.uploaded_images ?? [];

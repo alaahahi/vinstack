@@ -231,8 +231,9 @@ import Button from 'primevue/button';
 import {
     containerRefKey,
     extractZipImagesForContainer,
-    saveContainerZipImages,
+    applyCloudinaryContainerPayload,
 } from '../utils/containerZipImages';
+import { uploadContainerImagesToCloud } from '../utils/containerCloudinaryUpload';
 
 import {
 
@@ -358,20 +359,37 @@ async function onZipSelected(event) {
     zipLoading.value = true;
 
     try {
-        const payload = await extractZipImagesForContainer(file, props.container?.vehicles ?? []);
-        saveContainerZipImages(containerRefKey(props.container), payload);
+        const extracted = await extractZipImagesForContainer(file, props.container?.vehicles ?? []);
+        const refs = containerRefs(props.container);
+        const containerRef = refs.container || refs.booking || '';
+
+        const payload = await uploadContainerImagesToCloud({
+            containerRef,
+            images: extracted.images,
+            apiPrefix: '/admin',
+            replace: true,
+        });
+
+        applyCloudinaryContainerPayload(containerRefKey(props.container), payload);
+
+        for (const image of extracted.images) {
+            if (image.url?.startsWith('blob:')) {
+                URL.revokeObjectURL(image.url);
+            }
+        }
 
         toast.add({
             severity: 'success',
-            summary: 'تم استخراج الصور',
-            detail: `${payload.images.length} صورة — افتح قائمة السيارات لعرضها`,
+            summary: 'تم رفع الصور إلى Cloudinary',
+            detail: `${payload.meta?.count ?? payload.images?.length ?? 0} صورة — افتح قائمة السيارات لعرضها`,
             life: 4000,
         });
-    } catch {
+    } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'تعذّر فتح ملف ZIP',
-            life: 4000,
+            summary: 'تعذّر رفع الصور',
+            detail: e.response?.data?.message || e.message || 'تحقق من إعداد Cloudinary',
+            life: 5000,
         });
     } finally {
         zipLoading.value = false;

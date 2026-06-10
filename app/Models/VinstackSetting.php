@@ -18,6 +18,11 @@ class VinstackSetting extends Model
         'last_auto_sync_at',
         'support_phone',
         'vehicle_options',
+        'cloudinary_cloud_name',
+        'cloudinary_api_key',
+        'cloudinary_api_secret',
+        'cloudinary_upload_preset',
+        'cloudinary_folder',
     ];
 
     protected function casts(): array
@@ -25,6 +30,7 @@ class VinstackSetting extends Model
         return [
             'api_token' => 'encrypted',
             'gallery_api_token' => 'encrypted',
+            'cloudinary_api_secret' => 'encrypted',
             'gallery_token_expired' => 'boolean',
             'gallery_token_checked_at' => 'datetime',
             'sync_enabled' => 'boolean',

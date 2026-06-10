@@ -6,6 +6,7 @@ use App\Actions\SyncVehiclesAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateVinstackSettingsRequest;
 use App\Models\VinstackSetting;
+use App\Services\CloudinaryService;
 use App\Services\VinstackGalleryService;
 use Illuminate\Http\JsonResponse;
 
@@ -33,6 +34,10 @@ class VinstackSettingsController extends Controller
             unset($data['gallery_api_token']);
         }
 
+        if (array_key_exists('cloudinary_api_secret', $data) && blank($data['cloudinary_api_secret'])) {
+            unset($data['cloudinary_api_secret']);
+        }
+
         if (array_key_exists('support_phone', $data) && blank($data['support_phone'])) {
             $data['support_phone'] = null;
         }
@@ -52,6 +57,16 @@ class VinstackSettingsController extends Controller
     public function testGallery(VinstackGalleryService $gallery): JsonResponse
     {
         $result = $gallery->probeSettings();
+
+        return response()->json([
+            'data' => $result,
+            'message' => $result['message'],
+        ], $result['ok'] ? 200 : 422);
+    }
+
+    public function testCloudinary(CloudinaryService $cloudinary): JsonResponse
+    {
+        $result = $cloudinary->probe();
 
         return response()->json([
             'data' => $result,
@@ -94,6 +109,12 @@ class VinstackSettingsController extends Controller
             'last_sync_at' => $settings->last_sync_at,
             'last_auto_sync_at' => $settings->last_auto_sync_at,
             'support_phone' => $settings->support_phone ?? '',
+            'cloudinary_cloud_name' => $settings->cloudinary_cloud_name ?? '',
+            'has_cloudinary_api_key' => (bool) $settings->cloudinary_api_key,
+            'has_cloudinary_api_secret' => (bool) $settings->cloudinary_api_secret,
+            'cloudinary_upload_preset' => $settings->cloudinary_upload_preset ?? '',
+            'cloudinary_folder' => $settings->cloudinary_folder ?? '',
+            'cloudinary_configured' => app(CloudinaryService::class)->isConfigured(),
         ];
     }
 }
