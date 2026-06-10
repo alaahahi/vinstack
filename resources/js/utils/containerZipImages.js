@@ -273,6 +273,17 @@ export function containerGalleryUrls(zipPayload) {
     return zipPayload.images.map((image) => image.url);
 }
 
+/** Count ZIP images matched to a vehicle VIN (excludes server thumbnails). */
+export function vehicleZipImageCount(vehicle, zipPayload) {
+    if (! vehicle || ! zipPayload?.byVin) {
+        return 0;
+    }
+
+    const vin = normalizeVin(vehicle?.vin);
+
+    return vin ? (zipPayload.byVin[vin]?.length ?? 0) : 0;
+}
+
 export function containerRefKey(container) {
     return normalizeContainerKey(
         container?.container_number

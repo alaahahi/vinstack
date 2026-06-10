@@ -56,7 +56,17 @@
                 :disabled="loading"
                 @click="triggerZipUpload"
             />
-            <span v-if="zipMeta" class="zip-meta">
+            <button
+                v-if="zipMeta && zipPayload"
+                type="button"
+                class="zip-meta zip-meta--link"
+                title="عرض كل صور الحاوية"
+                @click="openContainerGallery"
+            >
+                <i class="pi pi-images" />
+                {{ zipMeta.count }} صورة ({{ zipMeta.matched }} مطابقة)
+            </button>
+            <span v-else-if="zipMeta" class="zip-meta">
                 <i class="pi pi-images" />
                 {{ zipMeta.count }} صورة ({{ zipMeta.matched }} مطابقة)
             </span>
@@ -66,7 +76,7 @@
                 label="معرض الحاوية"
                 size="small"
                 severity="info"
-                text
+                outlined
                 @click="openContainerGallery"
             />
         </div>
@@ -151,10 +161,13 @@
                         class="images-truck-btn"
                         :class="{ 'images-truck-btn--active': hasGallery(data) }"
                         :disabled="!hasGallery(data)"
-                        :title="hasGallery(data) ? 'عرض الصور' : 'لا توجد صور'"
+                        :title="galleryButtonTitle(data)"
                         @click="openVehicleGallery(data)"
                     >
                         <i class="pi pi-truck" />
+                        <span v-if="galleryImageCount(data)" class="images-truck-count">
+                            {{ galleryImageCount(data) }}
+                        </span>
                     </button>
                 </template>
             </Column>
@@ -168,17 +181,58 @@
 
         <VueEasyLightbox
             :visible="containerGalleryVisible"
-            :imgs="containerGalleryImgs"
+            :imgs="containerLightboxSlide"
             :index="0"
             :rtl="true"
             teleport="body"
-            @hide="containerGalleryVisible = false"
+            @hide="closeContainerGallery"
         />
+
+        <Teleport to="body">
+            <div
+                v-if="containerGalleryVisible && containerGalleryImgs.length > 1"
+                class="gallery-nav-bar"
+                role="navigation"
+                aria-label="تنقل صور الحاوية"
+            >
+                <button
+                    type="button"
+                    class="gallery-nav-btn"
+                    :disabled="containerGalleryIndex === 0"
+                    aria-label="الصورة السابقة"
+                    @click="containerGalleryPrev"
+                >
+                    <i class="pi pi-chevron-right" />
+                </button>
+                <span class="gallery-nav-counter">
+                    {{ containerGalleryIndex + 1 }} / {{ containerGalleryImgs.length }}
+                </span>
+                <button
+                    type="button"
+                    class="gallery-nav-btn"
+                    :disabled="containerGalleryIndex >= containerGalleryImgs.length - 1"
+                    aria-label="الصورة التالية"
+                    @click="containerGalleryNext"
+                >
+                    <i class="pi pi-chevron-left" />
+                </button>
+            </div>
+            <div
+                v-if="containerGalleryVisible"
+                class="gallery-stage-bar"
+                role="status"
+            >
+                <span class="gallery-stage-tab active">
+                    <span class="gallery-stage-label">معرض الحاوية</span>
+                    <span class="gallery-stage-count">{{ containerGalleryImgs.length }}</span>
+                </span>
+            </div>
+        </Teleport>
     </Dialog>
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import Dialog from 'primevue/dialog';
 import DataTable from 'primevue/datatable';
@@ -197,7 +251,7 @@ import {
     formatContainerDate,
 } from '../utils/containerMeta';
 import { vehicleTitle as buildVehicleTitle } from '../utils/vehicleMeta';
-import { hasVehicleGallery, hasVehiclePreview } from '../utils/vehicleImages';
+import { hasVehicleGallery, hasVehiclePreview, vehicleGalleryCount } from '../utils/vehicleImages';
 import {
     containerGalleryUrls,
     containerRefKey,
@@ -206,6 +260,7 @@ import {
     getContainerZipImages,
     mergeZipImagesIntoVehicle,
     saveContainerZipImages,
+    vehicleZipImageCount,
 } from '../utils/containerZipImages';
 
 const props = defineProps({
@@ -242,6 +297,7 @@ const zipPayload = ref(null);
 const galleryVisible = ref(false);
 const galleryVehicle = ref(null);
 const containerGalleryVisible = ref(false);
+const containerGalleryIndex = ref(0);
 
 const dialogVisible = computed({
     get: () => props.visible,
@@ -284,6 +340,12 @@ const containerGalleryImgs = computed(() => {
     }));
 });
 
+const containerLightboxSlide = computed(() => {
+    const slide = containerGalleryImgs.value[containerGalleryIndex.value];
+
+    return slide ? [slide] : [];
+});
+
 const apiPrefix = computed(() => (props.apiRole === 'dealer' ? '/dealer' : '/admin'));
 
 function vehicleTitle(vehicle) {
@@ -306,17 +368,80 @@ function hasGallery(vehicle) {
     return hasVehicleGallery(merged) || hasVehiclePreview(merged);
 }
 
+function galleryImageCount(vehicle) {
+    const merged = displayVehicle(vehicle);
+
+    return vehicleGalleryCount(merged);
+}
+
+function galleryButtonTitle(vehicle) {
+    const count = galleryImageCount(vehicle);
+
+    if (! count) {
+        return 'لا توجد صور';
+    }
+
+    const zipCount = vehicleZipImageCount(vehicle, zipPayload.value);
+
+    if (zipCount && zipCount < count) {
+        return `عرض ${count} صورة (${zipCount} من ZIP)`;
+    }
+
+    return `عرض ${count} صورة`;
+}
+
 function openVehicleGallery(vehicle) {
+    if (! hasGallery(vehicle)) {
+        return;
+    }
+
     galleryVehicle.value = displayVehicle(vehicle);
     galleryVisible.value = true;
 }
 
 function openContainerGallery() {
     if (! containerGalleryImgs.value.length) {
+        toast.add({
+            severity: 'warn',
+            summary: 'لا توجد صور',
+            detail: 'ارفع ملف ZIP يحتوي صوراً أولاً',
+            life: 3500,
+        });
+
         return;
     }
 
+    containerGalleryIndex.value = 0;
     containerGalleryVisible.value = true;
+}
+
+function closeContainerGallery() {
+    containerGalleryVisible.value = false;
+    containerGalleryIndex.value = 0;
+}
+
+function containerGalleryPrev() {
+    if (containerGalleryIndex.value > 0) {
+        containerGalleryIndex.value -= 1;
+    }
+}
+
+function containerGalleryNext() {
+    if (containerGalleryIndex.value < containerGalleryImgs.value.length - 1) {
+        containerGalleryIndex.value += 1;
+    }
+}
+
+function onContainerGalleryKeydown(event) {
+    if (! containerGalleryVisible.value) {
+        return;
+    }
+
+    if (event.key === 'ArrowLeft') {
+        containerGalleryNext();
+    } else if (event.key === 'ArrowRight') {
+        containerGalleryPrev();
+    }
 }
 
 function containerApiRef() {
@@ -364,7 +489,7 @@ function onShow() {
 function onHide() {
     error.value = null;
     galleryVisible.value = false;
-    containerGalleryVisible.value = false;
+    closeContainerGallery();
 }
 
 function triggerZipUpload() {
@@ -393,8 +518,17 @@ async function onZipSelected(event) {
             severity: 'success',
             summary: 'تم استخراج الصور',
             detail: `${payload.images.length} صورة — ${Object.keys(payload.byVin).length} مطابقة لشاصي`,
-            life: 4000,
+            life: 5000,
         });
+
+        window.setTimeout(() => {
+            toast.add({
+                severity: 'info',
+                summary: 'عرض الصور',
+                detail: 'اضغط «معرض الحاوية» أو أيقونة الشاحنة في عمود صور لعرض المعرض',
+                life: 7000,
+            });
+        }, 400);
     } catch {
         toast.add({
             severity: 'error',
@@ -415,6 +549,14 @@ watch(
         }
     },
 );
+
+onMounted(() => {
+    window.addEventListener('keydown', onContainerGalleryKeydown);
+});
+
+onBeforeUnmount(() => {
+    window.removeEventListener('keydown', onContainerGalleryKeydown);
+});
 </script>
 
 <style scoped>
@@ -496,6 +638,21 @@ watch(
     color: var(--vs-text-muted);
 }
 
+.zip-meta--link {
+    padding: 0.25rem 0.5rem;
+    border: 1px solid rgb(37 99 235 / 25%);
+    border-radius: 8px;
+    background: rgb(37 99 235 / 8%);
+    color: #2563eb;
+    cursor: pointer;
+    font: inherit;
+    transition: background 0.12s ease;
+}
+
+.zip-meta--link:hover {
+    background: rgb(37 99 235 / 15%);
+}
+
 .cars-dialog-loading,
 .cars-dialog-error {
     display: flex;
@@ -543,6 +700,7 @@ watch(
 }
 
 .images-truck-btn {
+    position: relative;
     width: 2.25rem;
     height: 2.25rem;
     border: 1px solid var(--vs-border);
@@ -553,6 +711,23 @@ watch(
     display: grid;
     place-items: center;
     transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+
+.images-truck-count {
+    position: absolute;
+    top: -0.35rem;
+    inset-inline-end: -0.35rem;
+    min-width: 1rem;
+    height: 1rem;
+    padding: 0 0.2rem;
+    border-radius: 999px;
+    background: #2563eb;
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 1rem;
+    text-align: center;
+    pointer-events: none;
 }
 
 .images-truck-btn--active {
@@ -631,5 +806,10 @@ watch(
 
 [data-theme='dark'] .container-cars-dialog .p-dialog-content {
     background: var(--vs-surface);
+}
+
+.container-cars-dialog ~ .vel-modal,
+body > .vel-modal {
+    z-index: 11000 !important;
 }
 </style>
