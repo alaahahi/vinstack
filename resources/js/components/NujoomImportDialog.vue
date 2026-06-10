@@ -31,6 +31,28 @@
                 <span v-if="preview.counts.errors" class="count-badge count-badge--error">أخطاء: {{ preview.counts.errors }}</span>
             </div>
 
+            <div class="apply-mode">
+                <h4>طريقة التطبيق</h4>
+                <div class="apply-mode-options">
+                    <label
+                        v-for="option in applyModeOptions"
+                        :key="option.value"
+                        class="apply-mode-option"
+                        :class="{ 'apply-mode-option--active': applyMode === option.value }"
+                    >
+                        <input
+                            v-model="applyMode"
+                            type="radio"
+                            name="nujoom-apply-mode"
+                            :value="option.value"
+                            :disabled="previewing || applying"
+                        />
+                        <span class="apply-mode-label">{{ option.label }}</span>
+                        <span class="apply-mode-hint">{{ option.hint }}</span>
+                    </label>
+                </div>
+            </div>
+
             <div v-if="preview.errors?.length" class="preview-section">
                 <h4>أخطاء</h4>
                 <ul class="error-list">
@@ -92,7 +114,7 @@
             />
             <Button
                 v-else
-                label="تطبيق الاستيراد"
+                :label="applyButtonLabel"
                 icon="pi pi-check"
                 class="btn-add"
                 :loading="applying"
@@ -135,6 +157,25 @@ const selectedFile = ref(null);
 const preview = ref(null);
 const previewing = ref(false);
 const applying = ref(false);
+const applyMode = ref('all');
+
+const applyModeOptions = [
+    {
+        value: 'all',
+        label: 'تطبيق الكل',
+        hint: 'إضافة الجديد وتحديث الموجود',
+    },
+    {
+        value: 'updates_only',
+        label: 'تحديث السيارات فقط',
+        hint: 'تخطي السيارات الجديدة — تحديث الشاصيات الموجودة فقط',
+    },
+    {
+        value: 'add_only',
+        label: 'إضافة الجديد فقط',
+        hint: 'تخطي التحديثات — إضافة السيارات الجديدة فقط',
+    },
+];
 
 const canApply = computed(() => {
     if (! preview.value) {
@@ -143,7 +184,27 @@ const canApply = computed(() => {
 
     const counts = preview.value.counts ?? {};
 
+    if (applyMode.value === 'updates_only') {
+        return (counts.to_update ?? 0) > 0;
+    }
+
+    if (applyMode.value === 'add_only') {
+        return (counts.to_add ?? 0) > 0;
+    }
+
     return (counts.to_add ?? 0) + (counts.to_update ?? 0) > 0;
+});
+
+const applyButtonLabel = computed(() => {
+    if (applyMode.value === 'updates_only') {
+        return 'تحديث السيارات فقط';
+    }
+
+    if (applyMode.value === 'add_only') {
+        return 'إضافة الجديد فقط';
+    }
+
+    return 'تطبيق الاستيراد';
 });
 
 watch(() => props.visible, (open) => {
@@ -162,6 +223,7 @@ function reset() {
     preview.value = null;
     previewing.value = false;
     applying.value = false;
+    applyMode.value = 'all';
 
     if (fileInput.value) {
         fileInput.value.value = '';
@@ -204,8 +266,18 @@ async function runPreview() {
 function confirmApply() {
     const counts = preview.value?.counts ?? {};
 
+    let message;
+
+    if (applyMode.value === 'updates_only') {
+        message = `تأكيد تحديث ${counts.to_update ?? 0} سيارة موجودة فقط (بدون إضافة جديد)؟`;
+    } else if (applyMode.value === 'add_only') {
+        message = `تأكيد إضافة ${counts.to_add ?? 0} سيارة جديدة و${counts.containers_new ?? 0} حاوية (بدون تحديث)؟`;
+    } else {
+        message = `تأكيد الاستيراد: ${counts.to_add ?? 0} جديد، ${counts.to_update ?? 0} تحديث، ${counts.containers_new ?? 0} حاوية جديدة؟`;
+    }
+
     confirm.require({
-        message: `تأكيد الاستيراد: ${counts.to_add ?? 0} جديد، ${counts.to_update ?? 0} تحديث، ${counts.containers_new ?? 0} حاوية جديدة؟`,
+        message,
         header: 'تأكيد الاستيراد',
         icon: 'pi pi-upload',
         rejectLabel: 'إلغاء',
@@ -225,6 +297,7 @@ async function runApply() {
         const { data } = await api.post('/admin/vehicles/import/nujoom/apply', {
             preview_token: preview.value.preview_token,
             confirmed: true,
+            mode: applyMode.value,
         });
 
         toast.add({
@@ -320,5 +393,61 @@ async function runApply() {
     margin: 0;
     padding-inline-start: 1.25rem;
     color: #b91c1c;
+}
+
+.apply-mode {
+    margin-bottom: 1rem;
+    padding: 0.85rem 1rem;
+    border-radius: 10px;
+    background: var(--vs-surface-muted, #f8fafc);
+    border: 1px solid var(--vs-border, #e2e8f0);
+}
+
+.apply-mode h4 {
+    margin: 0 0 0.65rem;
+    font-size: 0.95rem;
+}
+
+.apply-mode-options {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.apply-mode-option {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem 0.65rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid transparent;
+    cursor: pointer;
+    transition: background 0.15s, border-color 0.15s;
+}
+
+.apply-mode-option:hover {
+    background: #fff;
+}
+
+.apply-mode-option--active {
+    background: #fff;
+    border-color: #93c5fd;
+}
+
+.apply-mode-option input {
+    margin: 0;
+}
+
+.apply-mode-label {
+    font-weight: 600;
+    color: var(--vs-text, #0f172a);
+}
+
+.apply-mode-hint {
+    flex-basis: 100%;
+    padding-inline-start: 1.35rem;
+    font-size: 0.82rem;
+    color: var(--vs-text-muted, #64748b);
 }
 </style>

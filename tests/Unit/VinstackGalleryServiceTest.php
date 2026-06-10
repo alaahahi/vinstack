@@ -233,4 +233,62 @@ class VinstackGalleryServiceTest extends TestCase
         );
         $this->assertArrayHasKey('gallery_synced_at', $vehicle->raw_data);
     }
+
+    public function test_persist_gallery_images_preserves_list_metadata_in_raw_data(): void
+    {
+        $vin = '1HGBH41JXMN109186';
+        $vinstackId = '507f1f77bcf86cd799439011';
+        $originalCreatedAt = '2024-06-01T10:00:00+00:00';
+
+        VinstackSetting::query()->create([
+            'gallery_api_base_url' => 'https://app.vinstack.com/api/client-portal',
+            'gallery_api_token' => 'gallery-token',
+        ]);
+
+        Http::fake([
+            'https://app.vinstack.com/api/client-portal/autos/'.$vin.'/gallery' => Http::response([
+                'data' => [
+                    'id' => $vinstackId,
+                    'created_at' => '2019-01-01T00:00:00+00:00',
+                    'status' => 'Delivered',
+                    'source' => 'client_portal',
+                    'terminal' => [
+                        'urls' => ['https://cdn.example.com/terminal-new.jpg'],
+                    ],
+                    'pickup' => [
+                        'urls' => [],
+                    ],
+                    'destination' => [
+                        'urls' => [],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $vehicle = Vehicle::query()->create([
+            'source' => VehicleSource::Vinstack,
+            'vinstack_id' => $vinstackId,
+            'vin' => $vin,
+            'status' => VehicleStatus::Available,
+            'images' => [],
+            'raw_data' => [
+                'id' => $vinstackId,
+                'created_at' => $originalCreatedAt,
+                'status' => 'In Transit',
+                'source' => VehicleSource::Vinstack->value,
+                'lot' => 'A-100',
+            ],
+        ]);
+
+        $this->galleryService()->buildGalleryPayload($vehicle->fresh());
+
+        $vehicle->refresh();
+
+        $this->assertSame($originalCreatedAt, $vehicle->raw_data['created_at'] ?? null);
+        $this->assertSame('In Transit', $vehicle->raw_data['status'] ?? null);
+        $this->assertSame(VehicleSource::Vinstack->value, $vehicle->raw_data['source'] ?? null);
+        $this->assertSame('A-100', $vehicle->raw_data['lot'] ?? null);
+        $this->assertSame(VehicleSource::Vinstack, $vehicle->source);
+        $this->assertSame(VehicleStatus::Available, $vehicle->status);
+    }
 }

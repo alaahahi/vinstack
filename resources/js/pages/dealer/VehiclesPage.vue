@@ -133,8 +133,8 @@ function openDetail(vehicle) {
     detailVisible.value = true;
 }
 
-function onGalleryUpdated(updatedVehicle) {
-    vehicles.value = replaceVehicleInList(vehicles.value, updatedVehicle);
+function onGalleryUpdated(galleryPayload, vehicleId) {
+    vehicles.value = replaceVehicleInList(vehicles.value, galleryPayload, vehicleId);
 }
 
 async function saveStatus() {

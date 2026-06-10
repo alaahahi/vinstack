@@ -6,7 +6,7 @@
                 :vehicle="vehicle"
                 variant="row"
                 :api-mode="mode"
-                @gallery-updated="$emit('gallery-updated', $event)"
+                @gallery-updated="(...args) => $emit('gallery-updated', ...args)"
             />
             <div class="vehicle-info">
                 <div class="title-line">

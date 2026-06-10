@@ -242,7 +242,7 @@ async function openGallery() {
             const payload = await fetchLiveVehicleGallery(vehicleId, props.apiMode);
             const merged = mergeGalleryIntoVehicle(props.vehicle, payload);
             lightboxVehicle.value = merged;
-            emit('gallery-updated', merged);
+            emit('gallery-updated', payload, vehicleId);
         } catch {
             lightboxVehicle.value = props.vehicle;
         } finally {

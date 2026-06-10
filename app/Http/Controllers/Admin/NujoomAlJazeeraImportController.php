@@ -2,8 +2,10 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\NujoomImportApplyMode;
 use App\Http\Controllers\Controller;
 use App\Services\NujoomAlJazeeraImportService;
+use Illuminate\Validation\Rule;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 use RuntimeException;
@@ -29,10 +31,15 @@ class NujoomAlJazeeraImportController extends Controller
         $validated = $request->validate([
             'preview_token' => ['required', 'string', 'uuid'],
             'confirmed' => ['required', 'boolean', 'accepted'],
+            'mode' => ['sometimes', 'string', Rule::enum(NujoomImportApplyMode::class)],
         ]);
 
+        $mode = isset($validated['mode'])
+            ? NujoomImportApplyMode::from($validated['mode'])
+            : NujoomImportApplyMode::All;
+
         try {
-            $result = $import->apply($validated['preview_token']);
+            $result = $import->apply($validated['preview_token'], $mode);
         } catch (RuntimeException $e) {
             return response()->json([
                 'message' => $e->getMessage(),
@@ -41,12 +48,31 @@ class NujoomAlJazeeraImportController extends Controller
 
         return response()->json([
             'data' => $result,
-            'message' => sprintf(
+            'message' => $this->applyResultMessage($result),
+        ]);
+    }
+
+    /**
+     * @param  array{created: int, updated: int, containers_new: int, mode: string}  $result
+     */
+    protected function applyResultMessage(array $result): string
+    {
+        return match ($result['mode']) {
+            NujoomImportApplyMode::UpdatesOnly->value => sprintf(
+                'تم تحديث %d سيارة.',
+                $result['updated'],
+            ),
+            NujoomImportApplyMode::AddOnly->value => sprintf(
+                'تمت إضافة %d سيارة جديدة، %d حاوية جديدة.',
+                $result['created'],
+                $result['containers_new'],
+            ),
+            default => sprintf(
                 'تم الاستيراد: %d جديد، %d تحديث، %d حاوية جديدة.',
                 $result['created'],
                 $result['updated'],
                 $result['containers_new'],
             ),
-        ]);
+        };
     }
 }

@@ -2,6 +2,7 @@
 
 namespace Tests\Unit;
 
+use App\Enums\NujoomImportApplyMode;
 use App\Enums\VehicleSource;
 use App\Enums\VehicleStatus;
 use App\Models\Vehicle;
@@ -193,5 +194,108 @@ class NujoomAlJazeeraImportServiceTest extends TestCase
         $this->assertSame('Loading', $updated->raw_data['status']);
         $this->assertSame(VehicleSource::NujoomAlJazeera, $created->source);
         $this->assertNull(Cache::get('nujoom_import_preview:'.$token));
+    }
+
+    public function test_apply_updates_only_skips_new_vehicles(): void
+    {
+        Vehicle::query()->create([
+            'source' => VehicleSource::Vinstack,
+            'vinstack_id' => 'vs-existing',
+            'vin' => '1HGCY2F54SA066635',
+            'make' => 'Honda',
+            'model' => 'Accord',
+            'year' => 2024,
+            'status' => VehicleStatus::Available,
+            'raw_data' => ['status' => 'Old'],
+        ]);
+
+        $this->mock(ContainerService::class, function ($mock) {
+            $mock->shouldReceive('listForAdmin')->andReturn([]);
+        });
+
+        $service = app(NujoomAlJazeeraImportService::class);
+        $preview = $service->buildPreview([
+            [
+                '_excel_row' => 2,
+                'auction_photo' => 'HONDA ACCORD HYBRID SPORT 2025',
+                'lot_and_vin' => 'Lot# 44750097Vin# 1HGCY2F54SA066635',
+                'auction' => 'Boston | IAA',
+                'destination' => 'MERSIN, TURKEY (TRMER)',
+                'tracking' => 'Loading',
+            ],
+            [
+                '_excel_row' => 3,
+                'auction_photo' => 'TOYOTA CAMRY SE 2025',
+                'lot_and_vin' => 'Lot# 44711908Vin# 4T1DAACK6SU551977',
+                'auction' => 'Miami | IAA',
+                'destination' => 'MERSIN, TURKEY (TRMER)',
+            ],
+        ]);
+
+        $token = '22222222-2222-2222-2222-222222222222';
+        Cache::put('nujoom_import_preview:'.$token, $preview, 600);
+
+        $result = $service->apply($token, NujoomImportApplyMode::UpdatesOnly);
+
+        $this->assertSame(0, $result['created']);
+        $this->assertSame(1, $result['updated']);
+        $this->assertSame(0, $result['containers_new']);
+        $this->assertSame('updates_only', $result['mode']);
+
+        $this->assertDatabaseHas('vehicles', ['vin' => '1HGCY2F54SA066635']);
+        $this->assertDatabaseMissing('vehicles', ['vin' => '4T1DAACK6SU551977']);
+
+        $updated = Vehicle::query()->where('vin', '1HGCY2F54SA066635')->first();
+        $this->assertSame('Loading', $updated->raw_data['status']);
+    }
+
+    public function test_apply_add_only_skips_updates(): void
+    {
+        Vehicle::query()->create([
+            'source' => VehicleSource::Vinstack,
+            'vinstack_id' => 'vs-existing',
+            'vin' => '1HGCY2F54SA066635',
+            'make' => 'Honda',
+            'model' => 'Accord',
+            'year' => 2024,
+            'status' => VehicleStatus::Available,
+            'raw_data' => ['status' => 'Old'],
+        ]);
+
+        $this->mock(ContainerService::class, function ($mock) {
+            $mock->shouldReceive('listForAdmin')->andReturn([]);
+        });
+
+        $service = app(NujoomAlJazeeraImportService::class);
+        $preview = $service->buildPreview([
+            [
+                '_excel_row' => 2,
+                'auction_photo' => 'HONDA ACCORD HYBRID SPORT 2025',
+                'lot_and_vin' => 'Lot# 44750097Vin# 1HGCY2F54SA066635',
+                'auction' => 'Boston | IAA',
+                'destination' => 'MERSIN, TURKEY (TRMER)',
+                'tracking' => 'Loading',
+            ],
+            [
+                '_excel_row' => 3,
+                'auction_photo' => 'TOYOTA CAMRY SE 2025',
+                'lot_and_vin' => 'Lot# 44711908Vin# 4T1DAACK6SU551977',
+                'auction' => 'Miami | IAA',
+                'destination' => 'MERSIN, TURKEY (TRMER)',
+            ],
+        ]);
+
+        $token = '33333333-3333-3333-3333-333333333333';
+        Cache::put('nujoom_import_preview:'.$token, $preview, 600);
+
+        $result = $service->apply($token, NujoomImportApplyMode::AddOnly);
+
+        $this->assertSame(1, $result['created']);
+        $this->assertSame(0, $result['updated']);
+        $this->assertSame('add_only', $result['mode']);
+
+        $updated = Vehicle::query()->where('vin', '1HGCY2F54SA066635')->first();
+        $this->assertSame('Old', $updated->raw_data['status']);
+        $this->assertDatabaseHas('vehicles', ['vin' => '4T1DAACK6SU551977']);
     }
 }

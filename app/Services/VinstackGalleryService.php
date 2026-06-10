@@ -18,6 +18,35 @@ class VinstackGalleryService
 {
     public const DEFAULT_BASE_URL = 'https://app.vinstack.com/api/client-portal';
 
+    /** @var list<string> */
+    protected const GALLERY_RAW_DATA_KEYS = [
+        'terminal',
+        'pickup',
+        'destination',
+        'gallery',
+        'photos',
+        'images',
+        'images_by_stage',
+        'thumbnail_url',
+    ];
+
+    /** Keys that must never be overwritten by client-portal gallery payloads. */
+    protected const PROTECTED_RAW_DATA_KEYS = [
+        'created_at',
+        'source',
+        'status',
+        'id',
+        '_id',
+        'vinstack_id',
+        'vin',
+        'make',
+        'model',
+        'year',
+        'lot',
+        'auction',
+        'loading_point',
+    ];
+
     public function __construct(
         protected VehicleUploadedImageService $uploadedImages,
     ) {}
@@ -99,7 +128,8 @@ class VinstackGalleryService
     protected function persistGalleryImages(Vehicle $vehicle, array $livePayload): array
     {
         $existingRaw = is_array($vehicle->raw_data) ? $vehicle->raw_data : [];
-        $mergedSource = array_merge($existingRaw, $livePayload);
+        $galleryPatch = Arr::only($livePayload, self::GALLERY_RAW_DATA_KEYS);
+        $mergedSource = array_merge($existingRaw, $galleryPatch);
 
         $previousStages = VehicleGalleryMerger::resolveVinstackStages($existingRaw, $vehicle);
         $nextStages = VehicleGalleryMerger::resolveVinstackStages($mergedSource, $vehicle);
@@ -114,8 +144,9 @@ class VinstackGalleryService
             return ['stored' => false, 'new_count' => 0];
         }
 
-        $rawData = array_merge($existingRaw, $livePayload);
+        $rawData = array_merge($existingRaw, $galleryPatch);
         $rawData = $this->applyClientPortalStageBlocks($rawData, $livePayload);
+        $rawData = $this->restoreProtectedRawDataKeys($rawData, $existingRaw);
         $rawData['images_by_stage'] = $nextStages;
         $rawData['images'] = $nextUrls;
 
@@ -180,6 +211,22 @@ class VinstackGalleryService
         }
 
         return $target;
+    }
+
+    /**
+     * @param  array<string, mixed>  $rawData
+     * @param  array<string, mixed>  $existingRaw
+     * @return array<string, mixed>
+     */
+    protected function restoreProtectedRawDataKeys(array $rawData, array $existingRaw): array
+    {
+        foreach (self::PROTECTED_RAW_DATA_KEYS as $key) {
+            if (array_key_exists($key, $existingRaw)) {
+                $rawData[$key] = $existingRaw[$key];
+            }
+        }
+
+        return $rawData;
     }
 
     /**

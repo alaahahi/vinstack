@@ -5,6 +5,43 @@ export function vehicleUsesLiveGallery(vehicle) {
     return vehicle?.source === 'vinstack';
 }
 
+/** @param {unknown} left @param {unknown} right */
+export function sameVehicleId(left, right) {
+    if (left == null || right == null) {
+        return false;
+    }
+
+    return String(left) === String(right);
+}
+
+const LIST_IDENTITY_KEYS = [
+    'id',
+    'source',
+    'status',
+    'active_assignment',
+    'vinstack_id',
+    'vin',
+    'make',
+    'model',
+    'year',
+    'price',
+    'notes',
+    'created_at',
+    'updated_at',
+];
+
+function preserveListIdentity(vehicle, merged) {
+    const next = { ...merged };
+
+    for (const key of LIST_IDENTITY_KEYS) {
+        if (vehicle?.[key] !== undefined && vehicle?.[key] !== null) {
+            next[key] = vehicle[key];
+        }
+    }
+
+    return next;
+}
+
 /**
  * @param {number|string} vehicleId
  * @param {'admin'|'dealer'} mode
@@ -83,26 +120,59 @@ export function summarizeGalleryApiResponse(payload) {
 }
 
 /**
- * Replace a vehicle in a list array after a live gallery fetch merged new image data.
+ * Merge live gallery data into an existing list row (preserve id, source, status, assignment).
  * @param {Array<object>} vehicles
- * @param {object} updated
+ * @param {object} galleryPayload live gallery API payload (or legacy merged vehicle)
+ * @param {number|string|null|undefined} vehicleId optional list row id override
  * @returns {Array<object>}
  */
-export function replaceVehicleInList(vehicles, updated) {
-    if (! Array.isArray(vehicles) || ! updated?.id) {
+export function replaceVehicleInList(vehicles, galleryPayload, vehicleId = undefined) {
+    if (! Array.isArray(vehicles) || ! galleryPayload) {
         return vehicles;
     }
 
-    const index = vehicles.findIndex((vehicle) => vehicle.id === updated.id);
+    const targetId = vehicleId ?? galleryPayload.vehicle_id ?? galleryPayload.id;
+
+    if (targetId == null || targetId === '') {
+        return vehicles;
+    }
+
+    const index = vehicles.findIndex((vehicle) => sameVehicleId(vehicle.id, targetId));
 
     if (index === -1) {
         return vehicles;
     }
 
+    const existing = vehicles[index];
+    const payload = galleryPayload.gallery_fresh !== undefined
+        || galleryPayload.images_by_stage !== undefined
+        || galleryPayload.gallery_error !== undefined
+        ? galleryPayload
+        : toGalleryPayloadFromMerged(galleryPayload);
     const next = [...vehicles];
-    next[index] = updated;
+    next[index] = mergeGalleryIntoVehicle(existing, payload);
 
     return next;
+}
+
+function toGalleryPayloadFromMerged(mergedVehicle) {
+    return {
+        id: mergedVehicle.id,
+        vin: mergedVehicle.vin,
+        images: mergedVehicle.images,
+        images_by_stage: mergedVehicle.images_by_stage,
+        uploaded_images: mergedVehicle.uploaded_images,
+        thumbnail_url: mergedVehicle.thumbnail_url,
+        gallery: mergedVehicle.raw_data?.gallery ?? mergedVehicle.gallery,
+        terminal: mergedVehicle.raw_data?.terminal ?? mergedVehicle.terminal,
+        pickup: mergedVehicle.raw_data?.pickup ?? mergedVehicle.pickup,
+        destination: mergedVehicle.raw_data?.destination ?? mergedVehicle.destination,
+        gallery_fresh: mergedVehicle.gallery_fresh,
+        gallery_error: mergedVehicle.gallery_error,
+        gallery_token_expired: mergedVehicle.gallery_token_expired,
+        gallery_stored: mergedVehicle.gallery_stored,
+        gallery_new_images_count: mergedVehicle.gallery_new_images_count,
+    };
 }
 
 export function mergeGalleryIntoVehicle(vehicle, galleryPayload) {
@@ -117,7 +187,7 @@ export function mergeGalleryIntoVehicle(vehicle, galleryPayload) {
 
     const stageFallback = (stage) => (galleryFresh ? undefined : staleRaw[stage]);
 
-    return {
+    return preserveListIdentity(vehicle, {
         ...vehicle,
         images: galleryPayload.images ?? (galleryFresh ? undefined : vehicle.images),
         images_by_stage: imagesByStage,
@@ -139,5 +209,5 @@ export function mergeGalleryIntoVehicle(vehicle, galleryPayload) {
             pickup: clientPortalStageBlock(galleryPayload, 'pickup', stageFallback('pickup')),
             destination: clientPortalStageBlock(galleryPayload, 'destination', stageFallback('destination')),
         },
-    };
+    });
 }

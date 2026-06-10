@@ -335,9 +335,12 @@ async function loadLiveGallery() {
     }
 }
 
-function onCompactGalleryUpdated(mergedVehicle) {
-    displayVehicle.value = mergedVehicle;
-    emit('updated', mergedVehicle);
+function onCompactGalleryUpdated(galleryPayload, vehicleId) {
+    displayVehicle.value = mergeGalleryIntoVehicle(
+        props.vehicle,
+        galleryPayload,
+    );
+    emit('updated', displayVehicle.value);
 }
 
 onMounted(loadLiveGallery);

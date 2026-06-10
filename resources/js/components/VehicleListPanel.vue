@@ -78,7 +78,7 @@
 
                 @edit="$emit('edit', $event)"
 
-                @gallery-updated="$emit('gallery-updated', $event)"
+                @gallery-updated="(...args) => emit('gallery-updated', ...args)"
 
             />
 

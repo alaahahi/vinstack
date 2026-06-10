@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\NujoomImportApplyMode;
 use App\Enums\VehicleSource;
 use App\Enums\VehicleStatus;
 use App\Models\Vehicle;
@@ -91,9 +92,9 @@ class NujoomAlJazeeraImportService
     }
 
     /**
-     * @return array{created: int, updated: int, containers_new: int}
+     * @return array{created: int, updated: int, containers_new: int, mode: string}
      */
-    public function apply(string $previewToken): array
+    public function apply(string $previewToken, NujoomImportApplyMode $mode = NujoomImportApplyMode::All): array
     {
         $preview = Cache::get($this->cacheKey($previewToken));
 
@@ -110,21 +111,28 @@ class NujoomAlJazeeraImportService
             throw new RuntimeException('انتهت صلاحية المعاينة — يرجى رفع الملف مرة أخرى.');
         }
 
-        DB::transaction(function () use ($full, &$created, &$updated) {
-            foreach ($full['to_add'] as $item) {
-                $this->createVehicle($item);
-                $created++;
+        $shouldAdd = $mode !== NujoomImportApplyMode::UpdatesOnly;
+        $shouldUpdate = $mode !== NujoomImportApplyMode::AddOnly;
+
+        DB::transaction(function () use ($full, $shouldAdd, $shouldUpdate, &$created, &$updated) {
+            if ($shouldAdd) {
+                foreach ($full['to_add'] as $item) {
+                    $this->createVehicle($item);
+                    $created++;
+                }
             }
 
-            foreach ($full['to_update'] as $item) {
-                $vehicle = Vehicle::query()->find($item['vehicle_id']);
+            if ($shouldUpdate) {
+                foreach ($full['to_update'] as $item) {
+                    $vehicle = Vehicle::query()->find($item['vehicle_id']);
 
-                if ($vehicle === null) {
-                    continue;
+                    if ($vehicle === null) {
+                        continue;
+                    }
+
+                    $this->updateVehicle($vehicle, $item);
+                    $updated++;
                 }
-
-                $this->updateVehicle($vehicle, $item);
-                $updated++;
             }
         });
 
@@ -133,8 +141,42 @@ class NujoomAlJazeeraImportService
         return [
             'created' => $created,
             'updated' => $updated,
-            'containers_new' => count($preview['containers_new']),
+            'containers_new' => $this->containersNewCountForMode($preview, $mode),
+            'mode' => $mode->value,
         ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $preview
+     */
+    protected function containersNewCountForMode(array $preview, NujoomImportApplyMode $mode): int
+    {
+        if ($mode === NujoomImportApplyMode::UpdatesOnly) {
+            return 0;
+        }
+
+        if ($mode === NujoomImportApplyMode::AddOnly) {
+            $newVehicleContainers = [];
+
+            foreach ($preview['to_add'] ?? [] as $item) {
+                $number = $this->normalizeContainerNumber($item['container_number'] ?? null);
+
+                if ($number !== null) {
+                    $newVehicleContainers[$number] = true;
+                }
+            }
+
+            return count(array_filter(
+                $preview['containers_new'] ?? [],
+                function (array $container) use ($newVehicleContainers) {
+                    $number = $this->normalizeContainerNumber($container['container_number'] ?? null);
+
+                    return $number !== null && isset($newVehicleContainers[$number]);
+                },
+            ));
+        }
+
+        return count($preview['containers_new'] ?? []);
     }
 
     /**
