@@ -107,7 +107,7 @@ class ContainerTrackingService
      */
     protected function resolve(string $containerNumber, ?array $container): array
     {
-        $cacheKey = 'container_tracking:'.md5(strtoupper(trim($containerNumber)));
+        $cacheKey = 'container_tracking:v2:'.md5(strtoupper(trim($containerNumber)));
 
         $cached = Cache::get($cacheKey);
 
@@ -235,6 +235,10 @@ class ContainerTrackingService
         $currentPosition = $this->resolveCurrentPosition(
             $tracking,
             is_array($rawEvents) ? $rawEvents : [],
+            $route,
+            $waypoints,
+            $origin,
+            $destination,
         );
 
         $status = $this->mapClientPortalStatus($this->stringFrom($tracking, 'status'));
@@ -296,47 +300,366 @@ class ContainerTrackingService
     /**
      * @param  array<string, mixed>  $tracking
      * @param  list<array<string, mixed>>  $rawEvents
+     * @param  list<array{0: float, 1: float}>  $route
+     * @param  list<array{name: string, lat: float, lng: float}>  $waypoints
+     * @param  array{name: string, lat: float, lng: float}|null  $origin
+     * @param  array{name: string, lat: float, lng: float}|null  $destination
      * @return array{name: string, lat: float, lng: float, label?: string}|null
      */
-    protected function resolveCurrentPosition(array $tracking, array $rawEvents): ?array
-    {
-        $explicit = Arr::get($tracking, 'current_position') ?: Arr::get($tracking, 'currentPosition');
+    protected function resolveCurrentPosition(
+        array $tracking,
+        array $rawEvents,
+        array $route = [],
+        array $waypoints = [],
+        ?array $origin = null,
+        ?array $destination = null,
+    ): ?array {
+        foreach (['current_position', 'currentPosition', 'vessel_position', 'position'] as $key) {
+            $explicit = Arr::get($tracking, $key);
 
-        if (is_array($explicit)) {
-            $resolved = $this->locationFromPort($explicit);
+            if (is_array($explicit)) {
+                $resolved = $this->snapLocationToRoutePoints(
+                    $this->locationFromPort($explicit),
+                    $tracking,
+                    $route,
+                    $waypoints,
+                    $origin,
+                    $destination,
+                );
+
+                if ($resolved !== null) {
+                    return $resolved;
+                }
+            }
+        }
+
+        $vessel = Arr::get($tracking, 'vessel');
+
+        if (is_array($vessel) && isset($vessel['lat'], $vessel['lng'])) {
+            $resolved = $this->snapLocationToRoutePoints(
+                $this->locationFromPort($vessel),
+                $tracking,
+                $route,
+                $waypoints,
+                $origin,
+                $destination,
+            );
 
             if ($resolved !== null) {
                 return $resolved;
             }
         }
 
-        $currentPosition = null;
+        $fromLatestActual = $this->currentPositionFromLatestActualEvent(
+            $rawEvents,
+            $tracking,
+            $route,
+            $waypoints,
+            $origin,
+            $destination,
+        );
 
-        foreach ($rawEvents as $event) {
-            if (! is_array($event) || ! ($event['actual'] ?? false)) {
-                continue;
+        if ($fromLatestActual !== null) {
+            return $fromLatestActual;
+        }
+
+        return $this->lastKnownPortPosition($tracking, $route, $rawEvents, $origin);
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rawEvents
+     * @param  list<array{0: float, 1: float}>  $route
+     * @param  list<array{name: string, lat: float, lng: float}>  $waypoints
+     * @param  array{name: string, lat: float, lng: float}|null  $origin
+     * @param  array{name: string, lat: float, lng: float}|null  $destination
+     * @return array{name: string, lat: float, lng: float, label?: string}|null
+     */
+    protected function currentPositionFromLatestActualEvent(
+        array $rawEvents,
+        array $tracking,
+        array $route,
+        array $waypoints,
+        ?array $origin,
+        ?array $destination,
+    ): ?array {
+        $actualEvents = array_values(array_filter(
+            $rawEvents,
+            fn ($event) => is_array($event) && ($event['actual'] ?? false),
+        ));
+
+        usort($actualEvents, function (array $a, array $b): int {
+            $dateA = $this->parseDate($this->stringFrom($a, 'date') ?? '');
+            $dateB = $this->parseDate($this->stringFrom($b, 'date') ?? '');
+
+            if ($dateA === null && $dateB === null) {
+                return 0;
             }
 
+            if ($dateA === null) {
+                return 1;
+            }
+
+            if ($dateB === null) {
+                return -1;
+            }
+
+            return $dateB->getTimestamp() <=> $dateA->getTimestamp();
+        });
+
+        foreach ($actualEvents as $event) {
             $location = Arr::get($event, 'location');
+            $resolved = null;
 
             if (is_array($location) && isset($location['lat'], $location['lng'])) {
-                $currentPosition = $this->locationFromPort($location);
+                $resolved = $this->locationFromPort($location);
+            } else {
+                $label = $this->locationLabelFromRaw($location);
 
-                continue;
+                if ($label) {
+                    $resolved = $this->locationFromRaw($label, $label);
+                }
             }
 
-            $label = $this->locationLabelFromRaw($location);
+            $resolved = $this->snapLocationToRoutePoints(
+                $resolved,
+                $tracking,
+                $route,
+                $waypoints,
+                $origin,
+                $destination,
+            );
 
-            if ($label) {
-                $geocoded = $this->locationFromRaw($label, $label);
+            if ($resolved !== null) {
+                return $resolved;
+            }
+        }
 
-                if ($geocoded !== null) {
-                    $currentPosition = $geocoded;
+        return null;
+    }
+
+    /**
+     * @param  array{name: string, lat: float, lng: float, label?: string}|null  $location
+     * @param  array<string, mixed>  $tracking
+     * @param  list<array{0: float, 1: float}>  $route
+     * @param  list<array{name: string, lat: float, lng: float}>  $waypoints
+     * @param  array{name: string, lat: float, lng: float}|null  $origin
+     * @param  array{name: string, lat: float, lng: float}|null  $destination
+     * @return array{name: string, lat: float, lng: float, label?: string}|null
+     */
+    protected function snapLocationToRoutePoints(
+        ?array $location,
+        array $tracking,
+        array $route,
+        array $waypoints,
+        ?array $origin,
+        ?array $destination,
+    ): ?array {
+        if ($location === null) {
+            return null;
+        }
+
+        $needle = strtolower(trim($location['name'] ?? ''));
+
+        if ($needle === '') {
+            return $location;
+        }
+
+        $candidates = [];
+
+        foreach ([$origin, $destination] as $point) {
+            if (is_array($point)) {
+                $candidates[] = $point;
+            }
+        }
+
+        foreach ([Arr::get($tracking, 'prepol'), Arr::get($tracking, 'pol'), Arr::get($tracking, 'pod'), Arr::get($tracking, 'postpod')] as $port) {
+            if (is_array($port)) {
+                $fromPort = $this->locationFromPort($port);
+
+                if ($fromPort !== null) {
+                    $candidates[] = $fromPort;
                 }
             }
         }
 
-        return $currentPosition;
+        foreach ($waypoints as $waypoint) {
+            $candidates[] = $waypoint;
+        }
+
+        foreach (Arr::get($tracking, 'route', []) as $point) {
+            if (is_array($point) && isset($point['lat'], $point['lng'])) {
+                $candidates[] = [
+                    'name' => $this->stringFrom($point, 'name') ?: '—',
+                    'lat' => (float) $point['lat'],
+                    'lng' => (float) $point['lng'],
+                ];
+            }
+        }
+
+        foreach ($route as $point) {
+            if (is_array($point) && count($point) >= 2) {
+                $candidates[] = [
+                    'name' => '—',
+                    'lat' => (float) $point[0],
+                    'lng' => (float) $point[1],
+                ];
+            }
+        }
+
+        foreach ($candidates as $candidate) {
+            $name = strtolower(trim((string) ($candidate['name'] ?? '')));
+
+            if ($name !== '' && $name === $needle) {
+                return [
+                    'name' => $candidate['name'],
+                    'lat' => (float) $candidate['lat'],
+                    'lng' => (float) $candidate['lng'],
+                    'label' => $location['label'] ?? $candidate['name'],
+                ];
+            }
+        }
+
+        return $location;
+    }
+
+    /**
+     * @param  array<string, mixed>  $tracking
+     * @param  list<array{0: float, 1: float}>  $route
+     * @param  list<array<string, mixed>>  $rawEvents
+     * @param  array{name: string, lat: float, lng: float}|null  $origin
+     * @return array{name: string, lat: float, lng: float, label?: string}|null
+     */
+    protected function lastKnownPortPosition(
+        array $tracking,
+        array $route,
+        array $rawEvents,
+        ?array $origin,
+    ): ?array {
+        $lastName = $this->locationNameForTrackingDate($rawEvents, $tracking['last_event_date'] ?? null)
+            ?: $this->stringFrom(Arr::get($tracking, 'pol', []), 'name')
+            ?: $this->stringFrom(Arr::get($tracking, 'prepol', []), 'name');
+
+        if ($lastName !== null) {
+            $index = $this->routeIndexForName($route, $tracking, $lastName);
+
+            if ($index !== null && isset($route[$index])) {
+                return [
+                    'name' => $lastName,
+                    'lat' => (float) $route[$index][0],
+                    'lng' => (float) $route[$index][1],
+                    'label' => $lastName,
+                ];
+            }
+        }
+
+        foreach ([Arr::get($tracking, 'pol'), Arr::get($tracking, 'prepol')] as $port) {
+            if (! is_array($port) || ! ($port['actual'] ?? false)) {
+                continue;
+            }
+
+            $resolved = $this->locationFromPort($port);
+
+            if ($resolved !== null) {
+                return $resolved;
+            }
+        }
+
+        if ($origin !== null && isset($origin['lat'], $origin['lng'])) {
+            return $origin;
+        }
+
+        if (isset($route[0])) {
+            return [
+                'name' => '—',
+                'lat' => (float) $route[0][0],
+                'lng' => (float) $route[0][1],
+                'label' => null,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  list<array<string, mixed>>  $rawEvents
+     */
+    protected function locationNameForTrackingDate(array $rawEvents, mixed $targetDate): ?string
+    {
+        if ($targetDate === null || trim((string) $targetDate) === '') {
+            return null;
+        }
+
+        $target = $this->parseDate((string) $targetDate);
+
+        if ($target === null) {
+            return null;
+        }
+
+        foreach ($rawEvents as $event) {
+            if (! is_array($event)) {
+                continue;
+            }
+
+            $eventDate = $this->parseDate($this->stringFrom($event, 'date') ?? '');
+
+            if ($eventDate === null || ! $eventDate->startOfDay()->equalTo($target->copy()->startOfDay())) {
+                continue;
+            }
+
+            $name = $this->stringFrom(Arr::get($event, 'location', []), 'name');
+
+            if ($name) {
+                return $name;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  list<array{0: float, 1: float}>  $route
+     * @param  array<string, mixed>  $tracking
+     */
+    protected function routeIndexForName(array $route, array $tracking, ?string $name): ?int
+    {
+        if ($name === null || trim($name) === '') {
+            return null;
+        }
+
+        $needle = strtolower(trim($name));
+
+        foreach (Arr::get($tracking, 'route', []) as $index => $point) {
+            if (! is_array($point)) {
+                continue;
+            }
+
+            $pointName = strtolower(trim((string) ($point['name'] ?? '')));
+
+            if ($pointName !== '' && $pointName === $needle) {
+                return $index;
+            }
+        }
+
+        foreach ($route as $index => $point) {
+            foreach ([Arr::get($tracking, 'prepol'), Arr::get($tracking, 'pol')] as $port) {
+                if (! is_array($port)) {
+                    continue;
+                }
+
+                $portName = strtolower(trim((string) ($port['name'] ?? '')));
+
+                if ($portName === $needle && isset($port['lat'], $port['lng'])) {
+                    foreach ($route as $routeIndex => $routePoint) {
+                        if (abs($routePoint[0] - (float) $port['lat']) < 0.05
+                            && abs($routePoint[1] - (float) $port['lng']) < 0.05) {
+                            return $routeIndex;
+                        }
+                    }
+                }
+            }
+        }
+
+        return null;
     }
 
     protected function locationLabelFromRaw(mixed $location): ?string

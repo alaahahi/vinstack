@@ -602,7 +602,7 @@ const DEFAULT_GALLERY_BASE = 'https://app.vinstack.com/api/client-portal';
 const galleryEndpointPreview = computed(() => {
     const base = (form.gallery_api_base_url || settings.value.gallery_api_base_url || DEFAULT_GALLERY_BASE).replace(/\/$/, '');
 
-    return `${base}/autos/{vin}/gallery`;
+    return `${base}/autos/{vehicle_id}/gallery`;
 });
 
 const galleryUrlReady = computed(() => Boolean(

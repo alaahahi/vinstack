@@ -29,7 +29,6 @@ class VinstackGalleryService
     {
         $vehicle->loadMissing('uploadedImages');
 
-        $vin = trim((string) $vehicle->vin);
         $galleryFresh = false;
         $galleryError = null;
         $galleryTokenExpired = false;
@@ -38,9 +37,9 @@ class VinstackGalleryService
 
         $source = is_array($vehicle->raw_data) ? $vehicle->raw_data : [];
 
-        if ($vin !== '' && $this->usesLiveGalleryApi($vehicle)) {
+        if ($this->usesLiveGalleryApi($vehicle) && $this->resolveGalleryIdentifiers($vehicle) !== []) {
             try {
-                $live = $this->fetchGallery($vin);
+                $live = $this->fetchGalleryForVehicle($vehicle);
                 $persisted = $this->persistGalleryImages($vehicle, $live);
                 $galleryStored = $persisted['stored'];
                 $galleryNewImagesCount = $persisted['new_count'];
@@ -238,11 +237,76 @@ class VinstackGalleryService
     }
 
     /**
+     * @return list<string>
+     */
+    public function resolveGalleryIdentifiers(Vehicle $vehicle): array
+    {
+        $candidates = [];
+
+        $vin = trim((string) $vehicle->vin);
+
+        if ($vin !== '') {
+            $candidates[] = $vin;
+        }
+
+        $vinstackId = trim((string) $vehicle->vinstack_id);
+
+        if ($vinstackId !== '' && ! in_array($vinstackId, $candidates, true)) {
+            $candidates[] = $vinstackId;
+        }
+
+        $raw = is_array($vehicle->raw_data) ? $vehicle->raw_data : [];
+
+        foreach (['id', '_id'] as $key) {
+            $rawId = trim((string) Arr::get($raw, $key));
+
+            if ($rawId !== '' && ! in_array($rawId, $candidates, true)) {
+                $candidates[] = $rawId;
+            }
+        }
+
+        return $candidates;
+    }
+
+    /**
      * @return array<string, mixed>
      */
-    public function fetchGallery(string $vin): array
+    public function fetchGalleryForVehicle(Vehicle $vehicle): array
     {
-        $json = $this->request('get', '/autos/'.rawurlencode($vin).'/gallery');
+        $identifiers = $this->resolveGalleryIdentifiers($vehicle);
+
+        if ($identifiers === []) {
+            throw new RuntimeException('gallery_vehicle_id_missing');
+        }
+
+        $lastException = null;
+
+        foreach ($identifiers as $index => $identifier) {
+            try {
+                return $this->fetchGallery($identifier);
+            } catch (RuntimeException $e) {
+                $lastException = $e;
+
+                if (
+                    $this->isInvalidVehicleIdError($e)
+                    && $index < count($identifiers) - 1
+                ) {
+                    continue;
+                }
+
+                throw $e;
+            }
+        }
+
+        throw $lastException ?? new RuntimeException('gallery_fetch_failed');
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function fetchGallery(string $vehicleId): array
+    {
+        $json = $this->request('get', '/autos/'.rawurlencode($vehicleId).'/gallery');
 
         if (isset($json['data']) && is_array($json['data'])) {
             return $this->normalizeGalleryPayload($json['data']);
@@ -433,14 +497,14 @@ class VinstackGalleryService
     public function probeSettings(): array
     {
         $credentials = $this->resolveCredentials();
-        $exampleVin = '1HGBH41JXMN109186';
 
         if ($credentials['token'] === '') {
             return [
                 'ok' => false,
                 'message' => 'لم يُضبط توكن المعرض — أدخل Gallery Token أو تأكد من توكن المزامنة.',
                 'base_url' => $credentials['base_url'],
-                'endpoint_example' => $credentials['base_url'].'/autos/'.$exampleVin.'/gallery',
+                'endpoint_example' => $credentials['base_url'].'/autos/{vehicle_id}/gallery',
+                'endpoint_note' => 'يُمرَّر VIN أولاً، ثم vinstack_id من المزامنة إذا رُفض VIN.',
                 'has_token' => false,
                 'token_source' => $credentials['token_source'],
             ];
@@ -450,10 +514,16 @@ class VinstackGalleryService
             'ok' => true,
             'message' => 'الإعدادات جاهزة — سيُستدعى المعرض عند فتح صور السيارة.',
             'base_url' => $credentials['base_url'],
-            'endpoint_example' => $credentials['base_url'].'/autos/'.$exampleVin.'/gallery',
+            'endpoint_example' => $credentials['base_url'].'/autos/{vehicle_id}/gallery',
+            'endpoint_note' => 'يُمرَّر VIN أولاً، ثم vinstack_id من المزامنة إذا رُفض VIN.',
             'has_token' => true,
             'token_source' => $credentials['token_source'],
         ];
+    }
+
+    protected function isInvalidVehicleIdError(RuntimeException $e): bool
+    {
+        return str_contains(strtolower($e->getMessage()), 'invalid vehicle id');
     }
 
     protected function client(): PendingRequest

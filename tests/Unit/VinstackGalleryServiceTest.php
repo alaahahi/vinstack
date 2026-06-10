@@ -3,17 +3,28 @@
 namespace Tests\Unit;
 
 use App\Enums\VehicleSource;
+use App\Enums\VehicleStatus;
+use App\Models\VinstackSetting;
 use App\Models\Vehicle;
 use App\Services\VinstackGalleryService;
-use PHPUnit\Framework\TestCase;
+use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Tests\TestCase;
 
 class VinstackGalleryServiceTest extends TestCase
 {
-    public function test_live_gallery_api_applies_only_to_vinstack_vehicles(): void
+    use RefreshDatabase;
+
+    protected function galleryService(): VinstackGalleryService
     {
-        $service = new VinstackGalleryService(
+        return new VinstackGalleryService(
             uploadedImages: $this->createMock(\App\Services\VehicleUploadedImageService::class),
         );
+    }
+
+    public function test_live_gallery_api_applies_only_to_vinstack_vehicles(): void
+    {
+        $service = $this->galleryService();
 
         $vinstack = new Vehicle(['source' => VehicleSource::Vinstack]);
         $manual = new Vehicle(['source' => VehicleSource::Manual]);
@@ -22,11 +33,125 @@ class VinstackGalleryServiceTest extends TestCase
         $this->assertFalse($service->usesLiveGalleryApi($manual));
     }
 
+    public function test_resolve_gallery_identifiers_prefers_vin_then_vinstack_id(): void
+    {
+        $service = $this->galleryService();
+
+        $vehicle = new Vehicle([
+            'vin' => '1HGBH41JXMN109186',
+            'vinstack_id' => '507f1f77bcf86cd799439011',
+            'raw_data' => [
+                'id' => '507f1f77bcf86cd799439011',
+            ],
+        ]);
+
+        $this->assertSame(
+            ['1HGBH41JXMN109186', '507f1f77bcf86cd799439011'],
+            $service->resolveGalleryIdentifiers($vehicle),
+        );
+    }
+
+    public function test_fetch_gallery_for_vehicle_falls_back_to_vinstack_id_when_vin_rejected(): void
+    {
+        $vin = '1HGBH41JXMN109186';
+        $vinstackId = '507f1f77bcf86cd799439011';
+
+        VinstackSetting::query()->create([
+            'gallery_api_base_url' => 'https://app.vinstack.com/api/client-portal',
+            'gallery_api_token' => 'gallery-token',
+        ]);
+
+        Http::fake([
+            'https://app.vinstack.com/api/client-portal/autos/'.$vin.'/gallery' => Http::response([
+                'error' => 'Invalid vehicle id',
+            ], 400),
+            'https://app.vinstack.com/api/client-portal/autos/'.$vinstackId.'/gallery' => Http::response([
+                'data' => [
+                    'terminal' => [
+                        'urls' => ['https://cdn.example.com/terminal.jpg'],
+                    ],
+                    'pickup' => [
+                        'urls' => [],
+                    ],
+                    'destination' => [
+                        'urls' => [],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $vehicle = Vehicle::query()->create([
+            'source' => VehicleSource::Vinstack,
+            'vinstack_id' => $vinstackId,
+            'vin' => $vin,
+            'status' => VehicleStatus::Available,
+            'raw_data' => [
+                'id' => $vinstackId,
+            ],
+        ]);
+
+        $service = $this->galleryService();
+        $payload = $service->fetchGalleryForVehicle($vehicle);
+
+        $this->assertSame(
+            ['https://cdn.example.com/terminal.jpg'],
+            $payload['images_by_stage']['terminal'] ?? [],
+        );
+
+        Http::assertSentCount(2);
+    }
+
+    public function test_build_gallery_payload_sets_gallery_fresh_when_api_succeeds(): void
+    {
+        $vin = '1HGBH41JXMN109186';
+        $vinstackId = '507f1f77bcf86cd799439011';
+
+        VinstackSetting::query()->create([
+            'gallery_api_base_url' => 'https://app.vinstack.com/api/client-portal',
+            'gallery_api_token' => 'gallery-token',
+        ]);
+
+        Http::fake([
+            'https://app.vinstack.com/api/client-portal/autos/'.$vin.'/gallery' => Http::response([
+                'error' => 'Invalid vehicle id',
+            ], 400),
+            'https://app.vinstack.com/api/client-portal/autos/'.$vinstackId.'/gallery' => Http::response([
+                'data' => [
+                    'terminal' => [
+                        'urls' => ['https://cdn.example.com/terminal.jpg'],
+                    ],
+                    'pickup' => [
+                        'urls' => ['https://cdn.example.com/pickup.jpg'],
+                    ],
+                    'destination' => [
+                        'urls' => [],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $vehicle = Vehicle::query()->create([
+            'source' => VehicleSource::Vinstack,
+            'vinstack_id' => $vinstackId,
+            'vin' => $vin,
+            'status' => VehicleStatus::Available,
+            'images' => [],
+            'raw_data' => [
+                'id' => $vinstackId,
+            ],
+        ]);
+
+        $payload = $this->galleryService()->buildGalleryPayload($vehicle);
+
+        $this->assertTrue($payload['gallery_fresh']);
+        $this->assertNull($payload['gallery_error']);
+        $this->assertCount(1, $payload['images_by_stage']['terminal']);
+        $this->assertCount(1, $payload['images_by_stage']['pickup']);
+    }
+
     public function test_stages_changed_detects_replaced_urls_with_same_count(): void
     {
-        $service = new VinstackGalleryService(
-            uploadedImages: $this->createMock(\App\Services\VehicleUploadedImageService::class),
-        );
+        $service = $this->galleryService();
 
         $method = new \ReflectionMethod(VinstackGalleryService::class, 'stagesChanged');
         $method->setAccessible(true);

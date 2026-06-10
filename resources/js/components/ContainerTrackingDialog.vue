@@ -318,7 +318,7 @@ const bodyRef = ref(null);
 
 const drawerTitleId = 'container-tracking-title';
 
-const NAV_ARROW_SVG = '<svg viewBox="0 0 24 24" width="16" height="16" aria-hidden="true"><path fill="#fff" d="M12 2.5l1.2 6.3 5.8 1.5-5.8 1.5L12 18.1l-1.2-6.3-5.8-1.5 5.8-1.5z"/></svg>';
+const NAV_ARROW_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#fff" d="M12 3.5 7.5 19.5 12 15.5 16.5 19.5Z"/></svg>';
 const TRANSFER_ARROWS_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="#fff" d="M6 7h12.5l-2.5-2.5L18 3l5 5-5 5-1.5-1.5L18.5 9H6V7zm12 10H5.5l2.5 2.5L6 21l-5-5 5-5 1.5 1.5L5.5 15H18v2z"/></svg>';
 const PIN_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="#fff" d="M12 2a5.5 5.5 0 0 0-5.5 5.5c0 4.1 5.5 10.5 5.5 10.5S17.5 11.6 17.5 7.5A5.5 5.5 0 0 0 12 2zm0 7.5a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg>';
 
@@ -331,8 +331,8 @@ function trackingDivIcon(kind) {
         },
         current: {
             html: `<span class="ct-map-marker ct-map-marker--current">${NAV_ARROW_SVG}</span>`,
-            size: [36, 36],
-            anchor: [18, 18],
+            size: [40, 40],
+            anchor: [20, 20],
         },
         transshipment: {
             html: `<span class="ct-map-marker ct-map-marker--transshipment">${TRANSFER_ARROWS_SVG}</span>`,
@@ -1145,7 +1145,7 @@ onUnmounted(removeFocusTrap);
 .map-legend-icon--current {
     width: 22px;
     height: 22px;
-    background: #2563eb;
+    background: #6366f1;
     border: 2px solid #fff;
     position: relative;
 }
@@ -1153,13 +1153,14 @@ onUnmounted(removeFocusTrap);
 .map-legend-icon--current::after {
     content: '';
     position: absolute;
+    left: 50%;
+    top: 50%;
     width: 0;
     height: 0;
     border-left: 4px solid transparent;
     border-right: 4px solid transparent;
-    border-bottom: 7px solid #fff;
-    transform: rotate(25deg);
-    top: 4px;
+    border-bottom: 8px solid #fff;
+    transform: translate(-50%, -58%);
 }
 
 .map-legend-icon--origin {
@@ -1545,9 +1546,10 @@ onUnmounted(removeFocusTrap);
 }
 
 .ct-map-marker--current {
-    width: 36px;
-    height: 36px;
-    background: #2563eb;
+    width: 40px;
+    height: 40px;
+    background: #6366f1;
+    box-shadow: 0 3px 12px rgb(99 102 241 / 0.55);
 }
 
 .ct-map-marker--transshipment {

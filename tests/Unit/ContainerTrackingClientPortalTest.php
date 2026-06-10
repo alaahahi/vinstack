@@ -126,4 +126,62 @@ class ContainerTrackingClientPortalTest extends TestCase
         $this->assertSame('actual', $result['events'][0]['type']);
         $this->assertSame('estimated', $result['events'][1]['type']);
     }
+
+    public function test_current_position_uses_latest_actual_event_not_oldest(): void
+    {
+        $service = new ContainerTrackingService(
+            vinstack: $this->createMock(VinstackService::class),
+            gallery: $this->createMock(VinstackGalleryService::class),
+            containers: $this->createMock(ContainerService::class),
+            geocoder: $this->createMock(PortGeocoderService::class),
+        );
+
+        $sample = [
+            'container_number' => 'MEDU9572606',
+            'tracking' => [
+                'status' => 'IN_TRANSIT',
+                'prepol' => ['name' => 'Vancouver', 'country' => 'Canada', 'lat' => 49.25, 'lng' => -123.12],
+                'pol' => ['name' => 'Vancouver', 'country' => 'Canada', 'lat' => 49.25, 'lng' => -123.12, 'actual' => true],
+                'pod' => ['name' => 'Mersin', 'country' => 'Turkey', 'lat' => 36.81, 'lng' => 34.64],
+                'route' => [
+                    ['lat' => 49.25, 'lng' => -123.12, 'name' => 'Vancouver'],
+                    ['lat' => 45.51, 'lng' => -73.57, 'name' => 'Montreal'],
+                    ['lat' => 37.96, 'lng' => -8.87, 'name' => 'Sines'],
+                    ['lat' => 36.81, 'lng' => 34.64, 'name' => 'Mersin'],
+                ],
+                'events' => [
+                    [
+                        'date' => '2026-06-18T00:00:00Z',
+                        'actual' => false,
+                        'description' => 'Vessel arrival',
+                        'location' => ['name' => 'Gioia Tauro', 'country' => 'Italy', 'lat' => 38.43, 'lng' => 15.90],
+                    ],
+                    [
+                        'date' => '2026-06-01T00:00:00Z',
+                        'actual' => true,
+                        'description' => 'Export Loaded on Vessel',
+                        'location' => ['name' => 'Montreal', 'country' => 'Canada', 'lat' => 45.51, 'lng' => -73.57],
+                    ],
+                    [
+                        'date' => '2026-05-15T00:00:00Z',
+                        'actual' => true,
+                        'description' => 'Empty to Shipper',
+                        'location' => ['name' => 'Vancouver', 'country' => 'Canada', 'lat' => 49.25, 'lng' => -123.12],
+                    ],
+                ],
+                'last_event_date' => '2026-06-01 00:00:00',
+                'next_event_date' => '2026-06-12 16:30:00',
+            ],
+        ];
+
+        $method = new ReflectionMethod(ContainerTrackingService::class, 'normalizeClientPortalTracking');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($service, 'MEDU9572606', null, $sample);
+
+        $this->assertNotNull($result['current_position']);
+        $this->assertSame('Montreal', $result['current_position']['name']);
+        $this->assertSame(45.51, $result['current_position']['lat']);
+        $this->assertSame(-73.57, $result['current_position']['lng']);
+    }
 }
