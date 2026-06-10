@@ -83,7 +83,11 @@
 <script setup>
 
 import { computed, ref } from 'vue';
-import { fetchLiveVehicleGallery, mergeGalleryIntoVehicle } from '../utils/vehicleGalleryLive';
+import {
+    fetchLiveVehicleGallery,
+    mergeGalleryIntoVehicle,
+    vehicleUsesLiveGallery,
+} from '../utils/vehicleGalleryLive';
 
 import Button from 'primevue/button';
 
@@ -210,7 +214,7 @@ async function openGallery() {
     const vehicleId = props.vehicle?.id;
     const vin = props.vehicle?.vin;
 
-    if (vehicleId && vin) {
+    if (vehicleId && vin && vehicleUsesLiveGallery(props.vehicle)) {
         galleryFetching.value = true;
 
         try {

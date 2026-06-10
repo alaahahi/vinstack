@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\VehicleSource;
 use App\Exceptions\GalleryTokenExpiredException;
 use App\Models\VinstackSetting;
 use App\Models\Vehicle;
@@ -37,14 +38,17 @@ class VinstackGalleryService
 
         $source = is_array($vehicle->raw_data) ? $vehicle->raw_data : [];
 
-        if ($vin !== '') {
+        if ($vin !== '' && $this->usesLiveGalleryApi($vehicle)) {
             try {
                 $live = $this->fetchGallery($vin);
                 $persisted = $this->persistGalleryImages($vehicle, $live);
                 $galleryStored = $persisted['stored'];
                 $galleryNewImagesCount = $persisted['new_count'];
                 $vehicle->refresh();
-                $source = is_array($vehicle->raw_data) ? $vehicle->raw_data : array_merge($source, $live);
+                $source = array_merge(
+                    is_array($vehicle->raw_data) ? $vehicle->raw_data : [],
+                    $live,
+                );
                 $galleryFresh = true;
             } catch (GalleryTokenExpiredException) {
                 $galleryTokenExpired = true;
@@ -70,12 +74,22 @@ class VinstackGalleryService
             'images_by_stage' => $imagesByStage,
             'uploaded_images' => $this->uploadedImages->listForVehicle($vehicle),
             'thumbnail_url' => $thumbnail,
+            'gallery' => Arr::get($source, 'gallery'),
+            'terminal' => Arr::get($source, 'terminal'),
+            'pickup' => Arr::get($source, 'pickup'),
+            'destination' => Arr::get($source, 'destination'),
             'gallery_fresh' => $galleryFresh,
             'gallery_error' => $galleryError,
             'gallery_token_expired' => $galleryTokenExpired,
             'gallery_stored' => $galleryStored,
             'gallery_new_images_count' => $galleryNewImagesCount,
+            'gallery_api_applicable' => $this->usesLiveGalleryApi($vehicle),
         ];
+    }
+
+    public function usesLiveGalleryApi(Vehicle $vehicle): bool
+    {
+        return $vehicle->source === VehicleSource::Vinstack;
     }
 
     /**
@@ -93,12 +107,14 @@ class VinstackGalleryService
         $previousUrls = $this->flattenStageUrls($previousStages);
         $nextUrls = $this->flattenStageUrls($nextStages);
         $newUrls = array_values(array_diff($nextUrls, $previousUrls));
+        $stagesChanged = $this->stagesChanged($previousStages, $nextStages);
+        $fromClientPortal = $this->isClientPortalGalleryPayload($livePayload);
 
-        if ($newUrls === []) {
+        if ($newUrls === [] && ! ($fromClientPortal && $stagesChanged)) {
             return ['stored' => false, 'new_count' => 0];
         }
 
-        $rawData = $existingRaw;
+        $rawData = array_merge($existingRaw, $livePayload);
         $rawData['images_by_stage'] = $nextStages;
         $rawData['images'] = $nextUrls;
 
@@ -124,6 +140,21 @@ class VinstackGalleryService
             'stored' => true,
             'new_count' => count($newUrls),
         ];
+    }
+
+    /**
+     * @param  array{terminal: list<string>, pickup: list<string>, destination: list<string>}  $before
+     * @param  array{terminal: list<string>, pickup: list<string>, destination: list<string>}  $after
+     */
+    protected function stagesChanged(array $before, array $after): bool
+    {
+        foreach (VehicleImageStages::STAGES as $stage) {
+            if (count($before[$stage] ?? []) !== count($after[$stage] ?? [])) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**

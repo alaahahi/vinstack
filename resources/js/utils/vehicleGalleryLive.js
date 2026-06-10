@@ -1,5 +1,10 @@
 import api from '../api/client';
 
+/** Gallery API — سيارات Vinstack المستوردة فقط (ليس يدوي). */
+export function vehicleUsesLiveGallery(vehicle) {
+    return vehicle?.source === 'vinstack';
+}
+
 /**
  * @param {number|string} vehicleId
  * @param {'admin'|'dealer'} mode
@@ -16,10 +21,12 @@ export function mergeGalleryIntoVehicle(vehicle, galleryPayload) {
         return vehicle;
     }
 
+    const imagesByStage = galleryPayload.images_by_stage ?? vehicle.images_by_stage;
+
     return {
         ...vehicle,
         images: galleryPayload.images ?? vehicle.images,
-        images_by_stage: galleryPayload.images_by_stage ?? vehicle.images_by_stage,
+        images_by_stage: imagesByStage,
         uploaded_images: galleryPayload.uploaded_images ?? vehicle.uploaded_images,
         thumbnail_url: galleryPayload.thumbnail_url ?? vehicle.thumbnail_url,
         gallery_fresh: galleryPayload.gallery_fresh,
@@ -31,8 +38,12 @@ export function mergeGalleryIntoVehicle(vehicle, galleryPayload) {
             ...(vehicle.raw_data ?? {}),
             thumbnail_url: galleryPayload.thumbnail_url ?? vehicle.raw_data?.thumbnail_url,
             images: galleryPayload.images ?? vehicle.raw_data?.images,
-            images_by_stage: galleryPayload.images_by_stage ?? vehicle.raw_data?.images_by_stage,
+            images_by_stage: imagesByStage,
             uploaded_images: galleryPayload.uploaded_images ?? vehicle.raw_data?.uploaded_images,
+            gallery: galleryPayload.gallery ?? vehicle.raw_data?.gallery,
+            terminal: galleryPayload.terminal ?? vehicle.raw_data?.terminal,
+            pickup: galleryPayload.pickup ?? vehicle.raw_data?.pickup,
+            destination: galleryPayload.destination ?? vehicle.raw_data?.destination,
         },
     };
 }

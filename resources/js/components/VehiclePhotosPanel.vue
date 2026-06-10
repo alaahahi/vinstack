@@ -227,7 +227,11 @@ import {
     localImageIdForUrl,
     uploadVehicleImages,
 } from '../utils/vehicleImageUpload';
-import { fetchLiveVehicleGallery, mergeGalleryIntoVehicle } from '../utils/vehicleGalleryLive';
+import {
+    fetchLiveVehicleGallery,
+    mergeGalleryIntoVehicle,
+    vehicleUsesLiveGallery,
+} from '../utils/vehicleGalleryLive';
 
 const props = defineProps({
     vehicle: {
@@ -295,7 +299,7 @@ async function loadLiveGallery() {
     const vehicleId = props.vehicle?.id;
     const vin = props.vehicle?.vin;
 
-    if (! vehicleId || ! vin) {
+    if (! vehicleId || ! vin || ! vehicleUsesLiveGallery(props.vehicle)) {
         displayVehicle.value = props.vehicle;
 
         return;

@@ -171,14 +171,32 @@ export function vehicleThumbnail(vehicle) {
  * صور المعرض مجمّعة حسب المرحلة (Terminal / Pickup / Destination).
  * @returns {{ terminal: string[], pickup: string[], destination: string[] }}
  */
+function hasClientPortalGalleryBlocks(raw) {
+    if (! raw || typeof raw !== 'object') {
+        return false;
+    }
+
+    return GALLERY_STAGES.some(({ key }) => {
+        const block = raw[key];
+
+        return block && typeof block === 'object' && ! Array.isArray(block) && Array.isArray(block.urls);
+    });
+}
+
 export function vehicleGalleryByStage(vehicle) {
     if (! vehicle) {
         return emptyStages();
     }
 
-    const precomputed = vehicle.raw_data?.images_by_stage ?? vehicle.images_by_stage;
+    const raw = vehicle.raw_data ?? {};
+    const liveGallery = hasClientPortalGalleryBlocks(raw) || (raw.gallery && typeof raw.gallery === 'object');
 
-    if (precomputed && typeof precomputed === 'object') {
+    // Prefer fresh API payload over stale raw_data.images_by_stage
+    const precomputed = vehicle.gallery_fresh && vehicle.images_by_stage
+        ? vehicle.images_by_stage
+        : (vehicle.images_by_stage ?? vehicle.raw_data?.images_by_stage);
+
+    if (precomputed && typeof precomputed === 'object' && ! liveGallery) {
         const stages = emptyStages();
 
         for (const { key } of GALLERY_STAGES) {
@@ -192,7 +210,7 @@ export function vehicleGalleryByStage(vehicle) {
 
     const thumbnail = vehicleThumbnail(vehicle);
     const stages = emptyStages();
-    const raw = vehicle.raw_data ?? {};
+    const skipFlatClassification = hasClientPortalGalleryBlocks(raw);
 
     for (const { key } of GALLERY_STAGES) {
         for (const field of NAMED_STAGE_LISTS[key]) {
@@ -262,6 +280,10 @@ export function vehicleGalleryByStage(vehicle) {
             const normalized = normalizeUrl(image);
 
             if (! normalized || normalized === thumbnail || containsUrl(stages, normalized)) {
+                continue;
+            }
+
+            if (skipFlatClassification) {
                 continue;
             }
 

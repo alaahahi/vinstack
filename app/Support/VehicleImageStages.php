@@ -23,6 +23,7 @@ class VehicleImageStages
 
         self::collectNamedArrays($stages, $source, $thumbnail);
         self::collectClientPortalStageBlocks($stages, $source, $thumbnail);
+        $hasClientPortalBlocks = self::hasClientPortalStageBlocks($source);
 
         $nested = Arr::get($source, 'photos', Arr::get($source, 'gallery', []));
         if (is_array($nested)) {
@@ -49,6 +50,10 @@ class VehicleImageStages
                     }
 
                     $stage = self::classifyUrl($normalized);
+
+                    if ($hasClientPortalBlocks) {
+                        continue;
+                    }
 
                     if ($stage !== null) {
                         self::pushUrl($stages[$stage], $normalized, null);
@@ -153,6 +158,22 @@ class VehicleImageStages
 
             self::collectStageBlock($stages[$stage], $block, $thumbnail);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $source
+     */
+    protected static function hasClientPortalStageBlocks(array $source): bool
+    {
+        foreach (self::STAGES as $stage) {
+            $block = Arr::get($source, $stage);
+
+            if (is_array($block) && isset($block['urls']) && is_array($block['urls']) && $block['urls'] !== []) {
+                return true;
+            }
+        }
+
+        return false;
     }
 
     /**
