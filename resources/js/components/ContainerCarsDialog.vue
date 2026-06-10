@@ -48,14 +48,38 @@
             />
             <Button
                 v-if="showZipUpload"
-                icon="pi pi-upload"
-                label="رفع صور ZIP"
+                icon="pi pi-file-import"
+                label="اختيار ZIP"
                 size="small"
                 outlined
                 :loading="zipLoading"
-                :disabled="loading"
+                :disabled="loading || uploadProgress !== null"
                 @click="triggerZipUpload"
             />
+            <Button
+                v-if="pendingZipImages?.length"
+                icon="pi pi-cloud-upload"
+                label="رفع إلى Cloudinary"
+                size="small"
+                :loading="zipLoading || uploadProgress !== null"
+                :disabled="loading"
+                @click="uploadPendingZip"
+            />
+            <Button
+                v-if="showZipUpload && apiRole === 'admin'"
+                icon="pi pi-cog"
+                label="فحص الإعدادات"
+                size="small"
+                severity="secondary"
+                outlined
+                :loading="settingsCheckLoading"
+                :disabled="loading || zipLoading"
+                @click="checkCloudinarySettings"
+            />
+            <span v-if="pendingZipImages?.length" class="zip-pending-count">
+                <i class="pi pi-images" />
+                {{ pendingZipImages.length }} صورة جاهزة للرفع
+            </span>
             <button
                 v-if="zipMeta && zipPayload"
                 type="button"
@@ -79,6 +103,9 @@
                 outlined
                 @click="openContainerGallery"
             />
+            <span v-if="settingsCheckResult" class="zip-settings-result" :class="settingsCheckResult.ok ? 'zip-settings-result--ok' : 'zip-settings-result--error'">
+                {{ settingsCheckResult.summary }}
+            </span>
             <span v-if="uploadProgress !== null" class="zip-upload-progress">
                 <ProgressSpinner style="width: 1.1rem; height: 1.1rem" />
                 رفع إلى Cloudinary {{ uploadProgress }}%
@@ -269,6 +296,8 @@ import {
 } from '../utils/containerZipImages';
 import {
     fetchContainerCloudImages,
+    formatCloudinaryUploadError,
+    testCloudinaryConnection,
     uploadContainerImagesToCloud,
 } from '../utils/containerCloudinaryUpload';
 
@@ -303,6 +332,9 @@ const vehicleRows = ref([]);
 const zipInputRef = ref(null);
 const zipLoading = ref(false);
 const uploadProgress = ref(null);
+const pendingZipImages = ref(null);
+const settingsCheckLoading = ref(false);
+const settingsCheckResult = ref(null);
 const zipPayload = ref(null);
 const galleryVisible = ref(false);
 const galleryVehicle = ref(null);
@@ -519,6 +551,24 @@ function onHide() {
     error.value = null;
     galleryVisible.value = false;
     closeContainerGallery();
+    clearPendingZipImages();
+    settingsCheckResult.value = null;
+}
+
+function clearPendingZipImages() {
+    if (! pendingZipImages.value?.length) {
+        pendingZipImages.value = null;
+
+        return;
+    }
+
+    for (const image of pendingZipImages.value) {
+        if (image.url?.startsWith('blob:')) {
+            URL.revokeObjectURL(image.url);
+        }
+    }
+
+    pendingZipImages.value = null;
 }
 
 function triggerZipUpload() {
@@ -537,16 +587,108 @@ async function onZipSelected(event) {
     }
 
     zipLoading.value = true;
+    settingsCheckResult.value = null;
 
     try {
+        clearPendingZipImages();
         const extracted = await extractZipImagesForContainer(file, vehicleRows.value);
+        pendingZipImages.value = extracted.images;
+
+        if (! extracted.images.length) {
+            toast.add({
+                severity: 'warn',
+                summary: 'ملف ZIP فارغ',
+                detail: 'لم يُعثر على صور داخل الملف',
+                life: 4000,
+            });
+
+            return;
+        }
+
+        toast.add({
+            severity: 'info',
+            summary: 'تم تحليل ZIP',
+            detail: `${extracted.images.length} صورة جاهزة — اضغط «فحص الإعدادات» ثم «رفع إلى Cloudinary»`,
+            life: 5000,
+        });
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: 'تعذّر قراءة ZIP',
+            detail: e.message || 'تحقق من صحة الملف',
+            life: 5000,
+        });
+    } finally {
+        zipLoading.value = false;
+    }
+}
+
+async function checkCloudinarySettings() {
+    settingsCheckLoading.value = true;
+    settingsCheckResult.value = null;
+
+    const readyCount = pendingZipImages.value?.length ?? 0;
+
+    try {
+        const result = await testCloudinaryConnection(apiPrefix.value);
+        const parts = [
+            result.configured === false ? 'غير مهيّأ' : `مهيّأ (${result.cloud_name || '—'})`,
+            result.test_upload === 'ok' ? 'اختبار الرفع: ناجح' : null,
+            result.test_upload === 'failed' ? `اختبار الرفع: ${result.test_upload_error}` : null,
+            readyCount ? `${readyCount} صورة جاهزة للرفع` : null,
+        ].filter(Boolean);
+
+        settingsCheckResult.value = {
+            ok: Boolean(result.ok),
+            summary: parts.join(' · '),
+        };
+
+        toast.add({
+            severity: result.ok ? 'success' : 'warn',
+            summary: 'فحص Cloudinary',
+            detail: parts.join(' · '),
+            life: 7000,
+        });
+    } catch (e) {
+        const detail = e.response?.data?.message
+            || e.response?.data?.data?.message
+            || e.message
+            || 'تحقق من إعدادات Cloudinary في صفحة الإعدادات';
+
+        settingsCheckResult.value = {
+            ok: false,
+            summary: readyCount
+                ? `${detail} · ${readyCount} صورة جاهزة للرفع`
+                : detail,
+        };
+
+        toast.add({
+            severity: 'warn',
+            summary: 'فحص Cloudinary',
+            detail: settingsCheckResult.value.summary,
+            life: 7000,
+        });
+    } finally {
+        settingsCheckLoading.value = false;
+    }
+}
+
+async function uploadPendingZip() {
+    if (! pendingZipImages.value?.length) {
+        return;
+    }
+
+    zipLoading.value = true;
+
+    try {
         const ref = containerApiRef();
+        const images = pendingZipImages.value;
 
         uploadProgress.value = 0;
 
         const payload = await uploadContainerImagesToCloud({
             containerRef: ref,
-            images: extracted.images,
+            images,
             apiPrefix: apiPrefix.value,
             replace: true,
             onProgress: ({ percent }) => {
@@ -556,17 +698,12 @@ async function onZipSelected(event) {
 
         applyCloudinaryContainerPayload(containerKey.value, payload);
         zipPayload.value = getContainerZipImages(containerKey.value);
-
-        for (const image of extracted.images) {
-            if (image.url?.startsWith('blob:')) {
-                URL.revokeObjectURL(image.url);
-            }
-        }
+        clearPendingZipImages();
 
         toast.add({
             severity: 'success',
             summary: 'تم رفع الصور إلى Cloudinary',
-            detail: `${payload.meta?.count ?? payload.images?.length ?? 0} صورة — ${payload.meta?.matched ?? Object.keys(payload.byVin ?? {}).length} مطابقة لشاصي`,
+            detail: `${payload.uploaded ?? payload.meta?.count ?? payload.images?.length ?? 0} صورة — ${payload.meta?.matched ?? Object.keys(payload.byVin ?? {}).length} مطابقة لشاصي`,
             life: 5000,
         });
 
@@ -582,8 +719,8 @@ async function onZipSelected(event) {
         toast.add({
             severity: 'error',
             summary: 'تعذّر رفع الصور',
-            detail: e.response?.data?.message || e.message || 'تأكد من إعداد Cloudinary وصحة ملف ZIP',
-            life: 5000,
+            detail: formatCloudinaryUploadError(e),
+            life: 8000,
         });
     } finally {
         zipLoading.value = false;
@@ -709,6 +846,39 @@ onBeforeUnmount(() => {
     gap: 0.4rem;
     font-size: 0.8rem;
     color: #2563eb;
+}
+
+.zip-pending-count {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: #059669;
+    padding: 0.2rem 0.55rem;
+    border-radius: 8px;
+    background: rgb(5 150 105 / 10%);
+    border: 1px solid rgb(5 150 105 / 25%);
+}
+
+.zip-settings-result {
+    flex: 1 1 100%;
+    font-size: 0.78rem;
+    padding: 0.35rem 0.55rem;
+    border-radius: 8px;
+    line-height: 1.35;
+}
+
+.zip-settings-result--ok {
+    color: #047857;
+    background: rgb(5 150 105 / 10%);
+    border: 1px solid rgb(5 150 105 / 20%);
+}
+
+.zip-settings-result--error {
+    color: #b45309;
+    background: rgb(245 158 11 / 10%);
+    border: 1px solid rgb(245 158 11 / 25%);
 }
 
 .cars-dialog-loading,

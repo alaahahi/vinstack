@@ -233,7 +233,7 @@ import {
     extractZipImagesForContainer,
     applyCloudinaryContainerPayload,
 } from '../utils/containerZipImages';
-import { uploadContainerImagesToCloud } from '../utils/containerCloudinaryUpload';
+import { uploadContainerImagesToCloud, formatCloudinaryUploadError } from '../utils/containerCloudinaryUpload';
 
 import {
 
@@ -388,7 +388,7 @@ async function onZipSelected(event) {
         toast.add({
             severity: 'error',
             summary: 'تعذّر رفع الصور',
-            detail: e.response?.data?.message || e.message || 'تحقق من إعداد Cloudinary',
+            detail: formatCloudinaryUploadError(e),
             life: 5000,
         });
     } finally {

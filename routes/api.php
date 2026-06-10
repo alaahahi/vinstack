@@ -88,6 +88,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/vinstack/sync', [VinstackSettingsController::class, 'sync']);
 
         Route::get('/containers', [AdminContainerController::class, 'index']);
+        Route::get('/containers/cloudinary-status', [AdminContainerImageController::class, 'cloudinaryStatus']);
         Route::get('/containers/{container}/images', [AdminContainerImageController::class, 'index']);
         Route::post('/containers/{container}/images/upload', [AdminContainerImageController::class, 'upload']);
         Route::get('/containers/{container}/vehicles', [AdminContainerController::class, 'vehicles']);

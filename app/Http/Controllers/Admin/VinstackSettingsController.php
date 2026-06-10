@@ -66,7 +66,7 @@ class VinstackSettingsController extends Controller
 
     public function testCloudinary(CloudinaryService $cloudinary): JsonResponse
     {
-        $result = $cloudinary->probe();
+        $result = $cloudinary->probe(true);
 
         return response()->json([
             'data' => $result,

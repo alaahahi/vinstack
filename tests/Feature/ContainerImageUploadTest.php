@@ -100,4 +100,62 @@ class ContainerImageUploadTest extends TestCase
         ])->assertStatus(422)
             ->assertJsonPath('message', 'Cloudinary is not configured. Add credentials in Settings or .env.');
     }
+
+    public function test_admin_can_check_cloudinary_status(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        VinstackSetting::query()->create([
+            'cloudinary_cloud_name' => 'demo',
+            'cloudinary_api_key' => '123',
+            'cloudinary_api_secret' => 'secret',
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $this->getJson('/api/admin/containers/cloudinary-status')
+            ->assertOk()
+            ->assertJsonPath('data.configured', true)
+            ->assertJsonPath('data.cloud_name', 'demo');
+    }
+
+    public function test_upload_returns_cloudinary_errors_when_all_files_fail(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        VinstackSetting::query()->create([
+            'cloudinary_cloud_name' => 'demo',
+            'cloudinary_api_key' => '123',
+            'cloudinary_api_secret' => 'secret',
+        ]);
+
+        $this->mock(CloudinaryService::class, function ($mock): void {
+            $mock->shouldReceive('isConfigured')->andReturn(true);
+            $mock->shouldReceive('resolveConfig')->andReturn([
+                'cloud_name' => 'demo',
+                'api_key' => '123',
+                'api_secret' => 'secret',
+                'upload_preset' => null,
+                'folder' => 'vinstack/containers',
+            ]);
+            $mock->shouldReceive('upload')
+                ->once()
+                ->andThrow(new \RuntimeException('Invalid API key'));
+        });
+
+        Sanctum::actingAs($admin);
+
+        $file = UploadedFile::fake()->image('photo.jpg');
+
+        $this->postJson('/api/admin/containers/MSCU123/images/upload', [
+            'replace' => true,
+            'metadata' => json_encode([
+                ['name' => 'photo.jpg', 'vin' => null, 'lot' => null],
+            ]),
+            'images' => [$file],
+        ])->assertStatus(422)
+            ->assertJsonPath('data.uploaded', 0)
+            ->assertJsonPath('failed.0.error', 'Invalid API key')
+            ->assertJsonFragment(['message' => '0 images uploaded to Cloudinary. Invalid API key']);
+    }
 }

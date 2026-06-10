@@ -91,25 +91,106 @@ class CloudinaryService
         return (array) $result;
     }
 
-    public function probe(): array
+    public function probe(bool $testUpload = false): array
     {
         if (! $this->isConfigured()) {
             return [
                 'ok' => false,
+                'configured' => false,
                 'message' => 'Cloudinary credentials are incomplete. Set cloud name, API key, and API secret (or upload preset).',
+                'source' => $this->configSource(),
             ];
         }
 
         $config = $this->resolveConfig();
 
-        return [
+        $result = [
             'ok' => true,
+            'configured' => true,
             'message' => 'Cloudinary credentials present.',
             'cloud_name' => $config['cloud_name'],
             'has_api_secret' => filled($config['api_secret']),
             'has_upload_preset' => filled($config['upload_preset']),
             'folder' => $config['folder'],
+            'source' => $this->configSource(),
         ];
+
+        if (! $testUpload) {
+            return $result;
+        }
+
+        $path = $this->createProbeImagePath();
+
+        try {
+            $folder = rtrim((string) ($config['folder'] ?? 'vinstack/containers'), '/').'/probe';
+            $upload = $this->upload($path, [
+                'folder' => $folder,
+                'public_id' => 'connection-test-'.now()->format('YmdHis'),
+            ]);
+
+            $result['test_upload'] = 'ok';
+            $result['test_url'] = $upload['url'];
+            $result['message'] = 'Cloudinary connection OK — test image uploaded.';
+        } catch (\Throwable $e) {
+            $result['ok'] = false;
+            $result['test_upload'] = 'failed';
+            $result['test_upload_error'] = $e->getMessage();
+            $result['message'] = 'Cloudinary credentials present but upload failed: '.$e->getMessage();
+        } finally {
+            if (is_string($path) && is_file($path)) {
+                @unlink($path);
+            }
+        }
+
+        return $result;
+    }
+
+    /**
+     * @return 'settings'|'env'|'mixed'
+     */
+    protected function configSource(): string
+    {
+        $settings = VinstackSetting::current();
+        $usesSettings = filled($settings->cloudinary_cloud_name)
+            || filled($settings->cloudinary_api_key)
+            || filled($settings->cloudinary_api_secret)
+            || filled($settings->cloudinary_upload_preset);
+        $usesEnv = filled(config('services.cloudinary.cloud_name'))
+            || filled(config('services.cloudinary.api_key'))
+            || filled(config('services.cloudinary.api_secret'))
+            || filled(config('services.cloudinary.upload_preset'));
+
+        if ($usesSettings && $usesEnv) {
+            return 'mixed';
+        }
+
+        if ($usesSettings) {
+            return 'settings';
+        }
+
+        return $usesEnv ? 'env' : 'env';
+    }
+
+    protected function createProbeImagePath(): string
+    {
+        $path = tempnam(sys_get_temp_dir(), 'cloudinary-probe-');
+
+        if ($path === false) {
+            throw new RuntimeException('Could not create temporary probe image.');
+        }
+
+        $png = base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+            true,
+        );
+
+        if ($png === false) {
+            throw new RuntimeException('Could not decode probe image.');
+        }
+
+        file_put_contents($path, $png);
+
+        return $path;
     }
 
     /**

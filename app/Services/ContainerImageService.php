@@ -6,6 +6,7 @@ use App\Models\ContainerImage;
 use App\Models\Vehicle;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Log;
 
 class ContainerImageService
 {
@@ -54,6 +55,14 @@ class ContainerImageService
             throw new \RuntimeException('Container reference is required.');
         }
 
+        $files = array_values(array_filter($files, fn ($file) => $file instanceof UploadedFile));
+
+        if ($files === []) {
+            throw new \RuntimeException(
+                'No image files received by the server. Ensure the browser sends multipart/form-data with images[].',
+            );
+        }
+
         if ($replace) {
             ContainerImage::query()->where('container_number', $number)->delete();
         }
@@ -65,6 +74,24 @@ class ContainerImageService
 
         foreach ($files as $index => $file) {
             if (! $file instanceof UploadedFile) {
+                $meta = $metadata[$index] ?? [];
+                $failed[] = [
+                    'index' => $index,
+                    'name' => (string) ($meta['name'] ?? "image-{$index}"),
+                    'error' => 'File was not received as a valid upload.',
+                ];
+
+                continue;
+            }
+
+            if (! $file->isValid()) {
+                $meta = $metadata[$index] ?? [];
+                $failed[] = [
+                    'index' => $index,
+                    'name' => (string) ($meta['name'] ?? $file->getClientOriginalName()),
+                    'error' => 'Upload error: '.$file->getErrorMessage(),
+                ];
+
                 continue;
             }
 
@@ -91,12 +118,27 @@ class ContainerImageService
 
                 $created[] = $record;
             } catch (\Throwable $e) {
+                Log::warning('Container image Cloudinary upload failed', [
+                    'container' => $number,
+                    'index' => $index,
+                    'name' => $name,
+                    'error' => $e->getMessage(),
+                ]);
+
                 $failed[] = [
                     'index' => $index,
                     'name' => $name,
                     'error' => $e->getMessage(),
                 ];
             }
+        }
+
+        if ($created === [] && $failed !== []) {
+            Log::warning('Container image batch uploaded zero files', [
+                'container' => $number,
+                'file_count' => count($files),
+                'failed' => $failed,
+            ]);
         }
 
         $payload = $this->payloadForContainer($number);

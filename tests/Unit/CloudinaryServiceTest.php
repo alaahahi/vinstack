@@ -51,7 +51,32 @@ class CloudinaryServiceTest extends TestCase
         $result = (new CloudinaryService)->probe();
 
         $this->assertFalse($result['ok']);
+        $this->assertFalse($result['configured']);
         $this->assertStringContainsString('incomplete', strtolower($result['message']));
+    }
+
+    public function test_probe_can_run_test_upload(): void
+    {
+        VinstackSetting::current()->update([
+            'cloudinary_cloud_name' => 'demo',
+            'cloudinary_api_key' => '123',
+            'cloudinary_api_secret' => 'secret',
+        ]);
+
+        $uploadApi = \Mockery::mock(\Cloudinary\Api\Upload\UploadApi::class);
+        $uploadApi->shouldReceive('upload')
+            ->once()
+            ->andReturn(new \Cloudinary\Api\ApiResponse([
+                'secure_url' => 'https://res.cloudinary.com/demo/image/upload/v1/probe.jpg',
+                'public_id' => 'vinstack/containers/probe/connection-test',
+            ], []));
+
+        $service = new CloudinaryService($uploadApi);
+        $result = $service->probe(true);
+
+        $this->assertTrue($result['ok']);
+        $this->assertSame('ok', $result['test_upload']);
+        $this->assertStringContainsString('connection OK', $result['message']);
     }
 
     public function test_upload_delegates_to_upload_api(): void
