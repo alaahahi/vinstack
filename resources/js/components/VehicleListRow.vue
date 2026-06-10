@@ -2,7 +2,7 @@
     <div class="vehicle-row">
         <!-- Vehicle -->
         <div class="cell cell-vehicle">
-            <VehicleImageGallery :vehicle="vehicle" variant="row" />
+            <VehicleImageGallery :vehicle="vehicle" variant="row" :api-mode="mode" />
             <div class="vehicle-info">
                 <div class="title-line">
                     <button type="button" class="title title-link" @click="$emit('open-detail', vehicle)">

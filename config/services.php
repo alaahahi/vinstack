@@ -38,6 +38,8 @@ return [
     'vinstack' => [
         'base_url' => env('VINSTACK_API_URL', 'https://app.vinstack.com/api/v1/client'),
         'token' => env('VINSTACK_API_TOKEN'),
+        'gallery_base_url' => env('VINSTACK_GALLERY_API_URL', 'https://app.vinstack.com/api/client-portal'),
+        'gallery_token' => env('VINSTACK_GALLERY_API_TOKEN'),
     ],
 
 ];

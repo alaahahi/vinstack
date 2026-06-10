@@ -9,6 +9,10 @@ class VinstackSetting extends Model
     protected $fillable = [
         'api_base_url',
         'api_token',
+        'gallery_api_base_url',
+        'gallery_api_token',
+        'gallery_token_expired',
+        'gallery_token_checked_at',
         'sync_enabled',
         'last_sync_at',
         'last_auto_sync_at',
@@ -20,6 +24,9 @@ class VinstackSetting extends Model
     {
         return [
             'api_token' => 'encrypted',
+            'gallery_api_token' => 'encrypted',
+            'gallery_token_expired' => 'boolean',
+            'gallery_token_checked_at' => 'datetime',
             'sync_enabled' => 'boolean',
             'last_sync_at' => 'datetime',
             'last_auto_sync_at' => 'datetime',

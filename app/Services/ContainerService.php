@@ -31,7 +31,9 @@ class ContainerService
             $dealer = Dealer::query()->findOrFail($dealerId);
             $items = $this->listForDealer($dealer);
         } else {
-            $items = $this->fetchNormalized();
+            $fromApi = $this->fetchNormalized();
+            $fromVehicles = $this->deriveFromAllVehicles();
+            $items = $this->mergeDealerContainerLists($fromApi, $fromVehicles);
         }
 
         if ($chassis !== null && trim($chassis) !== '') {
@@ -260,18 +262,39 @@ class ContainerService
     }
 
     /**
+     * Build container rows from vehicle raw_data (manual entry or sync) for the admin list.
+     *
+     * @return list<array<string, mixed>>
+     */
+    protected function deriveFromAllVehicles(): array
+    {
+        return $this->buildContainersFromVehicles(
+            Vehicle::query()->get(),
+        );
+    }
+
+    /**
      * Build container rows from synced vehicle raw_data when Vinstack list is empty or unmatched.
      *
      * @return list<array<string, mixed>>
      */
     protected function deriveFromDealerVehicles(Dealer $dealer): array
     {
-        $vehicles = Vehicle::query()
-            ->whereHas('assignments', function ($q) use ($dealer) {
-                $q->where('dealer_id', $dealer->id)->where('is_active', true);
-            })
-            ->get();
+        return $this->buildContainersFromVehicles(
+            Vehicle::query()
+                ->whereHas('assignments', function ($q) use ($dealer) {
+                    $q->where('dealer_id', $dealer->id)->where('is_active', true);
+                })
+                ->get(),
+        );
+    }
 
+    /**
+     * @param  \Illuminate\Support\Collection<int, Vehicle>|\Illuminate\Database\Eloquent\Collection<int, Vehicle>  $vehicles
+     * @return list<array<string, mixed>>
+     */
+    protected function buildContainersFromVehicles($vehicles): array
+    {
         /** @var array<string, list<Vehicle>> $groups */
         $groups = [];
 
@@ -292,7 +315,7 @@ class ContainerService
 
         $containers = [];
 
-        foreach ($groups as $groupKey => $group) {
+        foreach ($groups as $group) {
             $firstRaw = is_array($group[0]->raw_data) ? $group[0]->raw_data : [];
             $shipping = $this->extractShippingFromRaw($firstRaw);
             $containerNumber = $shipping['container_number'] ?? null;

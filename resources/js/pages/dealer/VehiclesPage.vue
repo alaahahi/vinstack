@@ -33,7 +33,7 @@
         />
 
         <Dialog v-model:visible="statusVisible" header="تحديث الحالة" modal style="width: min(480px, 100vw)">
-            <VehiclePhotosPanel v-if="selectedVehicle" :vehicle="selectedVehicle" />
+            <VehiclePhotosPanel v-if="selectedVehicle" :vehicle="selectedVehicle" api-mode="dealer" />
             <Select
                 v-model="selectedStatus"
                 :options="statusOptions"

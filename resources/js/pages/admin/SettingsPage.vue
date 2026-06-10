@@ -49,6 +49,59 @@
                 </div>
             </section>
 
+            <section class="admin-surface settings-card settings-card--wide">
+                <header class="settings-card__head">
+                    <i class="pi pi-images" />
+                    <div>
+                        <h2 class="vs-card-title">API صور المعرض (Gallery)</h2>
+                        <p class="vs-card-subtitle">
+                            منفصل عن API المزامنة — يُستدعى عند عرض صور السيارة
+                        </p>
+                    </div>
+                    <Tag
+                        v-if="settings.gallery_token_expired"
+                        severity="danger"
+                        value="التوكن منتهي"
+                        class="gallery-expired-tag"
+                    />
+                </header>
+
+                <div class="settings-card__body">
+                    <div class="field">
+                        <label for="gallery-api-base" class="vs-form-label">Gallery Base URL</label>
+                        <InputText
+                            id="gallery-api-base"
+                            v-model="form.gallery_api_base_url"
+                            class="w-full"
+                            placeholder="https://app.vinstack.com/api/client-portal"
+                        />
+                    </div>
+                    <div class="field">
+                        <label for="gallery-api-token" class="vs-form-label">Gallery API Token</label>
+                        <Password
+                            id="gallery-api-token"
+                            v-model="form.gallery_api_token"
+                            :placeholder="settings.has_gallery_token ? '•••••• (اتركه فارغاً للإبقاء)' : 'أدخل توكن المعرض'"
+                            toggle-mask
+                            input-class="w-full"
+                            class="w-full"
+                        />
+                    </div>
+                    <div v-if="settings.gallery_token_checked_at" class="vs-sync-status">
+                        <i class="pi pi-clock" />
+                        <span>
+                            آخر فحص للتوكن:
+                            <strong>
+                                <span class="sync-datetime" dir="ltr">{{ formatDateTime(settings.gallery_token_checked_at) }}</span>
+                            </strong>
+                        </span>
+                    </div>
+                    <p class="sync-cron-help sync-cron-help--muted">
+                        المسار: <code dir="ltr">/autos/{vin}/gallery</code> — يُستدعى عند فتح صور السيارة وليس أثناء المزامنة.
+                    </p>
+                </div>
+            </section>
+
             <section class="admin-surface settings-card">
                 <header class="settings-card__head">
                     <i class="pi pi-headphones" />
@@ -472,6 +525,7 @@ import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
+import Tag from 'primevue/tag';
 import Dialog from 'primevue/dialog';
 import ProgressSpinner from 'primevue/progressspinner';
 import AdminPageHeader from '../../components/AdminPageHeader.vue';
@@ -524,6 +578,8 @@ const vehicleOptions = ref({
 const form = reactive({
     api_base_url: '',
     api_token: '',
+    gallery_api_base_url: '',
+    gallery_api_token: '',
     sync_enabled: true,
     support_phone: '',
 });
@@ -535,9 +591,11 @@ async function load() {
     ]);
     settings.value = settingsRes.data.data;
     form.api_base_url = settingsRes.data.data.api_base_url || '';
+    form.gallery_api_base_url = settingsRes.data.data.gallery_api_base_url || '';
     form.sync_enabled = settingsRes.data.data.sync_enabled ?? true;
     form.support_phone = settingsRes.data.data.support_phone || '';
     form.api_token = '';
+    form.gallery_api_token = '';
     vehicleOptions.value = optionsRes.data.data;
 }
 
@@ -565,12 +623,17 @@ async function save() {
     try {
         const payload = {
             api_base_url: form.api_base_url,
+            gallery_api_base_url: form.gallery_api_base_url,
             sync_enabled: form.sync_enabled,
             support_phone: form.support_phone,
         };
 
         if (form.api_token) {
             payload.api_token = form.api_token;
+        }
+
+        if (form.gallery_api_token) {
+            payload.gallery_api_token = form.gallery_api_token;
         }
 
         await api.put('/admin/vinstack/settings', payload);
@@ -1020,6 +1083,11 @@ onMounted(async () => {
     align-items: flex-start;
     gap: 0.85rem;
     padding: 1.1rem 1.15rem 0;
+}
+
+.gallery-expired-tag {
+    margin-inline-start: auto;
+    flex-shrink: 0;
 }
 
 .settings-card__head > i {

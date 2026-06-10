@@ -72,7 +72,7 @@
 
 
 
-        <VehicleGalleryLightbox v-model:visible="visible" :vehicle="vehicle" />
+        <VehicleGalleryLightbox v-model:visible="visible" :vehicle="lightboxVehicle" />
 
     </div>
 
@@ -83,6 +83,7 @@
 <script setup>
 
 import { computed, ref } from 'vue';
+import { fetchLiveVehicleGallery, mergeGalleryIntoVehicle } from '../utils/vehicleGalleryLive';
 
 import Button from 'primevue/button';
 
@@ -132,11 +133,25 @@ const props = defineProps({
 
     },
 
+    apiMode: {
+
+        type: String,
+
+        default: 'admin',
+
+        validator: (value) => ['admin', 'dealer'].includes(value),
+
+    },
+
 });
 
 
 
 const visible = ref(false);
+
+const lightboxVehicle = ref(null);
+
+const galleryFetching = ref(false);
 
 
 
@@ -184,15 +199,31 @@ const buttonLabel = computed(() =>
 
 
 
-function openGallery() {
+async function openGallery() {
 
-    if (! canOpenGallery.value) {
+    if (! canOpenGallery.value || galleryFetching.value) {
 
         return;
 
     }
 
+    const vehicleId = props.vehicle?.id;
+    const vin = props.vehicle?.vin;
 
+    if (vehicleId && vin) {
+        galleryFetching.value = true;
+
+        try {
+            const payload = await fetchLiveVehicleGallery(vehicleId, props.apiMode);
+            lightboxVehicle.value = mergeGalleryIntoVehicle(props.vehicle, payload);
+        } catch {
+            lightboxVehicle.value = props.vehicle;
+        } finally {
+            galleryFetching.value = false;
+        }
+    } else {
+        lightboxVehicle.value = props.vehicle;
+    }
 
     visible.value = true;
 

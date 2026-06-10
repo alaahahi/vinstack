@@ -1,5 +1,23 @@
 <template>
     <div class="photos-panel">
+        <div v-if="galleryLoading" class="gallery-loading">
+            <ProgressSpinner style="width: 28px; height: 28px" />
+            <span>جاري تحميل الصور المحدّثة...</span>
+        </div>
+
+        <div v-else-if="galleryTokenExpired" class="gallery-warning gallery-warning--danger">
+            <i class="pi pi-exclamation-triangle" />
+            <span>توكن API المعرض منتهي — راجع الإعدادات. تُعرض الصور المخزّنة إن وُجدت.</span>
+        </div>
+
+        <div v-else-if="galleryFresh" class="gallery-warning gallery-warning--ok">
+            <i class="pi pi-check-circle" />
+            <span v-if="galleryNewImagesCount > 0">
+                تم حفظ {{ galleryNewImagesCount }} صورة جديدة من API المعرض
+            </span>
+            <span v-else>صور محدّثة من API المعرض</span>
+        </div>
+
         <template v-if="adminMode">
             <header class="photos-section-header">
                 <h3 class="photos-section-title">إدارة الصور</h3>
@@ -94,12 +112,12 @@
 
             <VehicleGalleryLightbox
                 v-model:visible="zoomVisible"
-                :vehicle="vehicle"
+                :vehicle="displayVehicle ?? vehicle"
                 :start-url="zoomStartUrl"
             />
         </template>
 
-        <VehicleImageGallery v-else-if="compact" :vehicle="vehicle" show-button />
+        <VehicleImageGallery v-else-if="compact" :vehicle="displayVehicle ?? vehicle" :api-mode="apiMode" show-button />
 
         <template v-else>
             <header class="photos-section-header photos-section-header--dealer">
@@ -175,7 +193,7 @@
 
             <VehicleGalleryLightbox
                 v-model:visible="zoomVisible"
-                :vehicle="vehicle"
+                :vehicle="displayVehicle"
                 :start-url="zoomStartUrl"
             />
         </template>
@@ -183,10 +201,11 @@
 </template>
 
 <script setup>
-import { computed, ref, watch } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 import Button from 'primevue/button';
+import ProgressSpinner from 'primevue/progressspinner';
 import VehicleImageGallery from './VehicleImageGallery.vue';
 import VehicleGalleryLightbox from './VehicleGalleryLightbox.vue';
 import {
@@ -203,6 +222,7 @@ import {
     localImageIdForUrl,
     uploadVehicleImages,
 } from '../utils/vehicleImageUpload';
+import { fetchLiveVehicleGallery, mergeGalleryIntoVehicle } from '../utils/vehicleGalleryLive';
 
 const props = defineProps({
     vehicle: {
@@ -216,6 +236,11 @@ const props = defineProps({
     adminMode: {
         type: Boolean,
         default: false,
+    },
+    apiMode: {
+        type: String,
+        default: 'admin',
+        validator: (value) => ['admin', 'dealer'].includes(value),
     },
 });
 
@@ -232,13 +257,56 @@ const fileInputs = ref({});
 const dragOverStage = ref(null);
 const galleryIndex = ref(0);
 const galleryNavLock = ref(false);
+const galleryLoading = ref(false);
+const displayVehicle = ref(null);
+const galleryFresh = ref(false);
+const galleryTokenExpired = ref(false);
+const galleryNewImagesCount = ref(0);
 
-const preview = computed(() => vehicleThumbnail(props.vehicle));
-const galleryImages = computed(() => vehicleGalleryImages(props.vehicle));
-const label = computed(() => vehicleLabel(props.vehicle));
-const stages = computed(() => vehicleGalleryByStage(props.vehicle));
-const uploadedList = computed(() => vehicleUploadedImages(props.vehicle));
+const preview = computed(() => vehicleThumbnail(displayVehicle.value ?? props.vehicle));
+const galleryImages = computed(() => vehicleGalleryImages(displayVehicle.value ?? props.vehicle));
+const label = computed(() => vehicleLabel(displayVehicle.value ?? props.vehicle));
+const stages = computed(() => vehicleGalleryByStage(displayVehicle.value ?? props.vehicle));
+const uploadedList = computed(() => vehicleUploadedImages(displayVehicle.value ?? props.vehicle));
 const currentGalleryUrl = computed(() => galleryImages.value[galleryIndex.value] ?? null);
+
+async function loadLiveGallery() {
+    const vehicleId = props.vehicle?.id;
+    const vin = props.vehicle?.vin;
+
+    if (! vehicleId || ! vin) {
+        displayVehicle.value = props.vehicle;
+
+        return;
+    }
+
+    galleryLoading.value = true;
+    galleryFresh.value = false;
+    galleryTokenExpired.value = false;
+    galleryNewImagesCount.value = 0;
+
+    try {
+        const payload = await fetchLiveVehicleGallery(vehicleId, props.apiMode);
+        displayVehicle.value = mergeGalleryIntoVehicle(props.vehicle, payload);
+        galleryFresh.value = Boolean(payload.gallery_fresh);
+        galleryTokenExpired.value = Boolean(payload.gallery_token_expired);
+        galleryNewImagesCount.value = Number(payload.gallery_new_images_count ?? 0);
+        emit('updated', displayVehicle.value);
+    } catch {
+        displayVehicle.value = props.vehicle;
+    } finally {
+        galleryLoading.value = false;
+    }
+}
+
+onMounted(loadLiveGallery);
+
+watch(
+    () => [props.vehicle?.id, props.vehicle?.vin],
+    () => {
+        loadLiveGallery();
+    },
+);
 
 watch(galleryImages, (images) => {
     if (galleryIndex.value >= images.length) {
@@ -334,6 +402,7 @@ async function uploadFiles(stageKey, files) {
         const vehiclePayload = result.data?.vehicle ?? result.data;
 
         emit('updated', vehiclePayload);
+        await loadLiveGallery();
 
         toast.add({
             severity: 'success',
@@ -384,6 +453,7 @@ async function removeLocal(url) {
         const result = await deleteVehicleImage(props.vehicle.id, imageId);
 
         emit('updated', result.data);
+        await loadLiveGallery();
 
         toast.add({
             severity: 'success',
@@ -788,5 +858,40 @@ function goGalleryNext() {
     background: var(--vs-surface-elevated);
     border: 1px dashed var(--vs-border);
     border-radius: 10px;
+}
+
+.gallery-loading {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.65rem 0.85rem;
+    margin-bottom: 0.75rem;
+    border-radius: 10px;
+    background: var(--vs-surface-elevated);
+    color: var(--vs-text-muted);
+    font-size: 0.9rem;
+}
+
+.gallery-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.65rem 0.85rem;
+    margin-bottom: 0.75rem;
+    border-radius: 10px;
+    font-size: 0.88rem;
+    line-height: 1.45;
+}
+
+.gallery-warning--danger {
+    background: #fef2f2;
+    color: #991b1b;
+    border: 1px solid #fecaca;
+}
+
+.gallery-warning--ok {
+    background: #f0fdf4;
+    color: #166534;
+    border: 1px solid #bbf7d0;
 }
 </style>

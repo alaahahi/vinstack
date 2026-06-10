@@ -46,6 +46,7 @@
             <VehiclePhotosPanel
                 :vehicle="photosVehicle"
                 :admin-mode="isAdminPhotos"
+                :api-mode="mode"
                 @updated="onPhotosUpdated"
             />
 

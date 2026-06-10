@@ -15,6 +15,7 @@ use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PublicSettingsController;
 use App\Http\Controllers\Api\TwoFactorController;
 use App\Http\Controllers\Api\VehicleImageDownloadController;
+use App\Http\Controllers\VehicleGalleryController;
 use App\Http\Controllers\Dealer\ContainerController as DealerContainerController;
 use App\Http\Controllers\Dealer\HeartbeatController as DealerHeartbeatController;
 use App\Http\Controllers\Dealer\ProfileController as DealerProfileController;
@@ -54,6 +55,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/vehicles/{vehicle}', [ManualVehicleController::class, 'destroy']);
         Route::post('/vehicles/{vehicle}/restore', [ManualVehicleController::class, 'restore']);
         Route::get('/vehicles/{vehicle}/details', [AdminVehicleController::class, 'details']);
+        Route::get('/vehicles/{vehicle}/gallery', [VehicleGalleryController::class, 'show']);
         Route::get('/vehicles/{vehicle}/images/download', [VehicleImageDownloadController::class, 'download']);
         Route::post('/vehicles/{vehicle}/images', [VehicleUploadedImageController::class, 'store']);
         Route::delete('/vehicles/{vehicle}/images/{image}', [VehicleUploadedImageController::class, 'destroy']);
@@ -99,6 +101,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/vehicles', [DealerVehicleController::class, 'index']);
         Route::get('/vehicles/{vehicle}', [DealerVehicleController::class, 'show']);
         Route::get('/vehicles/{vehicle}/details', [DealerVehicleController::class, 'details']);
+        Route::get('/vehicles/{vehicle}/gallery', [VehicleGalleryController::class, 'show']);
         Route::get('/vehicles/{vehicle}/images/download', [VehicleImageDownloadController::class, 'download']);
         Route::patch('/vehicles/{vehicle}/status', [DealerVehicleController::class, 'updateStatus']);
     });

@@ -96,6 +96,64 @@ class ContainerServiceDealerListTest extends TestCase
         $this->assertSame('vinstack', $rows[0]['source']);
     }
 
+    public function test_admin_sees_manual_vehicle_container_when_not_in_vinstack_api(): void
+    {
+        Vehicle::query()->create([
+            'vinstack_id' => null,
+            'vin' => '1FA6P8TH4G5200001',
+            'make' => 'Ford',
+            'model' => 'Mustang',
+            'year' => 2020,
+            'source' => VehicleSource::Manual,
+            'status' => VehicleStatus::Available,
+            'raw_data' => [
+                'container_number' => 'MANU1234567',
+                'booking_number' => 'BK-MANUAL',
+                'destination' => 'Dubai',
+            ],
+        ]);
+
+        $this->mockVinstackContainers([]);
+
+        $rows = app(ContainerService::class)->listForAdminFiltered();
+
+        $numbers = array_map(
+            fn (array $row) => $row['container_number'] ?? null,
+            $rows,
+        );
+
+        $this->assertContains('MANU1234567', $numbers);
+        $this->assertSame('vehicles', $rows[0]['source']);
+    }
+
+    public function test_admin_merges_manual_vehicle_container_with_vinstack_api(): void
+    {
+        Vehicle::query()->create([
+            'vinstack_id' => null,
+            'vin' => '1FA6P8TH4G5200002',
+            'make' => 'Ford',
+            'model' => 'Focus',
+            'year' => 2019,
+            'source' => VehicleSource::Manual,
+            'status' => VehicleStatus::Available,
+            'raw_data' => ['container_number' => 'ONLYMANUAL1'],
+        ]);
+
+        $this->mockVinstackContainers([
+            ['container_number' => 'API0000001', 'autos' => []],
+        ]);
+
+        $rows = app(ContainerService::class)->listForAdminFiltered();
+        $numbers = array_map(
+            fn (array $row) => $row['container_number'] ?? null,
+            $rows,
+        );
+
+        $this->assertContains('API0000001', $numbers);
+        $this->assertContains('ONLYMANUAL1', $numbers);
+        $this->assertGreaterThanOrEqual(2, count($rows));
+    }
+
     /**
      * @param  array<string, mixed>  $rawData
      */
