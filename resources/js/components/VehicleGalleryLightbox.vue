@@ -684,8 +684,8 @@ onBeforeUnmount(() => {
 }
 
 .gallery-nav-btn {
-    width: 36px;
-    height: 36px;
+    width: 48px;
+    height: 48px;
     border: 1px solid rgb(255 255 255 / 18%);
     border-radius: 999px;
     background: rgb(24 24 27 / 72%);
@@ -693,6 +693,10 @@ onBeforeUnmount(() => {
     cursor: pointer;
     display: grid;
     place-items: center;
+}
+
+.gallery-nav-btn i {
+    font-size: 1.15rem;
 }
 
 .gallery-nav-btn:disabled {

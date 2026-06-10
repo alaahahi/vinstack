@@ -209,7 +209,12 @@ export function vehicleGalleryByStage(vehicle) {
         return stagesFromPrecomputed(vehicle.images_by_stage, vehicle);
     }
 
-    const precomputed = vehicle.images_by_stage ?? vehicle.raw_data?.images_by_stage;
+    // List/detail API enrichment — prefer merged stages over stale client-portal blocks in raw_data.
+    if (vehicle.images_by_stage && typeof vehicle.images_by_stage === 'object') {
+        return stagesFromPrecomputed(vehicle.images_by_stage, vehicle);
+    }
+
+    const precomputed = vehicle.raw_data?.images_by_stage;
 
     if (precomputed && typeof precomputed === 'object' && ! liveGallery) {
         return stagesFromPrecomputed(precomputed, vehicle);

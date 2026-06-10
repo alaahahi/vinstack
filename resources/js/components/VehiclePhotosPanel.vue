@@ -605,8 +605,8 @@ function goGalleryNext() {
 
 .gallery-nav {
     flex-shrink: 0;
-    width: 32px;
-    height: 32px;
+    width: 48px;
+    height: 48px;
     border: 1px solid var(--vs-border);
     border-radius: 999px;
     background: var(--vs-surface);
@@ -614,6 +614,10 @@ function goGalleryNext() {
     cursor: pointer;
     display: grid;
     place-items: center;
+}
+
+.gallery-nav i {
+    font-size: 1.15rem;
 }
 
 .gallery-nav:disabled {

@@ -453,7 +453,7 @@ class ContainerService
             $value = Arr::get($item, $key);
 
             if ($value !== null && $value !== '') {
-                return (string) $value;
+                return $this->scalarString($value);
             }
         }
 
@@ -466,7 +466,7 @@ class ContainerService
         $first = $invoices[0];
 
         if (! is_array($first)) {
-            return (string) $first;
+            return $this->scalarString($first);
         }
 
         return $this->string($first, 'invoice_number')
@@ -479,14 +479,14 @@ class ContainerService
      */
     protected function rowTrackingAvailable(array $item): bool
     {
-        $number = trim((string) ($item['container_number'] ?? ''));
+        $number = trim($this->scalarString($item['container_number'] ?? null) ?? '');
 
         if ($number === '') {
             return false;
         }
 
-        $from = trim((string) ($item['loading_point'] ?? ''));
-        $to = trim((string) ($item['destination'] ?? ''));
+        $from = trim($this->scalarString($item['loading_point'] ?? null) ?? '');
+        $to = trim($this->scalarString($item['destination'] ?? null) ?? '');
 
         return $from !== '' || $to !== '';
     }
@@ -496,13 +496,68 @@ class ContainerService
      */
     protected function string(array $item, string $key): ?string
     {
-        $value = Arr::get($item, $key);
+        return $this->scalarString(Arr::get($item, $key));
+    }
 
+    protected function scalarString(mixed $value): ?string
+    {
         if ($value === null || $value === '') {
             return null;
         }
 
-        return trim((string) $value);
+        if (is_bool($value)) {
+            return $value ? '1' : '0';
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return trim((string) $value);
+        }
+
+        if (is_string($value)) {
+            $trimmed = trim($value);
+
+            return $trimmed !== '' ? $trimmed : null;
+        }
+
+        if (! is_array($value)) {
+            return null;
+        }
+
+        if ($value === []) {
+            return null;
+        }
+
+        foreach (['name', 'label', 'title', 'value', 'text', 'port', 'city'] as $key) {
+            if (array_key_exists($key, $value)) {
+                $nested = $this->scalarString($value[$key]);
+
+                if ($nested !== null) {
+                    return $nested;
+                }
+            }
+        }
+
+        $parts = [];
+
+        foreach ($value as $item) {
+            if (is_scalar($item) && $item !== '') {
+                $parts[] = trim((string) $item);
+            } elseif (is_array($item)) {
+                $nested = $this->scalarString($item);
+
+                if ($nested !== null) {
+                    $parts[] = $nested;
+                }
+            }
+        }
+
+        if ($parts !== []) {
+            return implode(', ', $parts);
+        }
+
+        $encoded = json_encode($value, JSON_UNESCAPED_UNICODE);
+
+        return is_string($encoded) && $encoded !== '[]' && $encoded !== '{}' ? $encoded : null;
     }
 
     /**
@@ -574,22 +629,26 @@ class ContainerService
 
     protected function normalizeContainerNumber(mixed $value): ?string
     {
-        if ($value === null || $value === '') {
+        $stringValue = $this->scalarString($value);
+
+        if ($stringValue === null) {
             return null;
         }
 
-        $normalized = strtoupper(preg_replace('/\s+/', '', trim((string) $value)) ?? '');
+        $normalized = strtoupper(preg_replace('/\s+/', '', $stringValue) ?? '');
 
         return $normalized !== '' ? $normalized : null;
     }
 
     protected function normalizeBookingNumber(mixed $value): ?string
     {
-        if ($value === null || $value === '') {
+        $stringValue = $this->scalarString($value);
+
+        if ($stringValue === null) {
             return null;
         }
 
-        $normalized = strtoupper(preg_replace('/\s+/', '', trim((string) $value)) ?? '');
+        $normalized = strtoupper(preg_replace('/\s+/', '', $stringValue) ?? '');
 
         return $normalized !== '' ? $normalized : null;
     }

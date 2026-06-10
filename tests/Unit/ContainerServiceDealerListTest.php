@@ -75,6 +75,29 @@ class ContainerServiceDealerListTest extends TestCase
         $this->assertSame('5YJSA1E14HF000001', $rows[0]['vehicles'][0]['vin']);
     }
 
+    public function test_dealer_list_handles_array_destination_in_vehicle_raw_data(): void
+    {
+        $dealer = $this->createDealerWithAssignment(
+            vin: '1HGBH41JXMN109187',
+            rawData: [
+                'container_number' => 'MSKU 7654321',
+                'destination' => ['name' => 'Jebel Ali', 'country' => 'UAE'],
+                'loading_point' => ['label' => 'Houston Port'],
+                'shipping_line' => ['value' => 'Maersk'],
+            ],
+        );
+
+        $this->mockVinstackContainers([]);
+
+        $rows = app(ContainerService::class)->listForDealer($dealer);
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('MSKU7654321', $rows[0]['container_number']);
+        $this->assertSame('Jebel Ali', $rows[0]['destination']);
+        $this->assertSame('Houston Port', $rows[0]['loading_point']);
+        $this->assertSame('Maersk', $rows[0]['shipping_line']);
+    }
+
     public function test_dealer_matches_vin_in_container_autos(): void
     {
         $dealer = $this->createDealerWithAssignment(
