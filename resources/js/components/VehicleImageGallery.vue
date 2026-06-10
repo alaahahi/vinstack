@@ -72,7 +72,11 @@
 
 
 
-        <VehicleGalleryLightbox v-model:visible="visible" :vehicle="lightboxVehicle" />
+        <VehicleGalleryLightbox
+            v-model:visible="visible"
+            :vehicle="lightboxVehicle"
+            :api-mode="apiMode"
+        />
 
     </div>
 

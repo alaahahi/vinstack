@@ -81,6 +81,60 @@
                 <i class="pi" :class="busyShare ? 'pi-spin pi-spinner' : 'pi-share-alt'" />
                 <span>{{ busyShare ? shareProgressLabel : 'مشاركة الكل' }}</span>
             </button>
+            <!-- TODO: remove after gallery debug -->
+            <button
+                type="button"
+                class="gallery-action-btn gallery-action-btn--debug"
+                :disabled="galleryTestLoading"
+                @click="runGalleryTest"
+            >
+                <i class="pi" :class="galleryTestLoading ? 'pi-spin pi-spinner' : 'pi-bolt'" />
+                <span>TEST API</span>
+            </button>
+        </div>
+
+        <div v-if="visible && galleryTestResult" class="gallery-debug-panel" role="status">
+            <div class="gallery-debug-title">نتيجة API المعرض (مؤقت)</div>
+            <div class="gallery-debug-row">
+                <span>fresh:</span>
+                <strong>{{ galleryTestResult.gallery_fresh ? 'نعم' : 'لا' }}</strong>
+            </div>
+            <div v-if="galleryTestResult.gallery_error" class="gallery-debug-row gallery-debug-row--error">
+                <span>خطأ:</span>
+                <strong>{{ galleryTestResult.gallery_error }}</strong>
+            </div>
+            <div class="gallery-debug-row">
+                <span>API خام:</span>
+                <strong>
+                    T {{ galleryTestResult.api_raw.terminal }} /
+                    P {{ galleryTestResult.api_raw.pickup }} /
+                    D {{ galleryTestResult.api_raw.destination }}
+                    ({{ galleryTestResult.total_api_stages }})
+                </strong>
+            </div>
+            <div class="gallery-debug-row">
+                <span>images_by_stage:</span>
+                <strong>
+                    T {{ galleryTestResult.images_by_stage.terminal }} /
+                    P {{ galleryTestResult.images_by_stage.pickup }} /
+                    D {{ galleryTestResult.images_by_stage.destination }}
+                    ({{ galleryTestResult.total_merged }})
+                </strong>
+            </div>
+            <div class="gallery-debug-row">
+                <span>يعرض UI الآن:</span>
+                <strong>
+                    T {{ galleryTestResult.ui_display.terminal }} /
+                    P {{ galleryTestResult.ui_display.pickup }} /
+                    D {{ galleryTestResult.ui_display.destination }}
+                    ({{ galleryTestResult.ui_display.total }})
+                </strong>
+            </div>
+            <div class="gallery-debug-row">
+                <span>flat / urls:</span>
+                <strong>{{ galleryTestResult.flat_images }} / {{ galleryTestResult.top_level_urls }}</strong>
+            </div>
+            <button type="button" class="gallery-debug-close" @click="galleryTestResult = null">إخفاء</button>
         </div>
     </Teleport>
 </template>
@@ -101,6 +155,12 @@ import {
     vehicleLabel,
     vehicleUploadedImages,
 } from '../utils/vehicleImages';
+import {
+    fetchLiveVehicleGallery,
+    mergeGalleryIntoVehicle,
+    summarizeGalleryApiResponse,
+    vehicleUsesLiveGallery,
+} from '../utils/vehicleGalleryLive';
 import { isLocalUploadedUrl } from '../utils/vehicleImageUpload';
 
 const props = defineProps({
@@ -115,6 +175,11 @@ const props = defineProps({
     startUrl: {
         type: String,
         default: null,
+    },
+    apiMode: {
+        type: String,
+        default: 'admin',
+        validator: (value) => ['admin', 'dealer'].includes(value),
     },
 });
 
@@ -131,6 +196,8 @@ const bulkProgress = ref({ current: 0, total: 0 });
 const shareProgress = ref({ current: 0, total: 0 });
 const navLock = ref(false);
 const preloadedUrls = new Set();
+const galleryTestLoading = ref(false);
+const galleryTestResult = ref(null);
 
 const stages = computed(() => vehicleGalleryByStage(props.vehicle));
 
@@ -188,6 +255,83 @@ const lightboxImages = computed(() => {
 
 function firstStageWithImages() {
     return GALLERY_STAGES.find((tab) => (stages.value[tab.key]?.length ?? 0) > 0)?.key ?? 'terminal';
+}
+
+async function runGalleryTest() {
+    const vehicle = props.vehicle;
+    const vehicleId = vehicle?.id;
+
+    if (! vehicleId) {
+        toast.add({
+            severity: 'warn',
+            summary: 'TEST API',
+            detail: 'لا يوجد معرّف للسيارة',
+            life: 5000,
+        });
+
+        return;
+    }
+
+    if (! vehicleUsesLiveGallery(vehicle)) {
+        toast.add({
+            severity: 'info',
+            summary: 'TEST API',
+            detail: 'سيارة يدوية — API المعرض لا ينطبق (source ليس vinstack)',
+            life: 6000,
+        });
+
+        return;
+    }
+
+    galleryTestLoading.value = true;
+
+    try {
+        const payload = await fetchLiveVehicleGallery(vehicleId, props.apiMode);
+        const summary = summarizeGalleryApiResponse(payload);
+        const uiStages = vehicleGalleryByStage(mergeGalleryIntoVehicle(vehicle, payload));
+
+        galleryTestResult.value = {
+            ...summary,
+            ui_display: {
+                terminal: uiStages.terminal?.length ?? 0,
+                pickup: uiStages.pickup?.length ?? 0,
+                destination: uiStages.destination?.length ?? 0,
+                total: (uiStages.terminal?.length ?? 0)
+                    + (uiStages.pickup?.length ?? 0)
+                    + (uiStages.destination?.length ?? 0),
+            },
+        };
+
+        toast.add({
+            severity: 'info',
+            summary: 'TEST API',
+            detail: `API: ${summary.total_api_stages} صورة — UI: ${galleryTestResult.value.ui_display.total}`,
+            life: 8000,
+        });
+    } catch (e) {
+        const msg = e.response?.data?.message ?? e.message ?? 'فشل الطلب';
+
+        galleryTestResult.value = {
+            gallery_fresh: false,
+            gallery_error: msg,
+            api_raw: { terminal: 0, pickup: 0, destination: 0 },
+            images_by_stage: { terminal: 0, pickup: 0, destination: 0 },
+            flat_images: 0,
+            top_level_urls: 0,
+            total_api_stages: 0,
+            total_merged: 0,
+            ui_display: { terminal: 0, pickup: 0, destination: 0, total: 0 },
+        };
+
+        toast.add({
+            severity: 'error',
+            summary: 'TEST API',
+            detail: msg,
+            life: 8000,
+        });
+    } finally {
+        galleryTestLoading.value = false;
+    }
 }
 
 function applyStartUrl() {
@@ -616,6 +760,57 @@ onBeforeUnmount(() => {
 .gallery-action-btn:disabled {
     opacity: 0.45;
     cursor: not-allowed;
+}
+
+.gallery-action-btn--debug {
+    border-color: rgb(251 191 36 / 45%);
+    background: rgb(120 53 15 / 78%);
+    color: #fef3c7;
+}
+
+.gallery-debug-panel {
+    position: fixed;
+    top: 72px;
+    inset-inline-end: 18px;
+    z-index: 11060;
+    width: min(92vw, 320px);
+    padding: 0.75rem 0.85rem;
+    border-radius: 10px;
+    border: 1px solid rgb(251 191 36 / 35%);
+    background: rgb(24 24 27 / 92%);
+    color: #fafafa;
+    font-size: 0.78rem;
+    line-height: 1.45;
+    pointer-events: auto;
+    backdrop-filter: blur(8px);
+}
+
+.gallery-debug-title {
+    font-weight: 700;
+    margin-bottom: 0.45rem;
+    color: #fde68a;
+}
+
+.gallery-debug-row {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.2rem;
+}
+
+.gallery-debug-row--error strong {
+    color: #fca5a5;
+}
+
+.gallery-debug-close {
+    margin-top: 0.5rem;
+    padding: 0.25rem 0.55rem;
+    border: 1px solid rgb(255 255 255 / 20%);
+    border-radius: 6px;
+    background: transparent;
+    color: #e4e4e7;
+    font-size: 0.72rem;
+    cursor: pointer;
 }
 
 .gallery-stage-tab {

@@ -119,6 +119,7 @@
                 v-model:visible="zoomVisible"
                 :vehicle="displayVehicle ?? vehicle"
                 :start-url="zoomStartUrl"
+                :api-mode="apiMode"
             />
         </template>
 
@@ -200,6 +201,7 @@
                 v-model:visible="zoomVisible"
                 :vehicle="displayVehicle"
                 :start-url="zoomStartUrl"
+                :api-mode="apiMode"
             />
         </template>
     </div>
