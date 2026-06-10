@@ -50,87 +50,71 @@
             </section>
 
             <section class="admin-surface settings-card settings-card--gallery">
-                <header class="settings-card__head settings-card__head--gallery">
-                    <div class="gallery-head-icon">
-                        <i class="pi pi-images" />
-                    </div>
-                    <div class="gallery-head-text">
-                        <h2 class="vs-card-title">API صور المعرض (Gallery)</h2>
-                        <p class="vs-card-subtitle">
-                            منفصل عن المزامنة — يُستدعى عند فتح صور السيارة فقط
-                        </p>
+                <header class="settings-card__head">
+                    <i class="pi pi-images" />
+                    <div>
+                        <h2 class="vs-card-title">API صور المعرض</h2>
+                        <p class="vs-card-subtitle">منفصل عن المزامنة — عند فتح الصور</p>
                     </div>
                     <Tag
                         v-if="settings.gallery_token_expired"
                         severity="danger"
-                        value="التوكن منتهي"
+                        value="منتهي"
                         class="gallery-expired-tag"
                     />
                 </header>
 
-                <div class="settings-card__body gallery-settings-body">
+                <div class="settings-card__body">
                     <div class="gallery-status-row">
                         <span class="gallery-status-chip" :class="galleryUrlReady ? 'gallery-status-chip--ok' : 'gallery-status-chip--warn'">
-                            <i :class="galleryUrlReady ? 'pi pi-check-circle' : 'pi pi-exclamation-circle'" />
-                            {{ galleryUrlReady ? 'الرابط مضبوط' : 'الرابط غير مضبوط' }}
+                            {{ galleryUrlReady ? 'رابط ✓' : 'رابط ✗' }}
                         </span>
                         <span class="gallery-status-chip" :class="galleryTokenReady ? 'gallery-status-chip--ok' : 'gallery-status-chip--warn'">
-                            <i :class="galleryTokenReady ? 'pi pi-check-circle' : 'pi pi-exclamation-circle'" />
-                            {{ galleryTokenReady ? 'التوكن متوفر' : 'التوكن مطلوب' }}
+                            {{ galleryTokenReady ? 'توكن ✓' : 'توكن ✗' }}
                         </span>
                     </div>
 
-                    <div class="gallery-fields-grid">
-                        <div class="field">
-                            <label for="gallery-api-base" class="vs-form-label">Gallery Base URL</label>
-                            <InputText
-                                id="gallery-api-base"
-                                v-model="form.gallery_api_base_url"
-                                class="w-full gallery-input"
-                                dir="ltr"
-                                placeholder="https://app.vinstack.com/api/client-portal"
-                            />
-                        </div>
-                        <div class="field">
-                            <label for="gallery-api-token" class="vs-form-label">Gallery API Token</label>
-                            <Password
-                                id="gallery-api-token"
-                                v-model="form.gallery_api_token"
-                                :placeholder="settings.has_gallery_token ? '•••••• (اتركه فارغاً للإبقاء)' : 'أدخل توكن المعرض'"
-                                toggle-mask
-                                input-class="w-full gallery-input"
-                                class="w-full"
-                            />
-                            <p class="field-hint">
-                                إن تُرك فارغاً يُستخدم توكن المزامنة تلقائياً إن وُجد.
-                            </p>
-                        </div>
-                    </div>
-
-                    <div class="gallery-endpoint-preview">
-                        <span class="gallery-endpoint-preview__label">المسار الكامل عند العرض:</span>
-                        <code class="gallery-endpoint-preview__url" dir="ltr">{{ galleryEndpointPreview }}</code>
-                    </div>
-
-                    <div class="gallery-actions-row">
-                        <Button
-                            label="اختبار الإعدادات"
-                            icon="pi pi-bolt"
-                            outlined
-                            severity="secondary"
-                            :loading="testingGallery"
-                            @click="testGalleryConnection"
+                    <div class="field">
+                        <label for="gallery-api-base" class="vs-form-label">Gallery Base URL</label>
+                        <InputText
+                            id="gallery-api-base"
+                            v-model="form.gallery_api_base_url"
+                            class="w-full gallery-input"
+                            dir="ltr"
+                            placeholder="https://app.vinstack.com/api/client-portal"
                         />
-                        <p class="gallery-save-hint">
-                            <i class="pi pi-info-circle" />
-                            بعد تعديل الرابط أو التوكن اضغط «حفظ الإعدادات» أسفل الصفحة.
-                        </p>
                     </div>
+                    <div class="field">
+                        <label for="gallery-api-token" class="vs-form-label">Gallery API Token</label>
+                        <Password
+                            id="gallery-api-token"
+                            v-model="form.gallery_api_token"
+                            :placeholder="settings.has_gallery_token ? '•••••• (اتركه فارغاً للإبقاء)' : 'أدخل توكن المعرض'"
+                            toggle-mask
+                            input-class="w-full gallery-input"
+                            class="w-full"
+                        />
+                    </div>
+
+                    <p class="sync-cron-help sync-cron-help--muted gallery-path-hint">
+                        <code dir="ltr">{{ galleryEndpointPreview }}</code>
+                    </p>
+
+                    <Button
+                        label="اختبار"
+                        icon="pi pi-bolt"
+                        size="small"
+                        outlined
+                        severity="secondary"
+                        class="gallery-test-btn"
+                        :loading="testingGallery"
+                        @click="testGalleryConnection"
+                    />
 
                     <div v-if="settings.gallery_token_checked_at" class="vs-sync-status">
                         <i class="pi pi-clock" />
                         <span>
-                            آخر فحص للتوكن:
+                            آخر فحص:
                             <strong>
                                 <span class="sync-datetime" dir="ltr">{{ formatDateTime(settings.gallery_token_checked_at) }}</span>
                             </strong>
@@ -1118,9 +1102,15 @@ onMounted(async () => {
 
 .settings-group__cards {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 320px), 1fr));
+    grid-template-columns: 1fr;
     gap: 1rem;
     padding: 1rem;
+}
+
+@media (min-width: 900px) {
+    .settings-group__cards {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
 }
 
 .settings-group__cards .settings-card {
@@ -1165,35 +1155,7 @@ onMounted(async () => {
 }
 
 .settings-card--gallery {
-    grid-column: 1 / -1;
-    border: 1px solid color-mix(in srgb, var(--admin-accent, #3b82f6) 35%, var(--vs-border));
-    background: linear-gradient(
-        165deg,
-        color-mix(in srgb, var(--admin-accent, #3b82f6) 6%, transparent),
-        transparent 55%
-    );
-}
-
-.settings-card__head--gallery {
-    align-items: center;
-}
-
-.gallery-head-icon {
-    width: 2.5rem;
-    height: 2.5rem;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 12px;
-    background: color-mix(in srgb, var(--admin-accent, #3b82f6) 18%, transparent);
-    color: var(--admin-accent);
-    font-size: 1.1rem;
-    flex-shrink: 0;
-}
-
-.gallery-head-text {
-    flex: 1;
-    min-width: 0;
+    border-color: color-mix(in srgb, var(--admin-accent, #3b82f6) 28%, var(--vs-border));
 }
 
 .gallery-expired-tag {
@@ -1201,25 +1163,19 @@ onMounted(async () => {
     flex-shrink: 0;
 }
 
-.gallery-settings-body {
-    display: flex;
-    flex-direction: column;
-    gap: 0.85rem;
-}
-
 .gallery-status-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 0.35rem;
+    margin-bottom: 0.65rem;
 }
 
 .gallery-status-chip {
     display: inline-flex;
     align-items: center;
-    gap: 0.35rem;
-    padding: 0.3rem 0.65rem;
+    padding: 0.15rem 0.45rem;
     border-radius: 999px;
-    font-size: 0.75rem;
+    font-size: 0.7rem;
     font-weight: 600;
 }
 
@@ -1233,61 +1189,19 @@ onMounted(async () => {
     background: rgba(245, 158, 11, 0.16);
 }
 
-.gallery-fields-grid {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
-    gap: 0.85rem 1rem;
+.gallery-path-hint {
+    margin: 0 0 0.65rem;
 }
 
-.gallery-fields-grid .field {
-    margin-bottom: 0;
-}
-
-.field-hint {
-    margin: 0.25rem 0 0;
-    font-size: 0.75rem;
-    color: var(--vs-text-muted);
-    line-height: 1.45;
-}
-
-.gallery-endpoint-preview {
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-    padding: 0.65rem 0.75rem;
-    border-radius: 8px;
-    border: 1px dashed var(--vs-border);
-    background: var(--vs-surface-elevated, rgba(0, 0, 0, 0.03));
-}
-
-.gallery-endpoint-preview__label {
-    font-size: 0.75rem;
-    color: var(--vs-text-muted);
-    font-weight: 600;
-}
-
-.gallery-endpoint-preview__url {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 0.78rem;
+.gallery-path-hint code {
+    display: block;
+    font-size: 0.68rem;
     word-break: break-all;
     color: var(--admin-accent);
 }
 
-.gallery-actions-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.65rem 1rem;
-}
-
-.gallery-save-hint {
-    margin: 0;
-    display: inline-flex;
-    align-items: center;
-    gap: 0.35rem;
-    font-size: 0.8125rem;
-    color: var(--vs-text-muted);
-    line-height: 1.45;
+.gallery-test-btn {
+    width: 100%;
 }
 
 .gallery-input :deep(input) {

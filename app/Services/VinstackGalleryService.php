@@ -165,23 +165,84 @@ class VinstackGalleryService
      */
     protected function normalizeGalleryPayload(array $payload): array
     {
-        if (isset($payload['gallery']) && is_array($payload['gallery'])) {
-            return ['gallery' => $payload['gallery'], ...$payload];
+        $normalized = $payload;
+
+        if ($this->isClientPortalGalleryPayload($payload)) {
+            $normalized['gallery'] = $payload;
+            $normalized['images_by_stage'] = $this->stageUrlsFromClientPortalPayload($payload);
+
+            if (! isset($normalized['images']) && isset($payload['urls']) && is_array($payload['urls'])) {
+                $normalized['images'] = $payload['urls'];
+            }
         }
 
-        if (isset($payload['photos']) && is_array($payload['photos'])) {
-            return ['photos' => $payload['photos'], ...$payload];
+        if (isset($normalized['gallery']) && is_array($normalized['gallery'])) {
+            return ['gallery' => $normalized['gallery'], ...$normalized];
         }
 
-        if (isset($payload['images']) && is_array($payload['images'])) {
-            return $payload;
+        if (isset($normalized['photos']) && is_array($normalized['photos'])) {
+            return ['photos' => $normalized['photos'], ...$normalized];
         }
 
-        if ($this->looksLikeImageList($payload)) {
-            return ['images' => array_values($payload)];
+        if (isset($normalized['images']) && is_array($normalized['images'])) {
+            return $normalized;
         }
 
-        return $payload;
+        if ($this->looksLikeImageList($normalized)) {
+            return ['images' => array_values($normalized)];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     */
+    protected function isClientPortalGalleryPayload(array $payload): bool
+    {
+        foreach (VehicleImageStages::STAGES as $stage) {
+            $block = $payload[$stage] ?? null;
+
+            if (is_array($block) && isset($block['urls']) && is_array($block['urls'])) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $payload
+     * @return array{terminal: list<string>, pickup: list<string>, destination: list<string>}
+     */
+    protected function stageUrlsFromClientPortalPayload(array $payload): array
+    {
+        $stages = [
+            'terminal' => [],
+            'pickup' => [],
+            'destination' => [],
+        ];
+
+        foreach (VehicleImageStages::STAGES as $stage) {
+            $block = $payload[$stage] ?? null;
+
+            if (! is_array($block)) {
+                continue;
+            }
+
+            $urls = $block['urls'] ?? [];
+
+            if (! is_array($urls)) {
+                continue;
+            }
+
+            $stages[$stage] = array_values(array_filter(
+                $urls,
+                fn ($url) => is_string($url) && $url !== '' && ! str_contains($url, 'no_photo'),
+            ));
+        }
+
+        return $stages;
     }
 
     /**

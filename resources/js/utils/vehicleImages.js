@@ -200,14 +200,24 @@ export function vehicleGalleryByStage(vehicle) {
                 collectFromList(stages[key], raw[field], thumbnail);
             }
         }
+
+        const stageBlock = raw[key];
+
+        if (stageBlock && typeof stageBlock === 'object' && ! Array.isArray(stageBlock)) {
+            collectFromList(stages[key], stageBlock.urls ?? stageBlock, thumbnail);
+        }
     }
 
     const nested = raw.photos ?? raw.gallery;
 
     if (nested && typeof nested === 'object' && ! Array.isArray(nested)) {
         for (const { key } of GALLERY_STAGES) {
-            if (Array.isArray(nested[key])) {
-                collectFromList(stages[key], nested[key], thumbnail);
+            const block = nested[key];
+
+            if (Array.isArray(block)) {
+                collectFromList(stages[key], block, thumbnail);
+            } else if (block && typeof block === 'object') {
+                collectFromList(stages[key], block.urls ?? block, thumbnail);
             }
         }
     }
@@ -243,7 +253,7 @@ export function vehicleGalleryByStage(vehicle) {
 
     const unclassified = [...objectStageUrls.unclassified];
 
-    for (const list of [vehicle.images, raw.images]) {
+    for (const list of [vehicle.images, raw.images, raw.urls]) {
         for (const image of list ?? []) {
             if (typeof image !== 'string') {
                 continue;

@@ -22,6 +22,7 @@ class VehicleImageStages
         ];
 
         self::collectNamedArrays($stages, $source, $thumbnail);
+        self::collectClientPortalStageBlocks($stages, $source, $thumbnail);
 
         $nested = Arr::get($source, 'photos', Arr::get($source, 'gallery', []));
         if (is_array($nested)) {
@@ -30,7 +31,11 @@ class VehicleImageStages
 
         $unclassified = [];
 
-        foreach ([Arr::get($source, 'images', []), Arr::get($source, 'image_urls', [])] as $list) {
+        foreach ([
+            Arr::get($source, 'images', []),
+            Arr::get($source, 'image_urls', []),
+            Arr::get($source, 'urls', []),
+        ] as $list) {
             if (! is_array($list)) {
                 continue;
             }
@@ -126,9 +131,43 @@ class VehicleImageStages
         foreach (self::STAGES as $stage) {
             $list = Arr::get($nested, $stage);
             if (is_array($list)) {
-                self::collectFlatList($stages[$stage], $list, $thumbnail);
+                self::collectStageBlock($stages[$stage], $list, $thumbnail);
             }
         }
+    }
+
+    /**
+     * Client portal gallery: terminal/pickup/destination as { urls: [], keys: [] }.
+     *
+     * @param  array{terminal: list<string>, pickup: list<string>, destination: list<string>}  $stages
+     * @param  array<string, mixed>  $source
+     */
+    protected static function collectClientPortalStageBlocks(array &$stages, array $source, ?string $thumbnail): void
+    {
+        foreach (self::STAGES as $stage) {
+            $block = Arr::get($source, $stage);
+
+            if (! is_array($block)) {
+                continue;
+            }
+
+            self::collectStageBlock($stages[$stage], $block, $thumbnail);
+        }
+    }
+
+    /**
+     * @param  list<string>  $target
+     * @param  array<string, mixed>|list<mixed>  $block
+     */
+    protected static function collectStageBlock(array &$target, array $block, ?string $thumbnail): void
+    {
+        if (isset($block['urls']) && is_array($block['urls'])) {
+            self::collectFlatList($target, $block['urls'], $thumbnail);
+
+            return;
+        }
+
+        self::collectFlatList($target, $block, $thumbnail);
     }
 
     /**
