@@ -577,7 +577,7 @@ function resetState() {
 }
 
 async function load() {
-    const number = props.container?.container_number?.trim();
+    const number = containerRefs(props.container).container;
 
     if (!number) {
         error.value = 'رقم الحاوية غير متوفر. تحقق من بيانات الصف وحاول مرة أخرى.';

@@ -340,8 +340,14 @@ async function runApply() {
     margin-top: 0.75rem;
     padding: 0.65rem 0.85rem;
     border-radius: 8px;
-    background: var(--vs-surface-muted, #f8fafc);
-    color: var(--vs-text, #0f172a);
+    background: var(--vs-surface-hover);
+    border: 1px solid var(--vs-border);
+    color: var(--vs-text);
+}
+
+.selected-file .pi {
+    color: #15803d;
+    flex-shrink: 0;
 }
 
 .import-counts {
@@ -387,6 +393,7 @@ async function runApply() {
 .preview-section h4 {
     margin: 0 0 0.5rem;
     font-size: 0.95rem;
+    color: var(--vs-text);
 }
 
 .error-list {
@@ -399,13 +406,14 @@ async function runApply() {
     margin-bottom: 1rem;
     padding: 0.85rem 1rem;
     border-radius: 10px;
-    background: var(--vs-surface-muted, #f8fafc);
-    border: 1px solid var(--vs-border, #e2e8f0);
+    background: var(--vs-surface-hover);
+    border: 1px solid var(--vs-border);
 }
 
 .apply-mode h4 {
     margin: 0 0 0.65rem;
     font-size: 0.95rem;
+    color: var(--vs-text);
 }
 
 .apply-mode-options {
@@ -427,12 +435,12 @@ async function runApply() {
 }
 
 .apply-mode-option:hover {
-    background: #fff;
+    background: var(--admin-surface);
 }
 
 .apply-mode-option--active {
-    background: #fff;
-    border-color: #93c5fd;
+    background: var(--admin-surface);
+    border-color: var(--admin-accent, #93c5fd);
 }
 
 .apply-mode-option input {

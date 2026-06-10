@@ -1,12 +1,21 @@
 import { formatVehicleDate } from './vehicleMeta';
+import { scalarString } from './scalarString';
 
 export function formatContainerDate(value) {
     return formatVehicleDate(value);
 }
 
+export function containerOrigin(container) {
+    return scalarString(container?.loading_point);
+}
+
+export function containerDestination(container) {
+    return scalarString(container?.destination);
+}
+
 export function containerRouteText(container) {
-    const from = container?.loading_point?.trim();
-    const to = container?.destination?.trim();
+    const from = containerOrigin(container);
+    const to = containerDestination(container);
 
     if (from && to) {
         return `${from} → ${to}`;
@@ -16,8 +25,8 @@ export function containerRouteText(container) {
 }
 
 export function containerLineText(container) {
-    const line = container?.shipping_line?.trim();
-    const size = container?.size?.trim();
+    const line = scalarString(container?.shipping_line);
+    const size = scalarString(container?.size);
 
     if (line && size) {
         return `${line} · ${size}`;
@@ -28,9 +37,9 @@ export function containerLineText(container) {
 
 export function containerRefs(container) {
     return {
-        container: container?.container_number?.trim() || null,
-        booking: container?.booking_number?.trim() || null,
-        seal: container?.seal_number?.trim() || null,
+        container: scalarString(container?.container_number),
+        booking: scalarString(container?.booking_number),
+        seal: scalarString(container?.seal_number),
     };
 }
 
@@ -47,7 +56,7 @@ export function containerListStatusKey(container) {
         return 'released';
     }
 
-    const raw = (container?.status || '').toLowerCase().trim();
+    const raw = (scalarString(container?.status) || '').toLowerCase();
 
     if (raw === 'released' || raw === 'delivered') {
         return 'released';
@@ -69,9 +78,7 @@ export function containerListStatusKey(container) {
 }
 
 export function containerEtaRaw(container) {
-    const value = container?.eta ?? container?.estimated_arrival;
-
-    return typeof value === 'string' ? value.trim() || null : value ?? null;
+    return scalarString(container?.eta ?? container?.estimated_arrival);
 }
 
 export function containerListStatusLabel(container) {

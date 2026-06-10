@@ -1,3 +1,9 @@
+import { scalarString } from './scalarString';
+
+function vehicleRawString(vehicle, key) {
+    return scalarString(vehicle?.raw_data?.[key]);
+}
+
 function formatVehicleDate(value) {
     if (! value) {
         return null;
@@ -25,7 +31,7 @@ export function vehicleTitle(vehicle) {
 }
 
 export function vehicleFuelType(vehicle) {
-    return vehicle?.raw_data?.fuel_type?.trim() || null;
+    return vehicleRawString(vehicle, 'fuel_type');
 }
 
 export function vehicleFuelClass(fuel) {
@@ -47,23 +53,23 @@ export function vehicleFuelClass(fuel) {
 }
 
 export function vehicleLot(vehicle) {
-    return vehicle?.raw_data?.lot?.trim() || null;
+    return vehicleRawString(vehicle, 'lot');
 }
 
 export function vehicleAuction(vehicle) {
-    return vehicle?.raw_data?.auction?.trim() || null;
+    return vehicleRawString(vehicle, 'auction');
 }
 
 export function vehicleOrigin(vehicle) {
-    return vehicle?.raw_data?.loading_point?.trim() || null;
+    return vehicleRawString(vehicle, 'loading_point');
 }
 
 export function vehicleDestination(vehicle) {
-    return vehicle?.raw_data?.destination?.trim() || null;
+    return vehicleRawString(vehicle, 'destination');
 }
 
 export function vehicleVinstackStatus(vehicle) {
-    return vehicle?.raw_data?.status?.trim() || null;
+    return vehicleRawString(vehicle, 'status');
 }
 
 export function vehicleStatusClass(status) {
@@ -85,11 +91,11 @@ export function vehicleStatusClass(status) {
 }
 
 export function vehicleContainerRef(vehicle) {
-    return vehicle?.raw_data?.container_number?.trim() || null;
+    return vehicleRawString(vehicle, 'container_number');
 }
 
 export function vehicleBookingRef(vehicle) {
-    return vehicle?.raw_data?.booking_number?.trim() || null;
+    return vehicleRawString(vehicle, 'booking_number');
 }
 
 const KEYS_ABSENT = new Set(['no keys', 'missing', 'no key', 'no', 'false']);
@@ -129,9 +135,7 @@ export function vehicleKeysInfo(vehicle) {
 }
 
 export function vehicleTitleStatus(vehicle) {
-    const status = vehicle?.raw_data?.title_status?.trim();
-
-    return status || 'Pending';
+    return vehicleRawString(vehicle, 'title_status') || 'Pending';
 }
 
 export function vehiclePurchaseDate(vehicle) {
@@ -196,7 +200,7 @@ export function vehicleRouteText(vehicle) {
 
 /** @deprecated */
 export function vehicleShippingMethod(vehicle) {
-    return vehicle?.raw_data?.shipping_method?.trim() || null;
+    return vehicleRawString(vehicle, 'shipping_method');
 }
 
 /** @deprecated */

@@ -207,6 +207,8 @@ import VinCopyLabel from './VinCopyLabel.vue';
 
 import {
 
+    containerDestination,
+
     containerLineText,
 
     containerListStatusClass,
@@ -214,6 +216,8 @@ import {
     containerListStatusEta,
 
     containerListStatusLabel,
+
+    containerOrigin,
 
     containerRefs,
 
@@ -259,9 +263,9 @@ defineEmits(['track']);
 
 const refs = computed(() => containerRefs(props.container));
 
-const routeFrom = computed(() => props.container.loading_point?.trim() || null);
+const routeFrom = computed(() => containerOrigin(props.container));
 
-const routeTo = computed(() => props.container.destination?.trim() || null);
+const routeTo = computed(() => containerDestination(props.container));
 
 const lineText = computed(() => containerLineText(props.container));
 
@@ -278,7 +282,7 @@ const statusEta = computed(() => containerListStatusEta(props.container));
 
 
 const canTrack = computed(() => {
-    const number = props.container?.container_number?.trim();
+    const number = refs.value.container;
 
     if (!number) {
         return false;
