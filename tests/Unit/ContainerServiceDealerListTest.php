@@ -92,7 +92,7 @@ class ContainerServiceDealerListTest extends TestCase
         $rows = app(ContainerService::class)->listForDealer($dealer);
 
         $this->assertCount(1, $rows);
-        $this->assertSame('MSKU7654321', $rows[0]['container_number']);
+        $this->assertSame('MSKU 7654321', $rows[0]['container_number']);
         $this->assertSame('Jebel Ali', $rows[0]['destination']);
         $this->assertSame('Houston Port', $rows[0]['loading_point']);
         $this->assertSame('Maersk', $rows[0]['shipping_line']);
