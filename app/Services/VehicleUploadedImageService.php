@@ -7,6 +7,7 @@ use App\Models\Vehicle;
 use App\Models\VehicleUploadedImage;
 use App\Support\VehicleGalleryMerger;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
@@ -108,9 +109,15 @@ class VehicleUploadedImageService
         $imagesByStage = VehicleGalleryMerger::merge($vinstackStages, $vehicle);
         $images = VehicleGalleryMerger::flatten($imagesByStage, $vehicle, $raw);
 
+        $thumbnail = Arr::get($raw, 'thumbnail_url');
+        if (! is_string($thumbnail) || $thumbnail === '' || str_contains($thumbnail, 'no_photo.png')) {
+            $thumbnail = $images[0] ?? null;
+        }
+
         $data = $vehicle->toArray();
         $data['images'] = $images;
         $data['images_by_stage'] = $imagesByStage;
+        $data['thumbnail_url'] = $thumbnail;
         $data['uploaded_images'] = array_map(
             fn (VehicleUploadedImage $image) => $this->formatImage($image),
             $vehicle->uploadedImages->all(),
@@ -119,6 +126,10 @@ class VehicleUploadedImageService
         if (is_array($data['raw_data'] ?? null)) {
             $data['raw_data']['images'] = $images;
             $data['raw_data']['images_by_stage'] = $imagesByStage;
+
+            if (is_string($thumbnail) && $thumbnail !== '') {
+                $data['raw_data']['thumbnail_url'] = $thumbnail;
+            }
         }
 
         return $data;

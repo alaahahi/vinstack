@@ -14,6 +14,17 @@ const NAMED_STAGE_LISTS = {
     destination: ['destination_images', 'images_destination', 'destination_photos', 'delivery_images'],
 };
 
+function normalizeStoragePath(url) {
+    const storageMatch = url.match(/^(?:https?:\/\/[^/]+)?(\/storage\/.*)$/i);
+
+    if (storageMatch) {
+        return storageMatch[1];
+    }
+
+    return url;
+}
+
+/** HD gallery URLs — excludes Vinstack low-res thumbnail paths. */
 function normalizeUrl(url) {
     if (typeof url !== 'string' || url.trim() === '') {
         return null;
@@ -27,13 +38,20 @@ function normalizeUrl(url) {
         return null;
     }
 
-    const storageMatch = url.match(/^(?:https?:\/\/[^/]+)?(\/storage\/.*)$/i);
+    return normalizeStoragePath(url);
+}
 
-    if (storageMatch) {
-        return storageMatch[1];
+/** List preview — allows thumbnail paths; still rejects placeholders. */
+function normalizePreviewUrl(url) {
+    if (typeof url !== 'string' || url.trim() === '') {
+        return null;
     }
 
-    return url;
+    if (PLACEHOLDER_FRAGMENTS.some((part) => url.includes(part))) {
+        return null;
+    }
+
+    return normalizeStoragePath(url);
 }
 
 function pushUrl(urls, url, exclude = null) {
@@ -158,13 +176,43 @@ function assignBatchedFlatImages(stages, urls) {
     });
 }
 
+function thumbnailExcludeUrl(vehicle) {
+    if (! vehicle) {
+        return null;
+    }
+
+    return normalizeUrl(vehicle.thumbnail_url ?? vehicle.raw_data?.thumbnail_url);
+}
+
+function stageListEntries(precomputed, stageKey) {
+    const value = precomputed?.[stageKey];
+
+    if (Array.isArray(value)) {
+        return value;
+    }
+
+    if (value && typeof value === 'object' && Array.isArray(value.urls)) {
+        return value.urls;
+    }
+
+    return [];
+}
+
 /** صورة المعاينة فقط (thumbnail من Vinstack — دقة منخفضة) */
 export function vehicleThumbnail(vehicle) {
     if (! vehicle) {
         return null;
     }
 
-    return normalizeUrl(vehicle.raw_data?.thumbnail_url);
+    for (const candidate of [vehicle.thumbnail_url, vehicle.raw_data?.thumbnail_url]) {
+        const preview = normalizePreviewUrl(candidate);
+
+        if (preview) {
+            return preview;
+        }
+    }
+
+    return vehicleGalleryImages(vehicle)[0] ?? null;
 }
 
 /**
@@ -185,12 +233,10 @@ function hasClientPortalGalleryBlocks(raw) {
 
 function stagesFromPrecomputed(precomputed, vehicle) {
     const stages = emptyStages();
-    const exclude = vehicleThumbnail(vehicle);
+    const exclude = thumbnailExcludeUrl(vehicle);
 
     for (const { key } of GALLERY_STAGES) {
-        if (Array.isArray(precomputed[key])) {
-            collectFromList(stages[key], precomputed[key], exclude);
-        }
+        collectFromList(stages[key], stageListEntries(precomputed, key), exclude);
     }
 
     return stages;
@@ -209,18 +255,13 @@ export function vehicleGalleryByStage(vehicle) {
         return stagesFromPrecomputed(vehicle.images_by_stage, vehicle);
     }
 
-    // List/detail API enrichment — prefer merged stages over stale client-portal blocks in raw_data.
-    if (vehicle.images_by_stage && typeof vehicle.images_by_stage === 'object') {
-        return stagesFromPrecomputed(vehicle.images_by_stage, vehicle);
-    }
-
-    const precomputed = vehicle.raw_data?.images_by_stage;
+    const precomputed = vehicle.images_by_stage ?? vehicle.raw_data?.images_by_stage;
 
     if (precomputed && typeof precomputed === 'object' && ! liveGallery) {
         return stagesFromPrecomputed(precomputed, vehicle);
     }
 
-    const thumbnail = vehicleThumbnail(vehicle);
+    const thumbnail = thumbnailExcludeUrl(vehicle);
     const stages = emptyStages();
     const skipFlatClassification = hasClientPortalGalleryBlocks(raw);
 
