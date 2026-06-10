@@ -177,6 +177,41 @@ class VinstackGalleryService
     }
 
     /**
+     * @return array<string, mixed>|null
+     */
+    public function fetchContainerTrack(string $containerId): ?array
+    {
+        $credentials = $this->resolveCredentials();
+
+        if ($credentials['token'] === '') {
+            return null;
+        }
+
+        /** @var Response $response */
+        $response = $this->client()->get('/containers/'.rawurlencode($containerId).'/track');
+
+        if ($response->status() === 404) {
+            return null;
+        }
+
+        if ($response->status() === 401) {
+            $this->markGalleryTokenExpired();
+
+            return null;
+        }
+
+        if ($response->failed()) {
+            return null;
+        }
+
+        $this->markGalleryTokenValid();
+
+        $json = $response->json();
+
+        return is_array($json) && $json !== [] ? $json : null;
+    }
+
+    /**
      * @return array<string, mixed>
      */
     public function fetchGallery(string $vin): array

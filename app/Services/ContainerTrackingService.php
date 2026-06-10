@@ -14,6 +14,7 @@ class ContainerTrackingService
 
     public function __construct(
         protected VinstackService $vinstack,
+        protected VinstackGalleryService $gallery,
         protected ContainerService $containers,
         protected PortGeocoderService $geocoder,
     ) {}
@@ -52,6 +53,7 @@ class ContainerTrackingService
         }
 
         return [
+            'id' => $raw['id'] ?? null,
             'container_number' => $raw['container_number'] ?? $containerNumber,
             'booking_number' => $raw['booking_number'] ?? null,
             'loading_point' => $raw['loading_point'] ?? null,
@@ -133,6 +135,20 @@ class ContainerTrackingService
      */
     protected function build(string $containerNumber, ?array $container): array
     {
+        $containerId = $container['id'] ?? null;
+
+        if ($containerId !== null && $containerId !== '') {
+            try {
+                $clientPortal = $this->gallery->fetchContainerTrack((string) $containerId);
+            } catch (RuntimeException) {
+                $clientPortal = null;
+            }
+
+            if (is_array($clientPortal) && $clientPortal !== []) {
+                return $this->normalizeClientPortalTracking($containerNumber, $container, $clientPortal);
+            }
+        }
+
         $vinstackTracking = null;
 
         try {
@@ -150,6 +166,154 @@ class ContainerTrackingService
         }
 
         return $this->buildDerived($containerNumber, $container);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $container
+     * @param  array<string, mixed>  $raw
+     * @return array<string, mixed>
+     */
+    protected function normalizeClientPortalTracking(
+        string $containerNumber,
+        ?array $container,
+        array $raw,
+    ): array {
+        $tracking = Arr::get($raw, 'tracking', []);
+
+        if (! is_array($tracking)) {
+            $tracking = [];
+        }
+
+        $origin = $this->locationFromPort(
+            Arr::get($tracking, 'prepol') ?: Arr::get($tracking, 'pol'),
+            $container['loading_point'] ?? null,
+        );
+        $destination = $this->locationFromPort(
+            Arr::get($tracking, 'postpod') ?: Arr::get($tracking, 'pod'),
+            $container['destination'] ?? null,
+        );
+
+        $waypoints = $this->waypointsFromRaw(Arr::get($tracking, 'transshipments', []));
+
+        $route = [];
+
+        foreach (Arr::get($tracking, 'route', []) as $point) {
+            if (! is_array($point) || ! isset($point['lat'], $point['lng'])) {
+                continue;
+            }
+
+            $route[] = [(float) $point['lat'], (float) $point['lng']];
+        }
+
+        if ($route === []) {
+            $route = $this->buildRoutePolyline($origin, $destination, $waypoints);
+        }
+
+        $events = [];
+        $currentPosition = null;
+        $rawEvents = Arr::get($tracking, 'events', []);
+
+        if (is_array($rawEvents)) {
+            foreach ($rawEvents as $event) {
+                if (! is_array($event)) {
+                    continue;
+                }
+
+                $location = Arr::get($event, 'location');
+                $locationLabel = null;
+
+                if (is_array($location)) {
+                    $name = $this->stringFrom($location, 'name');
+                    $country = $this->stringFrom($location, 'country');
+                    $locationLabel = $name && $country ? "{$name}, {$country}" : ($name ?: $country);
+                }
+
+                $isActual = (bool) ($event['actual'] ?? false);
+
+                $events[] = [
+                    'date' => $this->stringFrom($event, 'date'),
+                    'title' => $this->stringFrom($event, 'description') ?: '—',
+                    'location' => $locationLabel,
+                    'type' => $isActual ? 'actual' : 'estimated',
+                ];
+
+                if ($isActual && is_array($location) && isset($location['lat'], $location['lng'])) {
+                    $currentPosition = $this->locationFromPort($location);
+                }
+            }
+        }
+
+        $status = $this->mapClientPortalStatus($this->stringFrom($tracking, 'status'));
+
+        return [
+            'source' => 'client_portal',
+            'disclaimer' => null,
+            'container_number' => $this->stringFrom($raw, 'container_number') ?: $containerNumber,
+            'booking_number' => $this->stringFrom($raw, 'booking_number')
+                ?: ($container['booking_number'] ?? null),
+            'carrier' => $this->carrierLabel(
+                $this->stringFrom($tracking, 'carrier')
+                    ?: ($container['shipping_line'] ?? null),
+            ),
+            'status' => $status,
+            'status_label' => $this->statusLabel($status),
+            'eta' => $this->stringFrom($tracking, 'eta') ?: ($container['eta'] ?? null),
+            'origin' => $origin,
+            'destination' => $destination,
+            'waypoints' => $waypoints,
+            'route' => $route,
+            'current_position' => $currentPosition,
+            'events' => $events,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $port
+     * @return array{name: string, lat: float, lng: float, label?: string}|null
+     */
+    protected function locationFromPort(?array $port, ?string $fallbackName = null): ?array
+    {
+        if ($port === null) {
+            return null;
+        }
+
+        if (isset($port['lat'], $port['lng'])) {
+            $name = $this->stringFrom($port, 'name');
+            $country = $this->stringFrom($port, 'country');
+            $label = $name && $country ? "{$name}, {$country}" : ($name ?: $country ?: $fallbackName);
+
+            return [
+                'name' => $name ?: $fallbackName ?: '—',
+                'lat' => (float) $port['lat'],
+                'lng' => (float) $port['lng'],
+                'label' => $label ?: $fallbackName,
+            ];
+        }
+
+        $name = $this->stringFrom($port, 'name') ?: $fallbackName;
+
+        if (! $name) {
+            return null;
+        }
+
+        return $this->locationFromRaw($name, $name);
+    }
+
+    protected function mapClientPortalStatus(?string $status): string
+    {
+        if ($status === null || trim($status) === '') {
+            return 'in_transit';
+        }
+
+        $normalized = strtolower(str_replace([' ', '-'], '_', trim($status)));
+
+        return match ($normalized) {
+            'in_transit' => 'in_transit',
+            'delivered', 'released' => 'delivered',
+            'arrived' => 'arrived',
+            'loading', 'loaded' => 'loading',
+            default => 'in_transit',
+        };
     }
 
     /**

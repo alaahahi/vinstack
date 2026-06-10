@@ -143,6 +143,15 @@
                         fill-color="#ef4444"
                         :fill-opacity="1"
                     />
+                    <l-circle-marker
+                        v-if="currentPositionLatLng"
+                        :lat-lng="currentPositionLatLng"
+                        :radius="11"
+                        color="#2563eb"
+                        :fill="true"
+                        fill-color="#3b82f6"
+                        :fill-opacity="1"
+                    />
                 </l-map>
                 <div
                     v-if="mapReady && mapTilesLoading"
@@ -168,6 +177,7 @@
                 <ul v-if="mapReady" class="sr-only map-a11y-summary">
                     <li v-if="originLabel !== '—'">منشأ: {{ originLabel }}</li>
                     <li v-for="(wp, i) in waypointLabels" :key="`a11y-wp-${i}`">محطة: {{ wp }}</li>
+                    <li v-if="currentPositionLabel">الموقع الحالي: {{ currentPositionLabel }}</li>
                     <li v-if="destinationLabel !== '—'">وجهة: {{ destinationLabel }}</li>
                 </ul>
             </div>
@@ -214,7 +224,15 @@
                         >
                             <div class="event-marker" :class="`event-marker--${event.type || 'event'}`" />
                             <div class="event-content">
-                                <div class="event-title">{{ event.title }}</div>
+                                <div class="event-title-row">
+                                    <div class="event-title">{{ event.title }}</div>
+                                    <span
+                                        v-if="event.type === 'estimated'"
+                                        class="event-estimated-badge"
+                                    >
+                                        تقديري
+                                    </span>
+                                </div>
                                 <div
                                     v-if="event.location"
                                     class="event-location"
@@ -325,6 +343,7 @@ const routeLatLngs = computed(() => {
 
 const originLatLng = computed(() => pointFromLocation(tracking.value?.origin));
 const destinationLatLng = computed(() => pointFromLocation(tracking.value?.destination));
+const currentPositionLatLng = computed(() => pointFromLocation(tracking.value?.current_position));
 
 const waypointLatLngs = computed(() => {
     const wps = tracking.value?.waypoints;
@@ -374,6 +393,12 @@ const destinationLabel = computed(
         || '—',
 );
 
+const currentPositionLabel = computed(
+    () => tracking.value?.current_position?.label
+        || tracking.value?.current_position?.name
+        || null,
+);
+
 const hasPartialRoute = computed(
     () => originLabel.value !== '—' || destinationLabel.value !== '—',
 );
@@ -390,6 +415,10 @@ const sourceLabel = computed(() => {
 
     if (source === 'vinstack') {
         return 'Vinstack';
+    }
+
+    if (source === 'client_portal') {
+        return 'Vinstack (بوابة العميل)';
     }
 
     if (source === 'derived') {
@@ -537,6 +566,10 @@ function hasMapData(data) {
         return true;
     }
 
+    if (pointFromLocation(data?.current_position)) {
+        return true;
+    }
+
     return Boolean(pointFromLocation(data?.origin) && pointFromLocation(data?.destination));
 }
 
@@ -641,6 +674,7 @@ function fitMapBounds(map) {
         ...routeLatLngs.value,
         ...(originLatLng.value ? [originLatLng.value] : []),
         ...(destinationLatLng.value ? [destinationLatLng.value] : []),
+        ...(currentPositionLatLng.value ? [currentPositionLatLng.value] : []),
         ...waypointLatLngs.value,
     ];
 
@@ -1219,6 +1253,29 @@ onUnmounted(removeFocusTrap);
 
 .event-marker--released {
     background: #6366f1;
+}
+
+.event-marker--estimated {
+    background: #94a3b8;
+}
+
+.event-title-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+}
+
+.event-estimated-badge {
+    font-size: 0.62rem;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    background: #f1f5f9;
+    color: #64748b;
+    border: 1px solid #e2e8f0;
 }
 
 .event-title {
