@@ -3,6 +3,7 @@
         :visible="visible"
         :imgs="lightboxImages"
         :index="0"
+        :rtl="true"
         :move-disabled="false"
         :rotate-disabled="false"
         :zoom-disabled="false"
@@ -37,7 +38,7 @@
                 aria-label="الصورة السابقة"
                 @click="goPrev"
             >
-                <i class="pi pi-chevron-left" />
+                <i class="pi pi-chevron-right" />
             </button>
             <span class="gallery-nav-counter">{{ activeIndex + 1 }} / {{ activeImages.length }}</span>
             <button
@@ -47,7 +48,7 @@
                 aria-label="الصورة التالية"
                 @click="goNext"
             >
-                <i class="pi pi-chevron-right" />
+                <i class="pi pi-chevron-left" />
             </button>
         </div>
 

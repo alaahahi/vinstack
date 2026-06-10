@@ -38,6 +38,7 @@ class VinstackSetting extends Model
     {
         return static::query()->firstOrCreate([], [
             'api_base_url' => config('services.vinstack.base_url'),
+            'gallery_api_base_url' => config('services.vinstack.gallery_base_url'),
             'sync_enabled' => true,
         ]);
     }

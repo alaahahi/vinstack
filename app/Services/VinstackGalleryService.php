@@ -239,7 +239,10 @@ class VinstackGalleryService
         return is_array($json) ? $json : [];
     }
 
-    protected function client(): PendingRequest
+    /**
+     * @return array{base_url: string, token: string, token_source: string}
+     */
+    public function resolveCredentials(): array
     {
         $settings = VinstackSetting::current();
 
@@ -247,14 +250,69 @@ class VinstackGalleryService
             ?: config('services.vinstack.gallery_base_url')
             ?: self::DEFAULT_BASE_URL;
 
-        $token = $settings->gallery_api_token ?: config('services.vinstack.gallery_token');
-
-        if (! $token) {
-            throw new RuntimeException('Gallery API token is not configured.');
+        if ($settings->gallery_api_token) {
+            $token = $settings->gallery_api_token;
+            $tokenSource = 'gallery';
+        } elseif ($settings->api_token) {
+            $token = $settings->api_token;
+            $tokenSource = 'sync';
+        } elseif (config('services.vinstack.gallery_token')) {
+            $token = config('services.vinstack.gallery_token');
+            $tokenSource = 'env_gallery';
+        } elseif (config('services.vinstack.token')) {
+            $token = config('services.vinstack.token');
+            $tokenSource = 'env_sync';
+        } else {
+            $token = '';
+            $tokenSource = 'none';
         }
 
-        return Http::baseUrl(rtrim($baseUrl, '/'))
-            ->withToken(trim($token))
+        return [
+            'base_url' => rtrim($baseUrl, '/'),
+            'token' => trim((string) $token),
+            'token_source' => $tokenSource,
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function probeSettings(): array
+    {
+        $credentials = $this->resolveCredentials();
+        $exampleVin = '1HGBH41JXMN109186';
+
+        if ($credentials['token'] === '') {
+            return [
+                'ok' => false,
+                'message' => 'لم يُضبط توكن المعرض — أدخل Gallery Token أو تأكد من توكن المزامنة.',
+                'base_url' => $credentials['base_url'],
+                'endpoint_example' => $credentials['base_url'].'/autos/'.$exampleVin.'/gallery',
+                'has_token' => false,
+                'token_source' => $credentials['token_source'],
+            ];
+        }
+
+        return [
+            'ok' => true,
+            'message' => 'الإعدادات جاهزة — سيُستدعى المعرض عند فتح صور السيارة.',
+            'base_url' => $credentials['base_url'],
+            'endpoint_example' => $credentials['base_url'].'/autos/'.$exampleVin.'/gallery',
+            'has_token' => true,
+            'token_source' => $credentials['token_source'],
+        ];
+    }
+
+    protected function client(): PendingRequest
+    {
+        $credentials = $this->resolveCredentials();
+
+        if ($credentials['token'] === '') {
+            throw new RuntimeException('gallery_token_missing');
+        }
+
+        return Http::baseUrl($credentials['base_url'])
+            ->withToken($credentials['token'])
             ->acceptJson()
             ->timeout(60);
     }

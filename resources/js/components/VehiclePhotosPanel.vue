@@ -10,6 +10,11 @@
             <span>توكن API المعرض منتهي — راجع الإعدادات. تُعرض الصور المخزّنة إن وُجدت.</span>
         </div>
 
+        <div v-else-if="galleryError" class="gallery-warning gallery-warning--danger">
+            <i class="pi pi-exclamation-circle" />
+            <span>{{ galleryErrorText }}</span>
+        </div>
+
         <div v-else-if="galleryFresh" class="gallery-warning gallery-warning--ok">
             <i class="pi pi-check-circle" />
             <span v-if="galleryNewImagesCount > 0">
@@ -138,7 +143,7 @@
                         aria-label="الصورة السابقة"
                         @click="goGalleryPrev"
                     >
-                        <i class="pi pi-chevron-left" />
+                        <i class="pi pi-chevron-right" />
                     </button>
 
                     <button type="button" class="main-photo" @click="openZoom(currentGalleryUrl)">
@@ -160,7 +165,7 @@
                         aria-label="الصورة التالية"
                         @click="goGalleryNext"
                     >
-                        <i class="pi pi-chevron-right" />
+                        <i class="pi pi-chevron-left" />
                     </button>
                 </div>
 
@@ -261,7 +266,23 @@ const galleryLoading = ref(false);
 const displayVehicle = ref(null);
 const galleryFresh = ref(false);
 const galleryTokenExpired = ref(false);
+const galleryError = ref(null);
 const galleryNewImagesCount = ref(0);
+
+const GALLERY_ERROR_MESSAGES = {
+    gallery_token_missing: 'توكن المعرض غير مضبوط — أضف Gallery Token في الإعدادات أو استخدم توكن المزامنة.',
+    gallery_token_expired: 'توكن المعرض منتهي — حدّثه من الإعدادات.',
+};
+
+const galleryErrorText = computed(() => {
+    const code = galleryError.value;
+
+    if (! code) {
+        return '';
+    }
+
+    return GALLERY_ERROR_MESSAGES[code] ?? code;
+});
 
 const preview = computed(() => vehicleThumbnail(displayVehicle.value ?? props.vehicle));
 const galleryImages = computed(() => vehicleGalleryImages(displayVehicle.value ?? props.vehicle));
@@ -283,6 +304,7 @@ async function loadLiveGallery() {
     galleryLoading.value = true;
     galleryFresh.value = false;
     galleryTokenExpired.value = false;
+    galleryError.value = null;
     galleryNewImagesCount.value = 0;
 
     try {
@@ -290,10 +312,12 @@ async function loadLiveGallery() {
         displayVehicle.value = mergeGalleryIntoVehicle(props.vehicle, payload);
         galleryFresh.value = Boolean(payload.gallery_fresh);
         galleryTokenExpired.value = Boolean(payload.gallery_token_expired);
+        galleryError.value = payload.gallery_error ?? null;
         galleryNewImagesCount.value = Number(payload.gallery_new_images_count ?? 0);
         emit('updated', displayVehicle.value);
-    } catch {
+    } catch (e) {
         displayVehicle.value = props.vehicle;
+        galleryError.value = e.response?.data?.message || 'تعذّر الاتصال بـ API المعرض — تُعرض الصور المخزّنة.';
     } finally {
         galleryLoading.value = false;
     }

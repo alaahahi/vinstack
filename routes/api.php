@@ -78,6 +78,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/vinstack/settings', [VinstackSettingsController::class, 'show']);
         Route::put('/vinstack/settings', [VinstackSettingsController::class, 'update']);
+        Route::post('/vinstack/settings/gallery-test', [VinstackSettingsController::class, 'testGallery']);
         Route::post('/vinstack/sync', [VinstackSettingsController::class, 'sync']);
 
         Route::get('/containers', [AdminContainerController::class, 'index']);

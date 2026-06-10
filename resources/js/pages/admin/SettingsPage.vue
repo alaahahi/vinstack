@@ -49,13 +49,15 @@
                 </div>
             </section>
 
-            <section class="admin-surface settings-card settings-card--wide">
-                <header class="settings-card__head">
-                    <i class="pi pi-images" />
-                    <div>
+            <section class="admin-surface settings-card settings-card--gallery">
+                <header class="settings-card__head settings-card__head--gallery">
+                    <div class="gallery-head-icon">
+                        <i class="pi pi-images" />
+                    </div>
+                    <div class="gallery-head-text">
                         <h2 class="vs-card-title">API صور المعرض (Gallery)</h2>
                         <p class="vs-card-subtitle">
-                            منفصل عن API المزامنة — يُستدعى عند عرض صور السيارة
+                            منفصل عن المزامنة — يُستدعى عند فتح صور السيارة فقط
                         </p>
                     </div>
                     <Tag
@@ -66,27 +68,65 @@
                     />
                 </header>
 
-                <div class="settings-card__body">
-                    <div class="field">
-                        <label for="gallery-api-base" class="vs-form-label">Gallery Base URL</label>
-                        <InputText
-                            id="gallery-api-base"
-                            v-model="form.gallery_api_base_url"
-                            class="w-full"
-                            placeholder="https://app.vinstack.com/api/client-portal"
-                        />
+                <div class="settings-card__body gallery-settings-body">
+                    <div class="gallery-status-row">
+                        <span class="gallery-status-chip" :class="galleryUrlReady ? 'gallery-status-chip--ok' : 'gallery-status-chip--warn'">
+                            <i :class="galleryUrlReady ? 'pi pi-check-circle' : 'pi pi-exclamation-circle'" />
+                            {{ galleryUrlReady ? 'الرابط مضبوط' : 'الرابط غير مضبوط' }}
+                        </span>
+                        <span class="gallery-status-chip" :class="galleryTokenReady ? 'gallery-status-chip--ok' : 'gallery-status-chip--warn'">
+                            <i :class="galleryTokenReady ? 'pi pi-check-circle' : 'pi pi-exclamation-circle'" />
+                            {{ galleryTokenReady ? 'التوكن متوفر' : 'التوكن مطلوب' }}
+                        </span>
                     </div>
-                    <div class="field">
-                        <label for="gallery-api-token" class="vs-form-label">Gallery API Token</label>
-                        <Password
-                            id="gallery-api-token"
-                            v-model="form.gallery_api_token"
-                            :placeholder="settings.has_gallery_token ? '•••••• (اتركه فارغاً للإبقاء)' : 'أدخل توكن المعرض'"
-                            toggle-mask
-                            input-class="w-full"
-                            class="w-full"
-                        />
+
+                    <div class="gallery-fields-grid">
+                        <div class="field">
+                            <label for="gallery-api-base" class="vs-form-label">Gallery Base URL</label>
+                            <InputText
+                                id="gallery-api-base"
+                                v-model="form.gallery_api_base_url"
+                                class="w-full gallery-input"
+                                dir="ltr"
+                                placeholder="https://app.vinstack.com/api/client-portal"
+                            />
+                        </div>
+                        <div class="field">
+                            <label for="gallery-api-token" class="vs-form-label">Gallery API Token</label>
+                            <Password
+                                id="gallery-api-token"
+                                v-model="form.gallery_api_token"
+                                :placeholder="settings.has_gallery_token ? '•••••• (اتركه فارغاً للإبقاء)' : 'أدخل توكن المعرض'"
+                                toggle-mask
+                                input-class="w-full gallery-input"
+                                class="w-full"
+                            />
+                            <p class="field-hint">
+                                إن تُرك فارغاً يُستخدم توكن المزامنة تلقائياً إن وُجد.
+                            </p>
+                        </div>
                     </div>
+
+                    <div class="gallery-endpoint-preview">
+                        <span class="gallery-endpoint-preview__label">المسار الكامل عند العرض:</span>
+                        <code class="gallery-endpoint-preview__url" dir="ltr">{{ galleryEndpointPreview }}</code>
+                    </div>
+
+                    <div class="gallery-actions-row">
+                        <Button
+                            label="اختبار الإعدادات"
+                            icon="pi pi-bolt"
+                            outlined
+                            severity="secondary"
+                            :loading="testingGallery"
+                            @click="testGalleryConnection"
+                        />
+                        <p class="gallery-save-hint">
+                            <i class="pi pi-info-circle" />
+                            بعد تعديل الرابط أو التوكن اضغط «حفظ الإعدادات» أسفل الصفحة.
+                        </p>
+                    </div>
+
                     <div v-if="settings.gallery_token_checked_at" class="vs-sync-status">
                         <i class="pi pi-clock" />
                         <span>
@@ -96,9 +136,6 @@
                             </strong>
                         </span>
                     </div>
-                    <p class="sync-cron-help sync-cron-help--muted">
-                        المسار: <code dir="ltr">/autos/{vin}/gallery</code> — يُستدعى عند فتح صور السيارة وليس أثناء المزامنة.
-                    </p>
                 </div>
             </section>
 
@@ -518,7 +555,7 @@
 </template>
 
 <script setup>
-import { onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref } from 'vue';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import InputText from 'primevue/inputtext';
@@ -538,6 +575,7 @@ const toast = useToast();
 const confirm = useConfirm();
 const settings = ref({ has_token: false, last_sync_at: null, last_auto_sync_at: null });
 const saving = ref(false);
+const testingGallery = ref(false);
 const savingOptions = ref(false);
 const syncing = ref(false);
 const restorableVisible = ref(false);
@@ -574,6 +612,24 @@ const vehicleOptions = ref({
     delivery_types: [],
     title_types: [],
 });
+
+const DEFAULT_GALLERY_BASE = 'https://app.vinstack.com/api/client-portal';
+
+const galleryEndpointPreview = computed(() => {
+    const base = (form.gallery_api_base_url || settings.value.gallery_api_base_url || DEFAULT_GALLERY_BASE).replace(/\/$/, '');
+
+    return `${base}/autos/{vin}/gallery`;
+});
+
+const galleryUrlReady = computed(() => Boolean(
+    (form.gallery_api_base_url || settings.value.gallery_api_base_url || '').trim(),
+));
+
+const galleryTokenReady = computed(() => (
+    Boolean(form.gallery_api_token?.trim())
+    || settings.value.has_gallery_token
+    || settings.value.has_token
+));
 
 const form = reactive({
     api_base_url: '',
@@ -614,6 +670,29 @@ async function saveVehicleOptions() {
         });
     } finally {
         savingOptions.value = false;
+    }
+}
+
+async function testGalleryConnection() {
+    testingGallery.value = true;
+
+    try {
+        const { data } = await api.post('/admin/vinstack/settings/gallery-test');
+        toast.add({
+            severity: 'success',
+            summary: 'إعدادات المعرض',
+            detail: data.message || data.data?.message,
+            life: 5000,
+        });
+    } catch (e) {
+        toast.add({
+            severity: 'warn',
+            summary: 'إعدادات المعرض',
+            detail: e.response?.data?.message || e.response?.data?.data?.message || 'تحقق من الرابط والتوكن ثم احفظ الإعدادات',
+            life: 6000,
+        });
+    } finally {
+        testingGallery.value = false;
     }
 }
 
@@ -1085,9 +1164,135 @@ onMounted(async () => {
     padding: 1.1rem 1.15rem 0;
 }
 
+.settings-card--gallery {
+    grid-column: 1 / -1;
+    border: 1px solid color-mix(in srgb, var(--admin-accent, #3b82f6) 35%, var(--vs-border));
+    background: linear-gradient(
+        165deg,
+        color-mix(in srgb, var(--admin-accent, #3b82f6) 6%, transparent),
+        transparent 55%
+    );
+}
+
+.settings-card__head--gallery {
+    align-items: center;
+}
+
+.gallery-head-icon {
+    width: 2.5rem;
+    height: 2.5rem;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 12px;
+    background: color-mix(in srgb, var(--admin-accent, #3b82f6) 18%, transparent);
+    color: var(--admin-accent);
+    font-size: 1.1rem;
+    flex-shrink: 0;
+}
+
+.gallery-head-text {
+    flex: 1;
+    min-width: 0;
+}
+
 .gallery-expired-tag {
     margin-inline-start: auto;
     flex-shrink: 0;
+}
+
+.gallery-settings-body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.gallery-status-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.gallery-status-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.3rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+.gallery-status-chip--ok {
+    color: #166534;
+    background: rgba(22, 163, 74, 0.14);
+}
+
+.gallery-status-chip--warn {
+    color: #b45309;
+    background: rgba(245, 158, 11, 0.16);
+}
+
+.gallery-fields-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 260px), 1fr));
+    gap: 0.85rem 1rem;
+}
+
+.gallery-fields-grid .field {
+    margin-bottom: 0;
+}
+
+.field-hint {
+    margin: 0.25rem 0 0;
+    font-size: 0.75rem;
+    color: var(--vs-text-muted);
+    line-height: 1.45;
+}
+
+.gallery-endpoint-preview {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 8px;
+    border: 1px dashed var(--vs-border);
+    background: var(--vs-surface-elevated, rgba(0, 0, 0, 0.03));
+}
+
+.gallery-endpoint-preview__label {
+    font-size: 0.75rem;
+    color: var(--vs-text-muted);
+    font-weight: 600;
+}
+
+.gallery-endpoint-preview__url {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.78rem;
+    word-break: break-all;
+    color: var(--admin-accent);
+}
+
+.gallery-actions-row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.65rem 1rem;
+}
+
+.gallery-save-hint {
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    font-size: 0.8125rem;
+    color: var(--vs-text-muted);
+    line-height: 1.45;
+}
+
+.gallery-input :deep(input) {
+    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
+    font-size: 0.8125rem;
 }
 
 .settings-card__head > i {

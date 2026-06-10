@@ -6,6 +6,7 @@ use App\Actions\SyncVehiclesAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateVinstackSettingsRequest;
 use App\Models\VinstackSetting;
+use App\Services\VinstackGalleryService;
 use Illuminate\Http\JsonResponse;
 
 class VinstackSettingsController extends Controller
@@ -46,6 +47,16 @@ class VinstackSettingsController extends Controller
             'data' => $this->settingsPayload($settings->fresh()),
             'message' => 'Settings saved.',
         ]);
+    }
+
+    public function testGallery(VinstackGalleryService $gallery): JsonResponse
+    {
+        $result = $gallery->probeSettings();
+
+        return response()->json([
+            'data' => $result,
+            'message' => $result['message'],
+        ], $result['ok'] ? 200 : 422);
     }
 
     public function sync(SyncVehiclesAction $action): JsonResponse
