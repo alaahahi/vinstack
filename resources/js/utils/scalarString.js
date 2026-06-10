@@ -2,7 +2,41 @@ const NAMED_KEYS = ['name', 'label', 'title', 'value', 'text', 'port', 'city'];
 
 const GALLERY_BLOCK_KEYS = new Set(['urls', 'keys', 'images', 'photos', 'gallery']);
 
-const URL_LIKE_PATTERN = /(?:^https?:\/\/|\/autos\/|\.(?:jpe?g|png|gif|webp|bmp|svg)(?:\?|$|[#&]))/i;
+const URL_LIKE_PATTERN = /(?:^https?:\/\/|\/autos\/|\/storage\/|\.(?:jpe?g|png|gif|webp|bmp|svg)(?:\?|$|[#&]))/i;
+
+/** Vinstack CDN filenames, e.g. images-1700000000000-abc or images-1700000000000-abc.jpeg */
+const IMAGE_FILENAME_PATTERN = /(?:^|[\s,/])images-\d{10,13}(?:-|\.|$)/i;
+
+const IMAGE_FILENAME_CHAIN_PATTERN = /^(?:images-\d{10,13}-[^\s,.]+)(?:[\s,]+images-\d{10,13}-[^\s,.]+)+$/i;
+
+/** Dot-joined Vinstack CDN filenames: a.jpeg.b.jpeg */
+const IMAGE_FILENAME_DOT_CHAIN_PATTERN = /^(?:images-\d{10,13}-[^\s,.]+)(?:\.images-\d{10,13}-[^\s,.]+)+$/i;
+
+export function isGalleryStageBlock(value) {
+    return Boolean(
+        value
+        && typeof value === 'object'
+        && ! Array.isArray(value)
+        && Array.isArray(value.urls),
+    );
+}
+
+export function isImageLikeString(value) {
+    if (typeof value !== 'string') {
+        return false;
+    }
+
+    const trimmed = value.trim();
+
+    if (! trimmed) {
+        return false;
+    }
+
+    return URL_LIKE_PATTERN.test(trimmed)
+        || IMAGE_FILENAME_PATTERN.test(trimmed)
+        || IMAGE_FILENAME_CHAIN_PATTERN.test(trimmed)
+        || IMAGE_FILENAME_DOT_CHAIN_PATTERN.test(trimmed);
+}
 
 function isUnsafeDisplayString(value) {
     if (typeof value !== 'string') {
@@ -19,7 +53,7 @@ function isUnsafeDisplayString(value) {
         return true;
     }
 
-    return URL_LIKE_PATTERN.test(trimmed);
+    return isImageLikeString(trimmed);
 }
 
 function sanitizeDisplayString(value) {
@@ -37,12 +71,7 @@ function sanitizeDisplayString(value) {
 }
 
 function isGalleryBlock(value) {
-    return Boolean(
-        value
-        && typeof value === 'object'
-        && ! Array.isArray(value)
-        && Array.isArray(value.urls),
-    );
+    return isGalleryStageBlock(value);
 }
 
 /**
@@ -72,11 +101,33 @@ export function scalarString(value) {
         return null;
     }
 
-    if (Array.isArray(value) && value.length === 0) {
-        return null;
+    if (Array.isArray(value)) {
+        if (value.length === 0) {
+            return null;
+        }
+
+        const arrayParts = [];
+
+        for (const item of value) {
+            if (item !== null && item !== undefined && (typeof item === 'string' || typeof item === 'number' || typeof item === 'boolean')) {
+                const part = sanitizeDisplayString(String(item));
+
+                if (part !== null) {
+                    arrayParts.push(part);
+                }
+            } else if (item && typeof item === 'object') {
+                const nested = scalarString(item);
+
+                if (nested !== null) {
+                    arrayParts.push(nested);
+                }
+            }
+        }
+
+        return arrayParts.length > 0 ? arrayParts.join(', ') : null;
     }
 
-    if (! Array.isArray(value) && Object.keys(value).length === 0) {
+    if (Object.keys(value).length === 0) {
         return null;
     }
 

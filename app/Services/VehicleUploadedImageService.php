@@ -6,6 +6,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleUploadedImage;
 use App\Support\VehicleGalleryMerger;
+use App\Support\VehicleRawDataLocations;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Storage;
@@ -124,6 +125,7 @@ class VehicleUploadedImageService
         );
 
         if (is_array($data['raw_data'] ?? null)) {
+            $data['raw_data'] = VehicleRawDataLocations::sanitizeForList($data['raw_data']);
             $data['raw_data']['images'] = $images;
             $data['raw_data']['images_by_stage'] = $imagesByStage;
 

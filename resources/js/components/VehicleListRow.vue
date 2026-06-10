@@ -35,13 +35,13 @@
 
         <!-- Route & status -->
         <div class="cell cell-route">
-            <div v-if="origin" class="route-line">
+            <div class="route-line">
                 <span class="route-dot route-dot--origin" />
-                <span>{{ origin }}</span>
+                <span>{{ origin || '—' }}</span>
             </div>
-            <div v-if="destination" class="route-line">
+            <div class="route-line">
                 <i class="pi pi-map-marker route-pin" />
-                <span>{{ destination }}</span>
+                <span>{{ destination || '—' }}</span>
             </div>
             <span v-if="vinstackStatus" class="status-pill" :class="statusClass">
                 <span class="status-dot" />
@@ -119,7 +119,13 @@
                 title="تعديل سيارة يدوية"
                 @click="$emit('edit', vehicle)"
             />
-            <Button label="إسناد" size="small" class="btn-assign" @click="$emit('assign', vehicle)" />
+            <Button
+                v-if="!isAssigned"
+                label="إسناد"
+                size="small"
+                class="btn-assign"
+                @click="$emit('assign', vehicle)"
+            />
         </div>
 
         <!-- Dealer: local status + action -->
@@ -146,6 +152,7 @@ import VinCopyLabel from './VinCopyLabel.vue';
 import {
     vehicleArrivedDate,
     vehicleAssignmentBadgeClass,
+    vehicleIsAssigned,
     vehicleAuction,
     vehicleBookingRef,
     vehicleContainerRef,
@@ -201,6 +208,7 @@ const purchaseDate = computed(() => vehiclePurchaseDate(props.vehicle));
 const arrivedDate = computed(() => vehicleArrivedDate(props.vehicle));
 const enteredBy = computed(() => vehicleEnteredBy(props.vehicle));
 const dealerName = computed(() => props.vehicle.active_assignment?.dealer?.company_name ?? null);
+const isAssigned = computed(() => vehicleIsAssigned(props.vehicle));
 const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.vehicle));
 </script>
 
@@ -555,16 +563,33 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
 }
 
 .dealer-tag {
+    --dealer-tag-bg: #fce7f3;
+    --dealer-tag-fg: #be185d;
+    --dealer-tag-border: #fbcfe8;
+    --dealer-tag-remove: #db2777;
+    --dealer-tag-remove-hover-bg: rgba(190, 24, 93, 0.16);
+    --dealer-tag-remove-hover-fg: #9d174d;
+
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
     max-width: 100%;
     padding: 0.15rem 0.35rem 0.15rem 0.55rem;
     border-radius: 999px;
-    border: 1px solid var(--vs-border);
-    background: var(--vs-surface-hover);
+    border: 1px solid var(--dealer-tag-border);
+    background: var(--dealer-tag-bg);
     font-size: 0.72rem;
-    color: var(--vs-text-secondary);
+    font-weight: 500;
+    color: var(--dealer-tag-fg);
+}
+
+[data-theme='dark'] .dealer-tag {
+    --dealer-tag-bg: rgba(190, 24, 93, 0.2);
+    --dealer-tag-fg: #fbcfe8;
+    --dealer-tag-border: rgba(244, 114, 182, 0.35);
+    --dealer-tag-remove: #f9a8d4;
+    --dealer-tag-remove-hover-bg: rgba(244, 114, 182, 0.22);
+    --dealer-tag-remove-hover-fg: #fce7f3;
 }
 
 .dealer-tag__name {
@@ -584,14 +609,14 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     border: none;
     border-radius: 999px;
     background: transparent;
-    color: var(--vs-text-muted);
+    color: var(--dealer-tag-remove);
     cursor: pointer;
     flex-shrink: 0;
 }
 
 .dealer-tag__remove:hover {
-    background: #fee2e2;
-    color: #dc2626;
+    background: var(--dealer-tag-remove-hover-bg);
+    color: var(--dealer-tag-remove-hover-fg);
 }
 
 .dealer-tag__remove i {

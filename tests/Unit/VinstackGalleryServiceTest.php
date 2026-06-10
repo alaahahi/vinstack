@@ -291,4 +291,105 @@ class VinstackGalleryServiceTest extends TestCase
         $this->assertSame(VehicleSource::Vinstack, $vehicle->source);
         $this->assertSame(VehicleStatus::Available, $vehicle->status);
     }
+
+    public function test_persist_gallery_images_preserves_shipping_destination_over_gallery_stage_block(): void
+    {
+        $vin = '1HGBH41JXMN109186';
+        $vinstackId = '507f1f77bcf86cd799439011';
+
+        VinstackSetting::query()->create([
+            'gallery_api_base_url' => 'https://app.vinstack.com/api/client-portal',
+            'gallery_api_token' => 'gallery-token',
+        ]);
+
+        Http::fake([
+            'https://app.vinstack.com/api/client-portal/autos/'.$vin.'/gallery' => Http::response([
+                'data' => [
+                    'terminal' => [
+                        'urls' => ['https://cdn.example.com/terminal.jpg'],
+                    ],
+                    'pickup' => [
+                        'urls' => [],
+                    ],
+                    'destination' => [
+                        'urls' => [
+                            'https://cdn.example.com/images-1700000000000-a.jpeg',
+                            'https://cdn.example.com/images-1700000000001-b.jpeg',
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $vehicle = Vehicle::query()->create([
+            'source' => VehicleSource::Vinstack,
+            'vinstack_id' => $vinstackId,
+            'vin' => $vin,
+            'status' => VehicleStatus::Available,
+            'images' => [],
+            'raw_data' => [
+                'id' => $vinstackId,
+                'loading_point' => 'Savannah',
+                'destination' => 'Jebel Ali',
+            ],
+        ]);
+
+        $this->galleryService()->buildGalleryPayload($vehicle->fresh());
+
+        $vehicle->refresh();
+
+        $this->assertSame('Savannah', $vehicle->raw_data['loading_point'] ?? null);
+        $this->assertSame('Jebel Ali', $vehicle->raw_data['destination'] ?? null);
+        $this->assertCount(2, $vehicle->raw_data['images_by_stage']['destination'] ?? []);
+    }
+
+    public function test_persist_gallery_images_does_not_store_destination_stage_block_on_raw_data_destination(): void
+    {
+        $vin = '1HGBH41JXMN109186';
+        $vinstackId = '507f1f77bcf86cd799439011';
+
+        VinstackSetting::query()->create([
+            'gallery_api_base_url' => 'https://app.vinstack.com/api/client-portal',
+            'gallery_api_token' => 'gallery-token',
+        ]);
+
+        Http::fake([
+            'https://app.vinstack.com/api/client-portal/autos/'.$vin.'/gallery' => Http::response([
+                'data' => [
+                    'terminal' => [
+                        'urls' => ['https://cdn.example.com/terminal-new.jpg'],
+                    ],
+                    'pickup' => [
+                        'urls' => [],
+                    ],
+                    'destination' => [
+                        'urls' => [
+                            'https://cdn.example.com/images-1700000000000-a.jpeg',
+                            'https://cdn.example.com/images-1700000000001-b.jpeg',
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        $vehicle = Vehicle::query()->create([
+            'source' => VehicleSource::Vinstack,
+            'vinstack_id' => $vinstackId,
+            'vin' => $vin,
+            'status' => VehicleStatus::Available,
+            'images' => [],
+            'raw_data' => [
+                'id' => $vinstackId,
+                'pod' => 'Mersin',
+            ],
+        ]);
+
+        $this->galleryService()->buildGalleryPayload($vehicle->fresh());
+
+        $vehicle->refresh();
+
+        $this->assertSame('Mersin', $vehicle->raw_data['destination'] ?? null);
+        $this->assertFalse(is_array($vehicle->raw_data['destination'] ?? null));
+        $this->assertCount(2, $vehicle->raw_data['images_by_stage']['destination'] ?? []);
+    }
 }

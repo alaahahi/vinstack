@@ -187,7 +187,7 @@ export function mergeGalleryIntoVehicle(vehicle, galleryPayload) {
 
     const stageFallback = (stage) => (galleryFresh ? undefined : staleRaw[stage]);
 
-    return preserveListIdentity(vehicle, {
+        return preserveListIdentity(vehicle, {
         ...vehicle,
         images: galleryPayload.images ?? (galleryFresh ? undefined : vehicle.images),
         images_by_stage: imagesByStage,
@@ -207,7 +207,8 @@ export function mergeGalleryIntoVehicle(vehicle, galleryPayload) {
             gallery: galleryPayload.gallery ?? (galleryFresh ? undefined : staleRaw.gallery),
             terminal: clientPortalStageBlock(galleryPayload, 'terminal', stageFallback('terminal')),
             pickup: clientPortalStageBlock(galleryPayload, 'pickup', stageFallback('pickup')),
-            destination: clientPortalStageBlock(galleryPayload, 'destination', stageFallback('destination')),
+            loading_point: staleRaw.loading_point,
+            destination: staleRaw.destination,
         },
     });
 }

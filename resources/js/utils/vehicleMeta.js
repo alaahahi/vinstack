@@ -1,19 +1,42 @@
-import { scalarString } from './scalarString';
+import { isGalleryStageBlock, isImageLikeString, scalarString } from './scalarString';
 
 function vehicleRawString(vehicle, key) {
     return scalarString(vehicle?.raw_data?.[key]);
 }
 
-function vehicleLocationLabel(vehicle, key) {
-    const value = vehicle?.raw_data?.[key];
+function locationFromRawValue(value) {
+    if (value === null || value === undefined || value === '') {
+        return null;
+    }
 
-    if (value && typeof value === 'object' && ! Array.isArray(value) && Array.isArray(value.urls)) {
+    if (isGalleryStageBlock(value)) {
         return scalarString(
             value.name ?? value.label ?? value.title ?? value.port ?? value.city ?? null,
         );
     }
 
-    return scalarString(value);
+    const label = scalarString(value);
+
+    if (label !== null && isImageLikeString(label)) {
+        return null;
+    }
+
+    return label;
+}
+
+function vehicleLocationLabel(vehicle, primaryKey, fallbackKeys = []) {
+    const raw = vehicle?.raw_data ?? {};
+    const candidates = [raw[primaryKey], ...fallbackKeys.map((key) => raw[key])];
+
+    for (const value of candidates) {
+        const label = locationFromRawValue(value);
+
+        if (label !== null) {
+            return label;
+        }
+    }
+
+    return null;
 }
 
 function formatVehicleDate(value) {
@@ -73,11 +96,11 @@ export function vehicleAuction(vehicle) {
 }
 
 export function vehicleOrigin(vehicle) {
-    return vehicleLocationLabel(vehicle, 'loading_point');
+    return vehicleLocationLabel(vehicle, 'loading_point', ['pol', 'prepol']);
 }
 
 export function vehicleDestination(vehicle) {
-    return vehicleLocationLabel(vehicle, 'destination');
+    return vehicleLocationLabel(vehicle, 'destination', ['postpod', 'pod', 'shipping_destination']);
 }
 
 export function vehicleVinstackStatus(vehicle) {

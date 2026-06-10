@@ -8,6 +8,7 @@ use App\Models\VinstackSetting;
 use App\Models\Vehicle;
 use App\Support\VehicleGalleryMerger;
 use App\Support\VehicleImageStages;
+use App\Support\VehicleRawDataLocations;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Arr;
@@ -22,7 +23,6 @@ class VinstackGalleryService
     protected const GALLERY_RAW_DATA_KEYS = [
         'terminal',
         'pickup',
-        'destination',
         'gallery',
         'photos',
         'images',
@@ -45,6 +45,7 @@ class VinstackGalleryService
         'lot',
         'auction',
         'loading_point',
+        'destination',
     ];
 
     public function __construct(
@@ -145,8 +146,9 @@ class VinstackGalleryService
         }
 
         $rawData = array_merge($existingRaw, $galleryPatch);
-        $rawData = $this->applyClientPortalStageBlocks($rawData, $livePayload);
+        $rawData = $this->applyClientPortalStageBlocks($rawData, $livePayload, preserveShippingDestination: true);
         $rawData = $this->restoreProtectedRawDataKeys($rawData, $existingRaw);
+        $rawData = VehicleRawDataLocations::sanitizeForList($rawData);
         $rawData['images_by_stage'] = $nextStages;
         $rawData['images'] = $nextUrls;
 
@@ -194,8 +196,11 @@ class VinstackGalleryService
      * @param  array<string, mixed>  $livePayload
      * @return array<string, mixed>
      */
-    protected function applyClientPortalStageBlocks(array $target, array $livePayload): array
-    {
+    protected function applyClientPortalStageBlocks(
+        array $target,
+        array $livePayload,
+        bool $preserveShippingDestination = false,
+    ): array {
         $source = $this->isClientPortalGalleryPayload($livePayload)
             ? $livePayload
             : (is_array($livePayload['gallery'] ?? null) ? $livePayload['gallery'] : null);
@@ -205,6 +210,10 @@ class VinstackGalleryService
         }
 
         foreach (VehicleImageStages::STAGES as $stage) {
+            if ($preserveShippingDestination && $stage === 'destination') {
+                continue;
+            }
+
             if (isset($source[$stage]) && is_array($source[$stage])) {
                 $target[$stage] = $source[$stage];
             }

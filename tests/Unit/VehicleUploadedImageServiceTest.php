@@ -72,4 +72,29 @@ class VehicleUploadedImageServiceTest extends TestCase
 
         $this->assertSame('https://cdn.example.com/autos/xyz/terminal.jpg', $enriched['thumbnail_url']);
     }
+
+    public function test_enrich_list_vehicle_sanitizes_corrupted_destination_for_list_display(): void
+    {
+        $service = new VehicleUploadedImageService;
+
+        $vehicle = Vehicle::query()->create([
+            'source' => VehicleSource::Vinstack,
+            'vin' => '3VWFE21C04M000001',
+            'status' => VehicleStatus::Available,
+            'images' => [],
+            'raw_data' => [
+                'loading_point' => 'Toronto',
+                'destination' => 'images-1777574841795-37632154.jpeg.images-1777574841796-877959842.jpeg',
+                'pod' => 'Mersin',
+                'terminal' => [
+                    'urls' => ['https://cdn.example.com/autos/abc/terminal.jpg'],
+                ],
+            ],
+        ]);
+
+        $enriched = $service->enrichListVehicle($vehicle);
+
+        $this->assertSame('Mersin', $enriched['raw_data']['destination'] ?? null);
+        $this->assertSame('Toronto', $enriched['raw_data']['loading_point'] ?? null);
+    }
 }
