@@ -134,9 +134,13 @@
 
                 :show-invoice="showInvoice"
 
+                :show-zip-upload="showZipUpload"
+
 
 
                 @track="$emit('track', $event)"
+
+                @show-cars="$emit('show-cars', $event)"
 
 
 
@@ -314,6 +318,20 @@ const props = defineProps({
 
     },
 
+    showZipUpload: {
+
+
+
+        type: Boolean,
+
+
+
+        default: false,
+
+
+
+    },
+
 
 
     emptyActionLabel: {
@@ -372,7 +390,7 @@ const props = defineProps({
 
 
 
-const emit = defineEmits(['track', 'empty-action', 'load-more']);
+const emit = defineEmits(['track', 'show-cars', 'empty-action', 'load-more']);
 
 
 

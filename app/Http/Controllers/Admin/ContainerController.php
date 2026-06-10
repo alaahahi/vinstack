@@ -92,5 +92,16 @@ class ContainerController extends Controller
 
     }
 
+    public function vehicles(string $container, ContainerService $containers): JsonResponse
+    {
+        $payload = $containers->vehiclesForContainer($container);
+
+        if ($payload === null) {
+            return response()->json(['message' => 'Container not found.'], 404);
+        }
+
+        return response()->json(['data' => $payload]);
+    }
+
 }
 

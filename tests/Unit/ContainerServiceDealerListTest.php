@@ -149,6 +149,40 @@ class ContainerServiceDealerListTest extends TestCase
         $this->assertSame('vehicles', $rows[0]['source']);
     }
 
+    public function test_vehicles_for_container_returns_enriched_db_vehicle(): void
+    {
+        $dealer = $this->createDealerWithAssignment(
+            vin: '1HGBH41JXMN109188',
+            rawData: [
+                'container_number' => 'VEH1234567',
+                'lot' => '445566',
+                'auction' => 'Copart',
+                'destination' => 'Dubai',
+                'purchase_date' => '2024-03-15',
+            ],
+        );
+
+        $this->mockVinstackContainers([
+            [
+                'container_number' => 'VEH1234567',
+                'booking_number' => 'BK-VEH',
+                'invoice_ref' => 'INV-99',
+                'autos' => [
+                    ['vin' => '1HGBH41JXMN109188', 'year' => 2021, 'make' => 'Toyota', 'model' => 'Camry'],
+                ],
+            ],
+        ]);
+
+        $payload = app(ContainerService::class)->vehiclesForContainer('VEH1234567', $dealer);
+
+        $this->assertNotNull($payload);
+        $this->assertSame('VEH1234567', $payload['container']['container_number']);
+        $this->assertCount(1, $payload['vehicles']);
+        $this->assertSame('1HGBH41JXMN109188', $payload['vehicles'][0]['vin']);
+        $this->assertSame('445566', $payload['vehicles'][0]['lot']);
+        $this->assertSame('Copart', $payload['vehicles'][0]['auction']);
+    }
+
     public function test_admin_merges_manual_vehicle_container_with_vinstack_api(): void
     {
         Vehicle::query()->create([
@@ -215,6 +249,20 @@ class ContainerServiceDealerListTest extends TestCase
     {
         $mock = Mockery::mock(VinstackService::class);
         $mock->shouldReceive('containers')->andReturn($containers);
+        $mock->shouldReceive('container')
+            ->andReturnUsing(function (string $number) use ($containers) {
+                $normalized = strtoupper(preg_replace('/\s+/', '', $number) ?? '');
+
+                foreach ($containers as $row) {
+                    $rowNumber = strtoupper(preg_replace('/\s+/', '', (string) ($row['container_number'] ?? '')));
+
+                    if ($rowNumber === $normalized) {
+                        return $row;
+                    }
+                }
+
+                throw new \RuntimeException('Container not found');
+            });
 
         $this->app->instance(VinstackService::class, $mock);
     }

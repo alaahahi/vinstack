@@ -8,7 +8,14 @@
 
                 <span class="ref-label">CNTR</span>
 
-                <span class="ref-value">{{ refs.container }}</span>
+                <button
+                    v-if="refs.container"
+                    type="button"
+                    class="ref-value ref-value--link"
+                    @click="$emit('show-cars', container)"
+                >
+                    {{ refs.container }}
+                </button>
 
             </div>
 
@@ -98,21 +105,18 @@
 
         <div class="cell cell-vehicles">
 
-            <div v-for="(vehicle, index) in container.vehicles" :key="vehicle.vin ?? index" class="vehicle-line">
-
-                <span class="vehicle-title">{{ vehicle.title }}</span>
-
-                <VinCopyLabel
-                    v-if="vehicle.vin"
-                    :vin="vehicle.vin"
-                    size="compact"
-                    block
-                    class="vehicle-vin"
-                />
-
-            </div>
-
-            <div v-if="!container.vehicles?.length" class="muted">—</div>
+            <button
+                type="button"
+                class="vehicle-count-badge"
+                :class="{ 'vehicle-count-badge--empty': !vehicleCount }"
+                :disabled="!vehicleCount"
+                :title="vehicleCount ? 'عرض سيارات الحاوية' : 'لا توجد سيارات'"
+                @click="vehicleCount && $emit('show-cars', container)"
+            >
+                <i class="pi pi-car" />
+                <span class="vehicle-count-num">{{ vehicleCount }}</span>
+                <span class="vehicle-count-label">سيارة</span>
+            </button>
 
         </div>
 
@@ -176,6 +180,28 @@
 
         <div class="cell cell-actions">
 
+            <input
+                v-if="showZipUpload"
+                ref="zipInputRef"
+                type="file"
+                accept=".zip,application/zip"
+                class="zip-input-hidden"
+                @change="onZipSelected"
+            />
+
+            <Button
+                v-if="showZipUpload"
+                icon="pi pi-upload"
+                severity="secondary"
+                text
+                rounded
+                class="zip-btn"
+                aria-label="رفع صور ZIP"
+                title="رفع صور ZIP"
+                :loading="zipLoading"
+                @click="triggerZipUpload"
+            />
+
             <Button
                 icon="pi pi-map-marker"
                 :severity="canTrack ? 'info' : 'secondary'"
@@ -199,11 +225,14 @@
 
 <script setup>
 
-import { computed } from 'vue';
-
+import { computed, ref } from 'vue';
+import { useToast } from 'primevue/usetoast';
 import Button from 'primevue/button';
-
-import VinCopyLabel from './VinCopyLabel.vue';
+import {
+    containerRefKey,
+    extractZipImagesForContainer,
+    saveContainerZipImages,
+} from '../utils/containerZipImages';
 
 import {
 
@@ -253,11 +282,23 @@ const props = defineProps({
 
     },
 
+    showZipUpload: {
+
+        type: Boolean,
+
+        default: false,
+
+    },
+
 });
 
 
 
-defineEmits(['track']);
+defineEmits(['track', 'show-cars']);
+
+const toast = useToast();
+const zipInputRef = ref(null);
+const zipLoading = ref(false);
 
 
 
@@ -296,6 +337,46 @@ const canTrack = computed(() => {
 const trackingTitle = computed(() =>
     canTrack.value ? 'تتبع الشحنة' : 'تتبع الشحنة — بيانات المسار غير متوفرة',
 );
+
+const vehicleCount = computed(() => props.container?.vehicles?.length ?? 0);
+
+function triggerZipUpload() {
+    zipInputRef.value?.click();
+}
+
+async function onZipSelected(event) {
+    const file = event.target?.files?.[0];
+
+    if (event.target) {
+        event.target.value = '';
+    }
+
+    if (! file) {
+        return;
+    }
+
+    zipLoading.value = true;
+
+    try {
+        const payload = await extractZipImagesForContainer(file, props.container?.vehicles ?? []);
+        saveContainerZipImages(containerRefKey(props.container), payload);
+
+        toast.add({
+            severity: 'success',
+            summary: 'تم استخراج الصور',
+            detail: `${payload.images.length} صورة — افتح قائمة السيارات لعرضها`,
+            life: 4000,
+        });
+    } catch {
+        toast.add({
+            severity: 'error',
+            summary: 'تعذّر فتح ملف ZIP',
+            life: 4000,
+        });
+    } finally {
+        zipLoading.value = false;
+    }
+}
 
 </script>
 
@@ -380,6 +461,32 @@ const trackingTitle = computed(() =>
     color: var(--vs-text-secondary);
 
     word-break: break-all;
+
+}
+
+.ref-value--link {
+
+    padding: 0;
+
+    border: none;
+
+    background: none;
+
+    cursor: pointer;
+
+    text-align: inherit;
+
+    color: #2563eb;
+
+    font-family: ui-monospace, monospace;
+
+    font-size: inherit;
+
+}
+
+.ref-value--link:hover {
+
+    text-decoration: underline;
 
 }
 
@@ -519,33 +626,68 @@ const trackingTitle = computed(() =>
 
 
 
-.vehicle-line {
+.vehicle-count-badge {
 
-    margin-bottom: 0.35rem;
+    display: inline-flex;
 
-}
+    align-items: center;
 
+    gap: 0.35rem;
 
+    padding: 0.35rem 0.65rem;
 
-.vehicle-title {
+    border: 1px solid rgb(37 99 235 / 30%);
 
-    display: block;
+    border-radius: 999px;
 
-    font-size: 0.82rem;
+    background: rgb(37 99 235 / 10%);
+
+    color: #2563eb;
+
+    font-size: 0.8rem;
 
     font-weight: 600;
 
-    color: var(--vs-text);
+    cursor: pointer;
+
+    transition: background 0.12s ease, transform 0.12s ease;
 
 }
 
+.vehicle-count-badge:hover:not(:disabled) {
 
+    background: rgb(37 99 235 / 18%);
 
-.vehicle-vin {
+    transform: translateY(-1px);
 
-    display: block;
+}
 
-    margin-top: 0.1rem;
+.vehicle-count-badge--empty,
+.vehicle-count-badge:disabled {
+
+    opacity: 0.45;
+
+    cursor: not-allowed;
+
+    border-color: var(--vs-border);
+
+    background: var(--vs-surface-elevated);
+
+    color: var(--vs-text-muted);
+
+}
+
+.vehicle-count-num {
+
+    font-variant-numeric: tabular-nums;
+
+    font-size: 0.95rem;
+
+}
+
+.vehicle-count-label {
+
+    font-weight: 500;
 
 }
 
@@ -610,6 +752,20 @@ const trackingTitle = computed(() =>
     display: flex;
 
     justify-content: flex-end;
+
+    gap: 0.15rem;
+
+}
+
+.zip-input-hidden {
+
+    display: none;
+
+}
+
+.zip-btn :deep(.p-button-icon) {
+
+    color: var(--vs-text-muted);
 
 }
 

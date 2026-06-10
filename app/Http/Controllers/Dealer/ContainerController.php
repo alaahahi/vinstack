@@ -40,4 +40,24 @@ class ContainerController extends Controller
 
         return response()->json($tracking->forDealer($dealer, $container));
     }
+
+    public function vehicles(
+        Request $request,
+        string $container,
+        ContainerService $containers,
+    ): JsonResponse {
+        $dealer = $request->user()->dealer;
+
+        if (! $dealer) {
+            abort(403, 'Dealer profile not found.');
+        }
+
+        $payload = $containers->vehiclesForContainer($container, $dealer);
+
+        if ($payload === null) {
+            return response()->json(['message' => 'Container not found.'], 404);
+        }
+
+        return response()->json(['data' => $payload]);
+    }
 }

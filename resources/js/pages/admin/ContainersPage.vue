@@ -62,7 +62,11 @@
 
             :tracking-available="trackingAvailable"
 
+            show-zip-upload
+
             @track="openTracking"
+
+            @show-cars="openCars"
 
             @load-more="loadMore"
 
@@ -77,6 +81,18 @@
             :container="trackingContainer"
 
             api-role="admin"
+
+        />
+
+        <ContainerCarsDialog
+
+            v-model:visible="carsVisible"
+
+            :container="carsContainer"
+
+            api-role="admin"
+
+            show-zip-upload
 
         />
 
@@ -107,6 +123,8 @@ import DealerFilterBadges from '../../components/DealerFilterBadges.vue';
 import ContainerListPanel from '../../components/ContainerListPanel.vue';
 
 import ContainerTrackingDialog from '../../components/ContainerTrackingDialog.vue';
+
+import ContainerCarsDialog from '../../components/ContainerCarsDialog.vue';
 
 import api from '../../api/client';
 
@@ -139,6 +157,10 @@ const trackingAvailable = ref(false);
 const trackingVisible = ref(false);
 
 const trackingContainer = ref(null);
+
+const carsVisible = ref(false);
+
+const carsContainer = ref(null);
 
 
 
@@ -291,6 +313,14 @@ function openTracking(container) {
     trackingContainer.value = container;
 
     trackingVisible.value = true;
+
+}
+
+function openCars(container) {
+
+    carsContainer.value = container;
+
+    carsVisible.value = true;
 
 }
 

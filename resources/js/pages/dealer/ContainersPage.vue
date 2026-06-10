@@ -34,6 +34,8 @@
 
             @track="openTracking"
 
+            @show-cars="openCars"
+
             @empty-action="goVehicles"
 
         />
@@ -47,6 +49,18 @@
             :container="trackingContainer"
 
             api-role="dealer"
+
+        />
+
+        <ContainerCarsDialog
+
+            v-model:visible="carsVisible"
+
+            :container="carsContainer"
+
+            api-role="dealer"
+
+            :show-zip-upload="false"
 
         />
 
@@ -70,6 +84,8 @@ import ContainerListPanel from '../../components/ContainerListPanel.vue';
 
 import ContainerTrackingDialog from '../../components/ContainerTrackingDialog.vue';
 
+import ContainerCarsDialog from '../../components/ContainerCarsDialog.vue';
+
 import api from '../../api/client';
 
 
@@ -87,6 +103,10 @@ const trackingAvailable = ref(false);
 const trackingVisible = ref(false);
 
 const trackingContainer = ref(null);
+
+const carsVisible = ref(false);
+
+const carsContainer = ref(null);
 
 
 
@@ -133,6 +153,14 @@ function openTracking(container) {
     trackingContainer.value = container;
 
     trackingVisible.value = true;
+
+}
+
+function openCars(container) {
+
+    carsContainer.value = container;
+
+    carsVisible.value = true;
 
 }
 

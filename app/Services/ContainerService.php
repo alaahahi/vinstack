@@ -12,6 +12,7 @@ class ContainerService
 {
     public function __construct(
         protected VinstackService $vinstack,
+        protected VehicleUploadedImageService $gallery,
     ) {}
 
     /**
@@ -92,6 +93,283 @@ class ContainerService
     public function trackingAvailable(): bool
     {
         return true;
+    }
+
+    /**
+     * @return array{container: array<string, mixed>, vehicles: list<array<string, mixed>>}|null
+     */
+    public function vehiclesForContainer(string $ref, ?Dealer $dealer = null): ?array
+    {
+        $containerNumber = $this->normalizeContainerNumber($ref);
+        $bookingNumber = $this->normalizeBookingNumber($ref);
+
+        if (($containerNumber === null || $containerNumber === '')
+            && ($bookingNumber === null || $bookingNumber === '')) {
+            return null;
+        }
+
+        $container = $this->findContainerByRef($containerNumber, $bookingNumber, $dealer);
+
+        if ($container === null) {
+            return null;
+        }
+
+        return [
+            'container' => $this->containerDetailHeader($container),
+            'vehicles' => $this->buildContainerVehicleDetails($container, $dealer),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    protected function findContainerByRef(?string $containerNumber, ?string $bookingNumber, ?Dealer $dealer): ?array
+    {
+        $items = $dealer !== null
+            ? $this->listForDealer($dealer)
+            : $this->listForAdminFiltered();
+
+        foreach ($items as $row) {
+            $rowContainer = $this->normalizeContainerNumber($row['container_number'] ?? null);
+            $rowBooking = $this->normalizeBookingNumber($row['booking_number'] ?? null);
+
+            if ($containerNumber !== null && $containerNumber !== '' && $rowContainer === $containerNumber) {
+                return $row;
+            }
+
+            if ($bookingNumber !== null && $bookingNumber !== '' && $rowBooking === $bookingNumber) {
+                return $row;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $container
+     * @return array<string, mixed>
+     */
+    protected function containerDetailHeader(array $container): array
+    {
+        return [
+            'id' => $container['id'] ?? null,
+            'container_number' => $container['container_number'] ?? null,
+            'booking_number' => $container['booking_number'] ?? null,
+            'seal_number' => $container['seal_number'] ?? null,
+            'customer_name' => $container['customer_name'] ?? null,
+            'loading_point' => $container['loading_point'] ?? null,
+            'destination' => $container['destination'] ?? null,
+            'shipping_line' => $container['shipping_line'] ?? null,
+            'loading_date' => $container['loading_date'] ?? null,
+            'eta' => $container['eta'] ?? null,
+            'status' => $container['status'] ?? null,
+            'released' => (bool) ($container['released'] ?? false),
+            'invoice_ref' => $container['invoice_ref'] ?? null,
+            'bol_url' => $container['bol_url'] ?? null,
+            'vehicle_count' => count($container['vehicles'] ?? []),
+            'source' => $container['source'] ?? null,
+        ];
+    }
+
+    /**
+     * @param  array<string, mixed>  $container
+     * @return list<array<string, mixed>>
+     */
+    protected function buildContainerVehicleDetails(array $container, ?Dealer $dealer): array
+    {
+        $containerNumber = $this->normalizeContainerNumber($container['container_number'] ?? null);
+        $bookingNumber = $this->normalizeBookingNumber($container['booking_number'] ?? null);
+
+        $apiAutos = $this->fetchContainerAutos($containerNumber);
+        $dbVehicles = $this->queryVehiclesInContainer($containerNumber, $bookingNumber, $dealer);
+
+        /** @var array<string, Vehicle> $dbByVin */
+        $dbByVin = [];
+
+        foreach ($dbVehicles as $vehicle) {
+            $vin = $this->normalizeVin((string) $vehicle->vin);
+
+            if ($vin !== '') {
+                $dbByVin[$vin] = $vehicle;
+            }
+        }
+
+        $merged = [];
+        $seenVins = [];
+
+        foreach ($apiAutos as $auto) {
+            if (! is_array($auto)) {
+                continue;
+            }
+
+            $vin = $this->normalizeVin($this->string($auto, 'vin') ?? '');
+
+            if ($vin !== '') {
+                $seenVins[$vin] = true;
+            }
+
+            $merged[] = $this->formatContainerVehicleRow(
+                $auto,
+                $vin !== '' ? ($dbByVin[$vin] ?? null) : null,
+            );
+        }
+
+        foreach ($dbVehicles as $vehicle) {
+            $vin = $this->normalizeVin((string) $vehicle->vin);
+
+            if ($vin !== '' && isset($seenVins[$vin])) {
+                continue;
+            }
+
+            if ($vin !== '') {
+                $seenVins[$vin] = true;
+            }
+
+            $raw = is_array($vehicle->raw_data) ? $vehicle->raw_data : [];
+            $merged[] = $this->formatContainerVehicleRow($raw, $vehicle);
+        }
+
+        foreach ($container['vehicles'] ?? [] as $summary) {
+            if (! is_array($summary)) {
+                continue;
+            }
+
+            $vin = $this->normalizeVin((string) ($summary['vin'] ?? ''));
+
+            if ($vin !== '' && isset($seenVins[$vin])) {
+                continue;
+            }
+
+            if ($vin !== '') {
+                $seenVins[$vin] = true;
+            }
+
+            $merged[] = $this->formatContainerVehicleRow(
+                $summary,
+                $vin !== '' ? ($dbByVin[$vin] ?? null) : null,
+            );
+        }
+
+        return $merged;
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    protected function fetchContainerAutos(?string $containerNumber): array
+    {
+        if ($containerNumber === null || $containerNumber === '') {
+            return [];
+        }
+
+        try {
+            $detail = $this->vinstack->container($containerNumber);
+        } catch (RuntimeException) {
+            return [];
+        }
+
+        $autos = Arr::get($detail, 'autos', Arr::get($detail, 'vehicles', []));
+
+        if (! is_array($autos)) {
+            return [];
+        }
+
+        return array_values(array_filter($autos, fn ($item) => is_array($item)));
+    }
+
+    /**
+     * @return list<Vehicle>
+     */
+    protected function queryVehiclesInContainer(?string $containerNumber, ?string $bookingNumber, ?Dealer $dealer): array
+    {
+        $query = Vehicle::query();
+
+        if ($dealer !== null) {
+            $query->whereHas('assignments', function ($q) use ($dealer) {
+                $q->where('dealer_id', $dealer->id)->where('is_active', true);
+            });
+        }
+
+        return $query->get()
+            ->filter(function (Vehicle $vehicle) use ($containerNumber, $bookingNumber) {
+                $raw = is_array($vehicle->raw_data) ? $vehicle->raw_data : [];
+                $shipping = $this->extractShippingFromRaw($raw);
+                $cn = $this->normalizeContainerNumber($shipping['container_number'] ?? null);
+                $bk = $this->normalizeBookingNumber($shipping['booking_number'] ?? null);
+
+                if ($containerNumber !== null && $containerNumber !== '' && $cn === $containerNumber) {
+                    return true;
+                }
+
+                if ($bookingNumber !== null && $bookingNumber !== '' && $bk === $bookingNumber) {
+                    return true;
+                }
+
+                return false;
+            })
+            ->values()
+            ->all();
+    }
+
+    /**
+     * @param  array<string, mixed>  $source
+     * @return array<string, mixed>
+     */
+    protected function formatContainerVehicleRow(array $source, ?Vehicle $dbVehicle = null): array
+    {
+        if ($dbVehicle !== null) {
+            $enriched = $this->gallery->enrichListVehicle($dbVehicle);
+
+            $vin = $this->string($source, 'vin') ?? $enriched['vin'] ?? null;
+            $lot = $this->string($source, 'lot')
+                ?? (is_array($enriched['raw_data'] ?? null) ? $this->string($enriched['raw_data'], 'lot') : null);
+            $auction = $this->string($source, 'auction')
+                ?? (is_array($enriched['raw_data'] ?? null) ? $this->string($enriched['raw_data'], 'auction') : null);
+            $destination = $this->string($source, 'destination')
+                ?? (is_array($enriched['raw_data'] ?? null) ? $this->string($enriched['raw_data'], 'destination') : null);
+            $purchaseDate = $this->string($source, 'purchase_date')
+                ?? (is_array($enriched['raw_data'] ?? null) ? $this->string($enriched['raw_data'], 'purchase_date') : null);
+            $thumbnail = $this->string($source, 'thumbnail_url') ?? $enriched['thumbnail_url'] ?? null;
+
+            $enriched['vin'] = $vin;
+            $enriched['lot'] = $lot;
+            $enriched['auction'] = $auction;
+            $enriched['destination'] = $destination;
+            $enriched['purchase_date'] = $purchaseDate;
+
+            if (is_string($thumbnail) && $thumbnail !== '') {
+                $enriched['thumbnail_url'] = $thumbnail;
+            }
+
+            return $enriched;
+        }
+
+        $year = Arr::get($source, 'year');
+        $make = $this->string($source, 'make');
+        $model = $this->string($source, 'model');
+        $vin = $this->string($source, 'vin');
+
+        return [
+            'id' => null,
+            'vin' => $vin,
+            'year' => $year,
+            'make' => $make,
+            'model' => $model,
+            'lot' => $this->string($source, 'lot'),
+            'auction' => $this->string($source, 'auction'),
+            'destination' => $this->string($source, 'destination'),
+            'purchase_date' => $this->string($source, 'purchase_date'),
+            'thumbnail_url' => $this->string($source, 'thumbnail_url'),
+            'images' => [],
+            'images_by_stage' => [
+                'terminal' => [],
+                'pickup' => [],
+                'destination' => [],
+            ],
+            'uploaded_images' => [],
+            'raw_data' => $source,
+            'source' => null,
+        ];
     }
 
     /**

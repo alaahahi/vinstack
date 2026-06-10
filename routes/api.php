@@ -85,6 +85,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/vinstack/sync', [VinstackSettingsController::class, 'sync']);
 
         Route::get('/containers', [AdminContainerController::class, 'index']);
+        Route::get('/containers/{container}/vehicles', [AdminContainerController::class, 'vehicles']);
         Route::get('/containers/{container}/tracking', [AdminContainerController::class, 'tracking']);
         Route::get('/vinstack/containers', [VinstackBrowseController::class, 'containers']);
         Route::get('/vinstack/invoices', [VinstackBrowseController::class, 'invoices']);
@@ -101,6 +102,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/two-factor/recovery-codes', [DealerTwoFactorController::class, 'regenerateRecoveryCodes']);
         Route::get('/stats', [DealerProfileController::class, 'stats']);
         Route::get('/containers', [DealerContainerController::class, 'index']);
+        Route::get('/containers/{container}/vehicles', [DealerContainerController::class, 'vehicles']);
         Route::get('/containers/{container}/tracking', [DealerContainerController::class, 'tracking']);
         Route::get('/vehicles', [DealerVehicleController::class, 'index']);
         Route::get('/vehicles/{vehicle}', [DealerVehicleController::class, 'show']);
