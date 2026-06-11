@@ -34,6 +34,15 @@
                     show-clear
                     @change="resetAndLoad"
                 />
+                <Select
+                    v-model="sourceFilter"
+                    :options="sourceOptions"
+                    option-label="label"
+                    option-value="value"
+                    placeholder="المصدر"
+                    show-clear
+                    @change="resetAndLoad"
+                />
                 <Button icon="pi pi-refresh" label="تحديث" outlined :loading="loading" @click="resetAndLoad" />
                 <DealerFilterBadges
                     :dealers="dealerSummary"
@@ -136,6 +145,7 @@ const loading = ref(false);
 const loadingMore = ref(false);
 const search = ref('');
 const statusFilter = ref(null);
+const sourceFilter = ref(null);
 const dealerFilter = ref(null);
 const page = ref(1);
 const perPage = ref(50);
@@ -159,6 +169,11 @@ const statusOptions = [
     { label: 'مسندة', value: 'assigned' },
     { label: 'محجوزة', value: 'reserved' },
 ];
+const sourceOptions = [
+    { label: 'مستوردة', value: 'vinstack' },
+    { label: 'يدوية', value: 'manual' },
+    { label: 'نجوم الجزيرة', value: 'nujoom_al_jazeera' },
+];
 
 const assigning = ref(false);
 
@@ -170,6 +185,7 @@ function listParams(nextPage = page.value) {
         per_page: perPage.value,
         search: search.value || undefined,
         status: statusFilter.value || undefined,
+        source: sourceFilter.value || undefined,
         dealer_id: Number.isFinite(dealerId) && dealerId > 0 ? dealerId : undefined,
     };
 }

@@ -2,14 +2,19 @@
     <Dialog
         v-model:visible="dialogVisible"
         modal
+        appendTo="body"
         :draggable="false"
         :closable="false"
         :dismissableMask="!loading"
         :closeOnEscape="!loading"
         :blockScroll="true"
+        :style="dialogPanelStyle"
         :pt="{
             mask: { class: 'container-tracking-mask' },
-            root: { class: 'container-tracking-dialog' },
+            root: {
+                class: 'container-tracking-dialog',
+                style: dialogPanelStyle,
+            },
             content: { class: 'container-tracking-content' },
         }"
         role="dialog"
@@ -310,6 +315,14 @@ const headerRef = ref(null);
 const bodyRef = ref(null);
 
 const dialogTitleId = 'container-tracking-title';
+
+/** Inline + pt styles — portaled Dialog ignores scoped CSS width rules. */
+const dialogPanelStyle = {
+    width: 'calc(100vw - 20px)',
+    maxWidth: 'none',
+    minHeight: 'min(85vh, calc(100vh - 20px))',
+    margin: '10px',
+};
 
 const refs = computed(() => (props.container ? containerRefs(props.container) : { container: null }));
 
@@ -750,35 +763,7 @@ onUnmounted(removeFocusTrap);
 </script>
 
 <style scoped>
-:deep(.p-dialog.container-tracking-dialog) {
-    width: calc(100vw - 20px) !important;
-    max-width: min(1200px, calc(100vw - 20px)) !important;
-    max-height: calc(100vh - 20px) !important;
-    min-height: min(70vh, calc(100vh - 20px));
-    margin: 10px !important;
-    border: 1px solid var(--vs-border);
-    border-radius: 16px;
-    box-shadow:
-        0 0 0 1px rgb(255 255 255 / 0.04),
-        0 28px 56px rgb(0 0 0 / 0.22),
-        0 12px 24px rgb(0 0 0 / 0.12);
-    overflow: hidden;
-    display: flex;
-    flex-direction: column;
-    animation: trackingDialogIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
-}
-
-@keyframes trackingDialogIn {
-    from {
-        opacity: 0;
-        transform: translateY(12px) scale(0.98);
-    }
-
-    to {
-        opacity: 1;
-        transform: translateY(0) scale(1);
-    }
-}
+/* Layout inside dialog — width/size live in unscoped block (portal to body). */
 
 :deep(.p-dialog.container-tracking-dialog .p-dialog-header) {
     flex-shrink: 0;
@@ -960,12 +945,13 @@ onUnmounted(removeFocusTrap);
     display: grid;
     grid-template-columns: 1fr minmax(260px, 320px);
     flex: 1 1 auto;
-    min-height: min(55vh, calc(100vh - 200px));
+    min-height: 0;
     height: 100%;
 }
 
 .tracking-skeleton-map {
-    min-height: 280px;
+    min-height: 0;
+    height: 100%;
     background: var(--vs-zinc-200);
 }
 
@@ -1029,7 +1015,7 @@ onUnmounted(removeFocusTrap);
     grid-template-columns: 1fr minmax(260px, 320px);
     grid-template-areas: 'map sidebar';
     flex: 1 1 auto;
-    min-height: min(55vh, calc(100vh - 200px));
+    min-height: 0;
     height: 100%;
     animation: trackingBodyIn 0.28s ease;
 }
@@ -1048,7 +1034,8 @@ onUnmounted(removeFocusTrap);
 
 .tracking-map-wrap {
     grid-area: map;
-    min-height: 280px;
+    min-height: 0;
+    height: 100%;
     background: var(--vs-zinc-200);
     position: relative;
 }
@@ -1056,7 +1043,7 @@ onUnmounted(removeFocusTrap);
 .tracking-map {
     width: 100%;
     height: 100%;
-    min-height: 320px;
+    min-height: 0;
     z-index: 1;
 }
 
@@ -1077,7 +1064,7 @@ onUnmounted(removeFocusTrap);
 
 .map-empty {
     height: 100%;
-    min-height: 320px;
+    min-height: 0;
     display: flex;
     flex-direction: column;
     align-items: center;
@@ -1379,13 +1366,6 @@ onUnmounted(removeFocusTrap);
 }
 
 @media (max-width: 900px) {
-    :deep(.p-dialog.container-tracking-dialog) {
-        width: calc(100vw - 20px) !important;
-        max-width: calc(100vw - 20px) !important;
-        min-height: min(85vh, calc(100vh - 20px));
-        margin: 10px !important;
-    }
-
     .tracking-meta {
         flex-direction: column;
         align-items: stretch;
@@ -1434,7 +1414,46 @@ onUnmounted(removeFocusTrap);
 </style>
 
 <style>
-/* Portaled dialog — mask blur + theme; unscoped for [data-theme] */
+/* Portaled to body — unscoped so width/height apply outside component tree */
+.p-dialog.container-tracking-dialog {
+    width: calc(100vw - 20px) !important;
+    max-width: calc(100vw - 20px) !important;
+    max-height: calc(100vh - 20px) !important;
+    min-height: min(85vh, calc(100vh - 20px)) !important;
+    margin: 10px !important;
+    border: 1px solid var(--vs-border);
+    border-radius: 16px;
+    box-shadow:
+        0 0 0 1px rgb(255 255 255 / 0.04),
+        0 28px 56px rgb(0 0 0 / 0.22),
+        0 12px 24px rgb(0 0 0 / 0.12);
+    overflow: hidden;
+    display: flex;
+    flex-direction: column;
+    animation: trackingDialogIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
+}
+
+@keyframes trackingDialogIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+.p-dialog.container-tracking-dialog .p-dialog-content {
+    flex: 1 1 auto;
+    min-height: 0;
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+
+/* mask blur + theme */
 .p-dialog-mask.container-tracking-mask {
     backdrop-filter: blur(12px);
     -webkit-backdrop-filter: blur(12px);
