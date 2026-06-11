@@ -130,6 +130,8 @@ class ContainerImageService
                     'name' => $name,
                     'error' => $e->getMessage(),
                 ];
+            } finally {
+                $this->discardUploadedFile($file);
             }
         }
 
@@ -239,5 +241,16 @@ class ContainerImageService
         }
 
         return strtolower($slug).'-'.($index + 1);
+    }
+
+    protected function discardUploadedFile(UploadedFile $file): void
+    {
+        $path = $file->getRealPath();
+
+        if (! is_string($path) || $path === '' || ! is_file($path)) {
+            return;
+        }
+
+        @unlink($path);
     }
 }

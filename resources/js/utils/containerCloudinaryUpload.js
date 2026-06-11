@@ -9,6 +9,8 @@ const MIME_BY_EXT = {
     bmp: 'image/bmp',
 };
 
+const ALLOWED_EXTENSIONS = new Set(Object.keys(MIME_BY_EXT));
+
 /**
  * @param {unknown} error
  * @returns {string}
@@ -101,15 +103,21 @@ export async function uploadContainerImagesToCloud({
         for (let i = 0; i < slice.length; i += 1) {
             const image = slice[i];
             const blob = await blobFromImageRecord(image);
-            const filename = image.name || `image-${offset + i + 1}.jpg`;
-            const typedBlob = withImageMimeType(blob, filename);
+            const filename = ensureImageFilename(image.name, offset + i);
+            const file = toUploadFile(blob, filename);
 
-            form.append(`images[${i}]`, typedBlob, filename);
+            validateUploadFile(file, filename);
+
+            form.append(`images[${metadata.length}]`, file, filename);
             metadata.push({
                 name: filename,
                 vin: image.vin ?? null,
                 lot: image.lot ?? null,
             });
+        }
+
+        if (metadata.length === 0) {
+            continue;
         }
 
         form.append('metadata', JSON.stringify(metadata));
@@ -136,7 +144,7 @@ export async function uploadContainerImagesToCloud({
             allFailed.push(...batchFailed);
         }
 
-        if (batchUploaded === 0 && slice.length > 0) {
+        if (batchUploaded === 0 && metadata.length > 0) {
             const error = new Error(formatCloudinaryUploadError({
                 response: { data: response.data },
             }));
@@ -155,7 +163,7 @@ export async function uploadContainerImagesToCloud({
     }
 
     if (! lastPayload) {
-        throw new Error('Upload did not return image payload.');
+        throw new Error('لا توجد ملفات صور صالحة للرفع في هذه الدفعة.');
     }
 
     return {
@@ -194,13 +202,54 @@ async function blobFromImageRecord(image) {
     throw new Error(`Missing file blob for ${image.name ?? 'image'}`);
 }
 
-function withImageMimeType(blob, filename) {
-    const ext = String(filename).split('.').pop()?.toLowerCase() ?? '';
-    const mime = MIME_BY_EXT[ext];
+function ensureImageFilename(name, index) {
+    const base = String(name || '').trim();
 
-    if (! mime || blob.type === mime) {
+    if (base && /\.(jpe?g|png|webp|gif|bmp)$/i.test(base)) {
+        return base;
+    }
+
+    if (base) {
+        return `${base}.jpg`;
+    }
+
+    return `image-${index + 1}.jpg`;
+}
+
+function mimeForFilename(filename) {
+    const ext = String(filename).split('.').pop()?.toLowerCase() ?? '';
+
+    return MIME_BY_EXT[ext] ?? 'image/jpeg';
+}
+
+function toUploadFile(blob, filename) {
+    const mime = mimeForFilename(filename);
+
+    if (blob instanceof File && blob.name === filename && blob.type === mime) {
         return blob;
     }
 
-    return new Blob([blob], { type: mime });
+    return new File([blob], filename, { type: mime || blob.type || 'image/jpeg' });
+}
+
+function fileExtension(filename) {
+    return String(filename).split('.').pop()?.toLowerCase() ?? '';
+}
+
+function validateUploadFile(file, filename) {
+    if (! file || file.size === 0) {
+        throw new Error(`الملف فارغ أو غير صالح: ${filename}`);
+    }
+
+    const ext = fileExtension(filename);
+
+    if (! ALLOWED_EXTENSIONS.has(ext)) {
+        throw new Error(`امتداد الصورة غير مدعوم: ${filename}`);
+    }
+
+    const expectedMime = MIME_BY_EXT[ext];
+
+    if (expectedMime && file.type && file.type !== expectedMime && file.type !== 'application/octet-stream') {
+        throw new Error(`نوع الملف غير مدعوم: ${filename}`);
+    }
 }

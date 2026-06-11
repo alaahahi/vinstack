@@ -16,6 +16,63 @@ class ContainerImageUploadTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_admin_can_upload_container_images_via_multipart_form(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        VinstackSetting::query()->create([
+            'cloudinary_cloud_name' => 'demo',
+            'cloudinary_api_key' => '123',
+            'cloudinary_api_secret' => 'secret',
+        ]);
+
+        $this->mock(CloudinaryService::class, function ($mock): void {
+            $mock->shouldReceive('isConfigured')->andReturn(true);
+            $mock->shouldReceive('resolveConfig')->andReturn([
+                'cloud_name' => 'demo',
+                'api_key' => '123',
+                'api_secret' => 'secret',
+                'upload_preset' => null,
+                'folder' => 'vinstack/containers',
+            ]);
+            $mock->shouldReceive('upload')
+                ->once()
+                ->andReturn([
+                    'url' => 'https://res.cloudinary.com/demo/image/upload/v1/photo-1.jpg',
+                    'secure_url' => 'https://res.cloudinary.com/demo/image/upload/v1/photo-1.jpg',
+                    'public_id' => 'vinstack/containers/MSCU1234567/photo-1',
+                ]);
+        });
+
+        Sanctum::actingAs($admin);
+
+        $file = UploadedFile::fake()->image('1HGBH41JXMN109186.jpg');
+
+        $response = $this->call(
+            'POST',
+            '/api/admin/containers/MSCU1234567/images/upload',
+            [
+                'replace' => '1',
+                'metadata' => json_encode([
+                    ['name' => '1HGBH41JXMN109186.jpg', 'vin' => '1HGBH41JXMN109186', 'lot' => '123'],
+                ]),
+            ],
+            [],
+            [
+                'images' => [
+                    0 => $file,
+                ],
+            ],
+            $this->transformHeadersToServerVars([
+                'Accept' => 'application/json',
+            ]),
+        );
+
+        $response->assertCreated()
+            ->assertJsonPath('data.meta.count', 1)
+            ->assertJsonPath('data.byVin.1HGBH41JXMN109186.0', 'https://res.cloudinary.com/demo/image/upload/v1/photo-1.jpg');
+    }
+
     public function test_admin_can_upload_container_images_via_cloudinary_mock(): void
     {
         $admin = User::factory()->create(['role' => UserRole::Admin]);

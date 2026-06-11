@@ -15,6 +15,12 @@ api.interceptors.request.use((config) => {
         config.headers.Authorization = `Bearer ${token}`;
     }
 
+    if (config.data instanceof FormData) {
+        // Axios 1.x keeps default application/json on AxiosHeaders; delete alone
+        // does not run before transformRequest, which JSON-stringifies FormData.
+        config.headers.setContentType(undefined);
+    }
+
     return config;
 });
 
