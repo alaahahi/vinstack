@@ -6,6 +6,7 @@ namespace App\Services;
 
 
 
+use App\Enums\VehicleSource;
 use App\Models\User;
 
 use App\Models\Vehicle;
@@ -293,6 +294,10 @@ class VehicleUploadedImageService
 
 
         $data = $vehicle->toArray();
+
+        $source = $vehicle->source ?? VehicleSource::Vinstack;
+        $data['source'] = $source->value;
+        $data['source_label'] = $source->label();
 
         $data['images'] = $images;
 

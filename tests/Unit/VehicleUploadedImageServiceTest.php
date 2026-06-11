@@ -169,6 +169,22 @@ class VehicleUploadedImageServiceTest extends TestCase
         $this->assertSame('https://cdn.example.com/autos/xyz/terminal.jpg', $enriched['thumbnail_url']);
     }
 
+    public function test_enrich_list_vehicle_includes_nujoom_source_label(): void
+    {
+        $service = app(VehicleUploadedImageService::class);
+
+        $vehicle = Vehicle::query()->create([
+            'source' => VehicleSource::NujoomAlJazeera,
+            'vin' => '1HGCM82633A004361',
+            'status' => VehicleStatus::Available,
+        ]);
+
+        $enriched = $service->enrichListVehicle($vehicle);
+
+        $this->assertSame('nujoom_al_jazeera', $enriched['source']);
+        $this->assertSame('نجوم الجزيرة', $enriched['source_label']);
+    }
+
     public function test_enrich_list_vehicle_sanitizes_corrupted_destination_for_list_display(): void
     {
         $service = app(VehicleUploadedImageService::class);

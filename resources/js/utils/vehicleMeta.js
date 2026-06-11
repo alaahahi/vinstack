@@ -159,6 +159,34 @@ export function vehicleArrivedDate(vehicle) {
     return formatVehicleDate(vehicle?.raw_data?.arrived_terminal_date);
 }
 
+const SOURCE_LABELS = {
+    manual: 'يدوية',
+    vinstack: 'مستوردة',
+    nujoom_al_jazeera: 'نجوم الجزيرة',
+};
+
+const SOURCE_PILL_CLASSES = {
+    manual: 'source-pill--manual',
+    vinstack: 'source-pill--vinstack',
+    nujoom_al_jazeera: 'source-pill--nujoom',
+};
+
+export function vehicleSourceLabel(vehicle) {
+    if (vehicle?.source_label) {
+        return vehicle.source_label;
+    }
+
+    const source = vehicle?.source ?? 'vinstack';
+
+    return SOURCE_LABELS[source] ?? SOURCE_LABELS.vinstack;
+}
+
+export function vehicleSourcePillClass(vehicle) {
+    const source = vehicle?.source ?? 'vinstack';
+
+    return SOURCE_PILL_CLASSES[source] ?? SOURCE_PILL_CLASSES.vinstack;
+}
+
 export function vehicleIsAssigned(vehicle) {
     return vehicle?.status === 'assigned' || !! vehicle?.active_assignment;
 }
@@ -172,6 +200,10 @@ export function vehicleEnteredBy(vehicle) {
 
     if (dealer) {
         return dealer;
+    }
+
+    if (vehicle?.source === 'nujoom_al_jazeera') {
+        return vehicleSourceLabel(vehicle);
     }
 
     return 'Admin';

@@ -174,6 +174,8 @@ import {
     vehicleLot,
     vehicleOrigin,
     vehiclePurchaseDate,
+    vehicleSourceLabel,
+    vehicleSourcePillClass,
     vehicleStatusClass,
     vehicleTitle,
     vehicleTitleStatus,
@@ -199,10 +201,8 @@ const props = defineProps({
 defineEmits(['assign', 'update-status', 'open-detail', 'edit', 'unassign', 'track-container']);
 
 const isManual = computed(() => props.vehicle?.source === 'manual');
-const sourceLabel = computed(() => (isManual.value ? 'يدوية' : 'مستوردة'));
-const sourcePillClass = computed(() =>
-    isManual.value ? 'source-pill--manual' : 'source-pill--vinstack',
-);
+const sourceLabel = computed(() => vehicleSourceLabel(props.vehicle));
+const sourcePillClass = computed(() => vehicleSourcePillClass(props.vehicle));
 
 const title = computed(() => vehicleTitle(props.vehicle));
 const hdGalleryCount = computed(() => vehicleGalleryCount(props.vehicle));
@@ -346,6 +346,11 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
 .source-pill--manual {
     background: #e0e7ff;
     color: #3730a3;
+}
+
+.source-pill--nujoom {
+    background: #fef3c7;
+    color: #b45309;
 }
 
 .gallery-pill {
@@ -614,7 +619,7 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    max-width: 8rem;
+    max-width: 11rem;
 }
 
 .dealer-tag__remove {

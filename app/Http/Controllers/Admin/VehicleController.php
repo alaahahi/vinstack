@@ -45,7 +45,11 @@ class VehicleController extends Controller
         }
 
         if ($source = $request->input('source')) {
-            $allowedSources = [VehicleSource::Vinstack->value, VehicleSource::Manual->value];
+            $allowedSources = [
+                VehicleSource::Vinstack->value,
+                VehicleSource::Manual->value,
+                VehicleSource::NujoomAlJazeera->value,
+            ];
 
             if (in_array($source, $allowedSources, true)) {
                 $query->where('source', $source);
