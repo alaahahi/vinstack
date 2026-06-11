@@ -40,6 +40,22 @@ class CloudinaryService
         ];
     }
 
+    public function destroy(string $publicId): void
+    {
+        if (! $this->isConfigured()) {
+            throw new RuntimeException('Cloudinary is not configured.');
+        }
+
+        if ($publicId === '') {
+            throw new RuntimeException('Cloudinary public_id is required.');
+        }
+
+        $config = $this->resolveConfig();
+        $this->uploadApiInstance($config)->destroy($publicId, [
+            'resource_type' => 'image',
+        ]);
+    }
+
     /**
      * @param  array<string, mixed>  $options
      * @return array{url: string, public_id: string, secure_url: string}

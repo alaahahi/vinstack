@@ -4,18 +4,114 @@ namespace Tests\Unit;
 
 use App\Enums\VehicleSource;
 use App\Enums\VehicleStatus;
+use App\Models\User;
 use App\Models\Vehicle;
+use App\Models\VehicleUploadedImage;
+use App\Models\VinstackSetting;
+use App\Services\CloudinaryService;
 use App\Services\VehicleUploadedImageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 class VehicleUploadedImageServiceTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_store_one_uploads_to_cloudinary_and_discards_temp_file(): void
+    {
+        Storage::fake('public');
+
+        VinstackSetting::query()->create([
+            'cloudinary_cloud_name' => 'demo',
+            'cloudinary_api_key' => '123',
+            'cloudinary_api_secret' => 'secret',
+        ]);
+
+        $path = tempnam(sys_get_temp_dir(), 'vehicle-img-');
+        $this->assertNotFalse($path);
+        file_put_contents($path, base64_decode(
+            'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
+            true,
+        ));
+
+        $file = new UploadedFile($path, 'terminal.jpg', 'image/jpeg', UPLOAD_ERR_OK, true);
+
+        $this->mock(CloudinaryService::class, function ($mock): void {
+            $mock->shouldReceive('isConfigured')->andReturn(true);
+            $mock->shouldReceive('resolveConfig')->andReturn([
+                'cloud_name' => 'demo',
+                'api_key' => '123',
+                'api_secret' => 'secret',
+                'upload_preset' => null,
+                'folder' => 'vinstack/containers',
+            ]);
+            $mock->shouldReceive('upload')
+                ->once()
+                ->andReturn([
+                    'url' => 'https://res.cloudinary.com/demo/image/upload/v1/terminal.jpg',
+                    'secure_url' => 'https://res.cloudinary.com/demo/image/upload/v1/terminal.jpg',
+                    'public_id' => 'vinstack/containers/vehicles/1/terminal/uuid',
+                ]);
+        });
+
+        $vehicle = Vehicle::query()->create([
+            'source' => VehicleSource::Manual,
+            'vin' => '1HGBH41JXMN109186',
+            'status' => VehicleStatus::Available,
+        ]);
+
+        $user = User::factory()->create();
+
+        $service = app(VehicleUploadedImageService::class);
+        $result = $service->storeOne($vehicle, 'terminal', $file, $user);
+
+        $this->assertFileDoesNotExist($path);
+        $this->assertSame('cloudinary', $result['source']);
+        $this->assertSame(
+            'https://res.cloudinary.com/demo/image/upload/v1/terminal.jpg',
+            $result['url'],
+        );
+
+        $record = VehicleUploadedImage::query()->first();
+        $this->assertNotNull($record);
+        $this->assertNull($record->path);
+        $this->assertSame($result['url'], $record->cloudinary_url);
+        Storage::disk('public')->assertMissing('vehicle-images/'.$vehicle->id);
+    }
+
+    public function test_local_uploaded_image_public_url_still_serves_storage_path(): void
+    {
+        $vehicle = Vehicle::query()->create([
+            'source' => VehicleSource::Manual,
+            'vin' => 'LOCALVIN123456789',
+            'status' => VehicleStatus::Available,
+        ]);
+
+        $user = User::factory()->create();
+
+        $image = VehicleUploadedImage::query()->create([
+            'vehicle_id' => $vehicle->id,
+            'stage' => 'terminal',
+            'path' => 'vehicle-images/'.$vehicle->id.'/legacy.jpg',
+            'original_name' => 'legacy.jpg',
+            'uploaded_by' => $user->id,
+        ]);
+
+        $this->assertFalse($image->isCloudinary());
+        $this->assertSame('/storage/vehicle-images/'.$vehicle->id.'/legacy.jpg', $image->publicUrl());
+
+        $service = app(VehicleUploadedImageService::class);
+        $formatted = $service->formatImage($image);
+
+        $this->assertSame('local', $formatted['source']);
+        $this->assertSame('/storage/vehicle-images/'.$vehicle->id.'/legacy.jpg', $formatted['url']);
+    }
+
     public function test_enrich_list_vehicle_sets_thumbnail_and_stage_counts_from_client_portal_blocks(): void
     {
-        $service = new VehicleUploadedImageService;
+        $service = app(VehicleUploadedImageService::class);
 
         $vehicle = Vehicle::query()->create([
             'source' => VehicleSource::Vinstack,
@@ -52,7 +148,7 @@ class VehicleUploadedImageServiceTest extends TestCase
 
     public function test_enrich_list_vehicle_falls_back_thumbnail_to_first_gallery_image(): void
     {
-        $service = new VehicleUploadedImageService;
+        $service = app(VehicleUploadedImageService::class);
 
         $vehicle = Vehicle::query()->create([
             'source' => VehicleSource::Vinstack,
@@ -75,7 +171,7 @@ class VehicleUploadedImageServiceTest extends TestCase
 
     public function test_enrich_list_vehicle_sanitizes_corrupted_destination_for_list_display(): void
     {
-        $service = new VehicleUploadedImageService;
+        $service = app(VehicleUploadedImageService::class);
 
         $vehicle = Vehicle::query()->create([
             'source' => VehicleSource::Vinstack,

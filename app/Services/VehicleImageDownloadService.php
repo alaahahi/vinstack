@@ -43,6 +43,10 @@ class VehicleImageDownloadService
         $uploaded = $this->findUploadedImageByUrl($vehicle, $url);
 
         if ($uploaded !== null) {
+            if ($uploaded->isCloudinary()) {
+                return $this->proxy($uploaded->cloudinary_url);
+            }
+
             return $this->streamLocal($uploaded);
         }
 
@@ -71,7 +75,7 @@ class VehicleImageDownloadService
     {
         $disk = Storage::disk('public');
 
-        if (! $disk->exists($image->path)) {
+        if (! filled($image->path) || ! $disk->exists($image->path)) {
             abort(404, 'Image file not found.');
         }
 
@@ -97,6 +101,10 @@ class VehicleImageDownloadService
 
         foreach ($vehicle->uploadedImages as $image) {
             if ($image->publicUrl() === $url) {
+                return $image;
+            }
+
+            if ($image->isCloudinary() && $image->cloudinary_url === $url) {
                 return $image;
             }
         }
