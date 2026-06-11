@@ -10,6 +10,14 @@
                     </button>
                     <span v-if="fuel" class="fuel-badge" :class="fuelClass">{{ fuel }}</span>
                     <span class="source-pill" :class="sourcePillClass">{{ sourceLabel }}</span>
+                    <span
+                        v-if="hdGalleryCount > 1"
+                        class="gallery-pill"
+                        :title="`${hdGalleryCount} صورة HD`"
+                    >
+                        <i class="pi pi-images" />
+                        {{ hdGalleryCount }}
+                    </span>
                     <i
                         v-if="mode === 'admin' && hasLocalUploads"
                         class="pi pi-images local-upload-hint"
@@ -151,6 +159,7 @@ import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import VehicleImageGallery from './VehicleImageGallery.vue';
 import VinCopyLabel from './VinCopyLabel.vue';
+import { vehicleGalleryCount } from '../utils/vehicleImages';
 import {
     vehicleArrivedDate,
     vehicleAssignmentBadgeClass,
@@ -196,6 +205,7 @@ const sourcePillClass = computed(() =>
 );
 
 const title = computed(() => vehicleTitle(props.vehicle));
+const hdGalleryCount = computed(() => vehicleGalleryCount(props.vehicle));
 const hasLocalUploads = computed(() => (props.vehicle?.uploaded_images?.length ?? 0) > 0);
 const fuel = computed(() => vehicleFuelType(props.vehicle));
 const fuelClass = computed(() => vehicleFuelClass(fuel.value));
@@ -336,6 +346,24 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
 .source-pill--manual {
     background: #e0e7ff;
     color: #3730a3;
+}
+
+.gallery-pill {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.12rem 0.45rem;
+    border-radius: 999px;
+    border: 1px solid var(--vs-border);
+    background: var(--vs-surface-hover);
+    font-size: 0.62rem;
+    font-weight: 600;
+    line-height: 1.4;
+    color: var(--vs-text-muted);
+}
+
+.gallery-pill i {
+    font-size: 0.6rem;
 }
 
 .vehicle-vin-line {

@@ -46,16 +46,27 @@
                     <Skeleton width="6rem" height="1.5rem" borderRadius="999px" />
                 </div>
                 <div v-else-if="tracking" class="tracking-meta">
-                    <span v-if="tracking.booking_number" class="meta-chip">
-                        <span class="meta-label">BKG</span>
-                        {{ tracking.booking_number }}
-                    </span>
-                    <span v-if="tracking.carrier" class="meta-chip meta-chip--carrier">
-                        {{ tracking.carrier }}
-                    </span>
-                    <span class="status-badge" :class="statusBadgeClass">
-                        {{ tracking.status_label }}
-                    </span>
+                    <p
+                        v-if="hasPartialRoute"
+                        class="tracking-route-line"
+                        :title="`${originLabel} — ${destinationLabel}`"
+                    >
+                        <span class="tracking-route-origin">{{ originLabel }}</span>
+                        <i class="pi pi-arrow-right tracking-route-arrow" aria-hidden="true" />
+                        <span class="tracking-route-dest">{{ destinationLabel }}</span>
+                    </p>
+                    <div class="tracking-meta-chips">
+                        <span v-if="tracking.booking_number" class="meta-chip">
+                            <span class="meta-label">BKG</span>
+                            {{ tracking.booking_number }}
+                        </span>
+                        <span v-if="tracking.carrier" class="meta-chip meta-chip--carrier">
+                            {{ tracking.carrier }}
+                        </span>
+                        <span class="status-badge" :class="statusBadgeClass">
+                            {{ tracking.status_label }}
+                        </span>
+                    </div>
                 </div>
                 <p v-if="tracking?.cache_note && tracking.cached" class="cache-note">
                     <i class="pi pi-database" aria-hidden="true" />
@@ -740,15 +751,20 @@ onUnmounted(removeFocusTrap);
 
 <style scoped>
 :deep(.p-dialog.container-tracking-dialog) {
-    width: calc(100% - 20px) !important;
-    max-width: 1200px;
-    margin: 10px;
+    width: calc(100vw - 20px) !important;
+    max-width: min(1200px, calc(100vw - 20px)) !important;
+    max-height: calc(100vh - 20px) !important;
+    min-height: min(70vh, calc(100vh - 20px));
+    margin: 10px !important;
     border: 1px solid var(--vs-border);
-    border-radius: 14px;
+    border-radius: 16px;
     box-shadow:
-        0 24px 48px rgb(0 0 0 / 0.16),
-        0 8px 16px rgb(0 0 0 / 0.08);
+        0 0 0 1px rgb(255 255 255 / 0.04),
+        0 28px 56px rgb(0 0 0 / 0.22),
+        0 12px 24px rgb(0 0 0 / 0.12);
     overflow: hidden;
+    display: flex;
+    flex-direction: column;
     animation: trackingDialogIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
@@ -765,15 +781,19 @@ onUnmounted(removeFocusTrap);
 }
 
 :deep(.p-dialog.container-tracking-dialog .p-dialog-header) {
-    padding: 1rem 1.25rem;
+    flex-shrink: 0;
+    padding: 0.9rem 1.25rem;
     border-bottom: 1px solid var(--vs-border);
     background: var(--admin-surface);
 }
 
 :deep(.p-dialog.container-tracking-dialog .p-dialog-content) {
+    flex: 1 1 auto;
+    min-height: 0;
     padding: 0;
     display: flex;
     flex-direction: column;
+    overflow: hidden;
     background: var(--admin-surface);
 }
 
@@ -783,7 +803,7 @@ onUnmounted(removeFocusTrap);
 
 .tracking-header-top {
     display: flex;
-    align-items: flex-start;
+    align-items: center;
     justify-content: space-between;
     gap: 1rem;
 }
@@ -808,8 +828,48 @@ onUnmounted(removeFocusTrap);
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem;
-    margin-top: 0.75rem;
+    justify-content: space-between;
+    gap: 0.65rem 1rem;
+    margin-top: 0.65rem;
+}
+
+.tracking-route-line {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0;
+    flex: 1 1 auto;
+    min-width: 0;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--vs-text-secondary);
+}
+
+.tracking-route-origin,
+.tracking-route-dest {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    max-width: min(14rem, 38vw);
+}
+
+.tracking-route-arrow {
+    flex-shrink: 0;
+    font-size: 0.72rem;
+    color: var(--vs-text-subtle);
+}
+
+[dir='rtl'] .tracking-route-arrow {
+    transform: scaleX(-1);
+}
+
+.tracking-meta-chips {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
+    flex-shrink: 0;
+    margin-inline-start: auto;
 }
 
 .tracking-meta--skeleton {
@@ -898,10 +958,10 @@ onUnmounted(removeFocusTrap);
 
 .tracking-skeleton {
     display: grid;
-    grid-template-columns: 1fr minmax(280px, 340px);
-    flex: 1;
-    min-height: 0;
-    height: min(calc(100vh - 160px), 720px);
+    grid-template-columns: 1fr minmax(260px, 320px);
+    flex: 1 1 auto;
+    min-height: min(55vh, calc(100vh - 200px));
+    height: 100%;
 }
 
 .tracking-skeleton-map {
@@ -966,11 +1026,11 @@ onUnmounted(removeFocusTrap);
 
 .tracking-body {
     display: grid;
-    grid-template-columns: 1fr minmax(280px, 340px);
+    grid-template-columns: 1fr minmax(260px, 320px);
     grid-template-areas: 'map sidebar';
-    flex: 1;
-    min-height: 0;
-    height: min(calc(100vh - 160px), 720px);
+    flex: 1 1 auto;
+    min-height: min(55vh, calc(100vh - 200px));
+    height: 100%;
     animation: trackingBodyIn 0.28s ease;
 }
 
@@ -1063,7 +1123,8 @@ onUnmounted(removeFocusTrap);
     grid-area: sidebar;
     border-inline-start: 1px solid var(--vs-border);
     padding: 1rem 1.1rem;
-    overflow: visible;
+    overflow-y: auto;
+    overflow-x: hidden;
     background: var(--vs-surface-elevated);
     min-height: 0;
 }
@@ -1319,9 +1380,24 @@ onUnmounted(removeFocusTrap);
 
 @media (max-width: 900px) {
     :deep(.p-dialog.container-tracking-dialog) {
-        width: calc(100% - 20px) !important;
-        max-width: calc(100% - 20px);
-        margin: 10px;
+        width: calc(100vw - 20px) !important;
+        max-width: calc(100vw - 20px) !important;
+        min-height: min(85vh, calc(100vh - 20px));
+        margin: 10px !important;
+    }
+
+    .tracking-meta {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .tracking-route-origin,
+    .tracking-route-dest {
+        max-width: none;
+    }
+
+    .tracking-meta-chips {
+        margin-inline-start: 0;
     }
 
     .tracking-skeleton,
@@ -1330,21 +1406,21 @@ onUnmounted(removeFocusTrap);
         grid-template-areas:
             'map'
             'sidebar';
+        min-height: 0;
         height: auto;
     }
 
     .tracking-map-wrap {
-        min-height: min(42vh, 280px);
-        max-height: 45vh;
+        min-height: min(48vh, 360px);
     }
 
     .tracking-map,
     .map-empty {
-        min-height: min(42vh, 280px);
+        min-height: min(48vh, 360px);
     }
 
     .tracking-skeleton-map {
-        min-height: min(42vh, 280px);
+        min-height: min(48vh, 360px);
     }
 
     .tracking-sidebar,
@@ -1352,21 +1428,21 @@ onUnmounted(removeFocusTrap);
         border-inline-start: none;
         border-top: 1px solid var(--vs-border);
         max-height: none;
+        overflow-y: visible;
     }
-
 }
 </style>
 
 <style>
 /* Portaled dialog — mask blur + theme; unscoped for [data-theme] */
 .p-dialog-mask.container-tracking-mask {
-    backdrop-filter: blur(8px);
-    -webkit-backdrop-filter: blur(8px);
-    background: rgb(15 23 42 / 0.45);
+    backdrop-filter: blur(12px);
+    -webkit-backdrop-filter: blur(12px);
+    background: rgb(15 23 42 / 0.58);
 }
 
 [data-theme='dark'] .p-dialog-mask.container-tracking-mask {
-    background: rgb(0 0 0 / 0.62);
+    background: rgb(0 0 0 / 0.72);
 }
 
 [data-theme='dark'] .p-dialog.container-tracking-dialog,
@@ -1383,6 +1459,14 @@ onUnmounted(removeFocusTrap);
 
 [data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-title {
     color: var(--vs-text);
+}
+
+[data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-route-line {
+    color: var(--vs-text-secondary);
+}
+
+[data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-route-arrow {
+    color: var(--vs-text-subtle);
 }
 
 [data-theme='dark'] .p-dialog.container-tracking-dialog .meta-chip {

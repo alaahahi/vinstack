@@ -184,7 +184,7 @@ const canOpenGallery = computed(() => {
     );
 });
 
-const showCountBadge = computed(() => galleryCount.value > 1);
+const showCountBadge = computed(() => props.variant !== 'row' && galleryCount.value > 1);
 
 const showGalleryButton = computed(() => props.showButton && galleryCount.value > 1);
 
