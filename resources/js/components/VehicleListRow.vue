@@ -2,12 +2,7 @@
     <div class="vehicle-row">
         <!-- Vehicle -->
         <div class="cell cell-vehicle">
-            <VehicleImageGallery
-                :vehicle="vehicle"
-                variant="row"
-                :api-mode="mode"
-                @gallery-updated="(...args) => $emit('gallery-updated', ...args)"
-            />
+            <VehicleImageGallery :vehicle="vehicle" variant="row" />
             <div class="vehicle-info">
                 <div class="title-line">
                     <button type="button" class="title title-link" @click="$emit('open-detail', vehicle)">
@@ -35,13 +30,13 @@
 
         <!-- Route & status -->
         <div class="cell cell-route">
-            <div class="route-line">
+            <div v-if="origin" class="route-line">
                 <span class="route-dot route-dot--origin" />
-                <span>{{ origin || '—' }}</span>
+                <span>{{ origin }}</span>
             </div>
-            <div class="route-line">
+            <div v-if="destination" class="route-line">
                 <i class="pi pi-map-marker route-pin" />
-                <span>{{ destination || '—' }}</span>
+                <span>{{ destination }}</span>
             </div>
             <span v-if="vinstackStatus" class="status-pill" :class="statusClass">
                 <span class="status-dot" />
@@ -51,9 +46,22 @@
 
         <!-- References -->
         <div class="cell cell-refs">
-            <div v-if="container" class="ref-line">
+            <div v-if="container" class="ref-line ref-line--container">
                 <i class="pi pi-box ref-icon" />
-                <span>{{ container }}</span>
+                <span class="ref-container-num">{{ container }}</span>
+                <Button
+                    icon="pi pi-map-marker"
+                    :severity="canTrackContainer ? 'info' : 'secondary'"
+                    text
+                    rounded
+                    size="small"
+                    :disabled="!canTrackContainer"
+                    class="track-btn"
+                    :class="{ 'track-btn--ready': canTrackContainer }"
+                    aria-label="تتبع الحاوية"
+                    title="تتبع الحاوية"
+                    @click.stop="$emit('track-container', vehicle)"
+                />
             </div>
             <div v-if="booking" class="ref-line">
                 <i class="pi pi-file ref-icon" />
@@ -119,13 +127,7 @@
                 title="تعديل سيارة يدوية"
                 @click="$emit('edit', vehicle)"
             />
-            <Button
-                v-if="!isAssigned"
-                label="إسناد"
-                size="small"
-                class="btn-assign"
-                @click="$emit('assign', vehicle)"
-            />
+            <Button label="إسناد" size="small" class="btn-assign" @click="$emit('assign', vehicle)" />
         </div>
 
         <!-- Dealer: local status + action -->
@@ -152,7 +154,6 @@ import VinCopyLabel from './VinCopyLabel.vue';
 import {
     vehicleArrivedDate,
     vehicleAssignmentBadgeClass,
-    vehicleIsAssigned,
     vehicleAuction,
     vehicleBookingRef,
     vehicleContainerRef,
@@ -164,8 +165,6 @@ import {
     vehicleLot,
     vehicleOrigin,
     vehiclePurchaseDate,
-    vehicleSourceLabel,
-    vehicleSourcePillClass,
     vehicleStatusClass,
     vehicleTitle,
     vehicleTitleStatus,
@@ -182,13 +181,19 @@ const props = defineProps({
         default: 'admin',
         validator: (v) => ['admin', 'dealer'].includes(v),
     },
+    trackingAvailable: {
+        type: Boolean,
+        default: false,
+    },
 });
 
-defineEmits(['assign', 'update-status', 'open-detail', 'edit', 'unassign', 'gallery-updated']);
+defineEmits(['assign', 'update-status', 'open-detail', 'edit', 'unassign', 'track-container']);
 
 const isManual = computed(() => props.vehicle?.source === 'manual');
-const sourceLabel = computed(() => vehicleSourceLabel(props.vehicle?.source));
-const sourcePillClass = computed(() => vehicleSourcePillClass(props.vehicle?.source));
+const sourceLabel = computed(() => (isManual.value ? 'يدوية' : 'مستوردة'));
+const sourcePillClass = computed(() =>
+    isManual.value ? 'source-pill--manual' : 'source-pill--vinstack',
+);
 
 const title = computed(() => vehicleTitle(props.vehicle));
 const hasLocalUploads = computed(() => (props.vehicle?.uploaded_images?.length ?? 0) > 0);
@@ -201,6 +206,13 @@ const destination = computed(() => vehicleDestination(props.vehicle));
 const vinstackStatus = computed(() => vehicleVinstackStatus(props.vehicle));
 const statusClass = computed(() => vehicleStatusClass(vinstackStatus.value));
 const container = computed(() => vehicleContainerRef(props.vehicle));
+const canTrackContainer = computed(() => {
+    if (! container.value) {
+        return false;
+    }
+
+    return props.trackingAvailable;
+});
 const booking = computed(() => vehicleBookingRef(props.vehicle));
 const keysInfo = computed(() => vehicleKeysInfo(props.vehicle));
 const titleStatus = computed(() => vehicleTitleStatus(props.vehicle));
@@ -208,7 +220,6 @@ const purchaseDate = computed(() => vehiclePurchaseDate(props.vehicle));
 const arrivedDate = computed(() => vehicleArrivedDate(props.vehicle));
 const enteredBy = computed(() => vehicleEnteredBy(props.vehicle));
 const dealerName = computed(() => props.vehicle.active_assignment?.dealer?.company_name ?? null);
-const isAssigned = computed(() => vehicleIsAssigned(props.vehicle));
 const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.vehicle));
 </script>
 
@@ -327,11 +338,6 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     color: #3730a3;
 }
 
-.source-pill--nujoom {
-    background: #fef3c7;
-    color: #b45309;
-}
-
 .vehicle-vin-line {
     margin-bottom: 0.15rem;
 }
@@ -359,7 +365,6 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     display: flex;
     flex-direction: column;
     gap: 0.3rem;
-    overflow: hidden;
 }
 
 .route-line {
@@ -368,15 +373,6 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     gap: 0.4rem;
     font-size: 0.84rem;
     color: var(--vs-text-secondary);
-    min-width: 0;
-    max-width: 100%;
-}
-
-.route-line span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
 }
 
 .route-dot {
@@ -448,15 +444,38 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     color: var(--vs-text-secondary);
     font-family: ui-monospace, monospace;
     margin-bottom: 0.2rem;
-    min-width: 0;
-    max-width: 100%;
 }
 
-.ref-line span {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
+.ref-line--container {
+    flex-wrap: wrap;
+}
+
+.ref-container-num {
+    flex: 1;
     min-width: 0;
+    word-break: break-all;
+}
+
+.track-btn {
+    flex-shrink: 0;
+    margin-inline-start: auto;
+}
+
+.track-btn--ready :deep(.p-button-icon) {
+    color: #0ea5e9;
+}
+
+.track-btn--ready:hover :deep(.p-button-icon) {
+    color: #0284c7;
+}
+
+.track-btn:focus-visible :deep(.p-button) {
+    outline: 2px solid #14b8a6;
+    outline-offset: 2px;
+}
+
+.track-btn:not(.track-btn--ready) :deep(.p-button-icon) {
+    opacity: 0.45;
 }
 
 .ref-icon {
@@ -503,31 +522,19 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     background: var(--vs-surface-hover);
 }
 
-.cell-refs,
-.cell-dates {
-    overflow: hidden;
-}
-
 .date-row {
     display: flex;
     justify-content: space-between;
     gap: 0.75rem;
     font-size: 0.78rem;
     line-height: 1.6;
-    min-width: 0;
 }
 
 .date-label {
     color: var(--vs-text-muted);
-    flex-shrink: 0;
 }
 
 .date-value {
-    overflow: hidden;
-    text-overflow: ellipsis;
-    white-space: nowrap;
-    min-width: 0;
-    flex-shrink: 1;
     color: var(--vs-text);
     font-variant-numeric: tabular-nums;
 }
@@ -563,33 +570,16 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
 }
 
 .dealer-tag {
-    --dealer-tag-bg: #fce7f3;
-    --dealer-tag-fg: #be185d;
-    --dealer-tag-border: #fbcfe8;
-    --dealer-tag-remove: #db2777;
-    --dealer-tag-remove-hover-bg: rgba(190, 24, 93, 0.16);
-    --dealer-tag-remove-hover-fg: #9d174d;
-
     display: inline-flex;
     align-items: center;
     gap: 0.25rem;
     max-width: 100%;
     padding: 0.15rem 0.35rem 0.15rem 0.55rem;
     border-radius: 999px;
-    border: 1px solid var(--dealer-tag-border);
-    background: var(--dealer-tag-bg);
+    border: 1px solid var(--vs-border);
+    background: var(--vs-surface-hover);
     font-size: 0.72rem;
-    font-weight: 500;
-    color: var(--dealer-tag-fg);
-}
-
-[data-theme='dark'] .dealer-tag {
-    --dealer-tag-bg: rgba(190, 24, 93, 0.2);
-    --dealer-tag-fg: #fbcfe8;
-    --dealer-tag-border: rgba(244, 114, 182, 0.35);
-    --dealer-tag-remove: #f9a8d4;
-    --dealer-tag-remove-hover-bg: rgba(244, 114, 182, 0.22);
-    --dealer-tag-remove-hover-fg: #fce7f3;
+    color: var(--vs-text-secondary);
 }
 
 .dealer-tag__name {
@@ -609,14 +599,14 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     border: none;
     border-radius: 999px;
     background: transparent;
-    color: var(--dealer-tag-remove);
+    color: var(--vs-text-muted);
     cursor: pointer;
     flex-shrink: 0;
 }
 
 .dealer-tag__remove:hover {
-    background: var(--dealer-tag-remove-hover-bg);
-    color: var(--dealer-tag-remove-hover-fg);
+    background: #fee2e2;
+    color: #dc2626;
 }
 
 .dealer-tag__remove i {

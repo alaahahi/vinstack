@@ -1,16 +1,20 @@
 <template>
-    <Drawer
-        v-model:visible="drawerVisible"
-        position="right"
-        :style="{ width: 'min(95vw, 1200px)' }"
-        :pt="{ root: { class: 'container-tracking-drawer' } }"
-        :showCloseIcon="false"
-        :dismissable="!loading"
+    <Dialog
+        v-model:visible="dialogVisible"
+        modal
+        :draggable="false"
+        :closable="false"
+        :dismissableMask="!loading"
         :closeOnEscape="!loading"
         :blockScroll="true"
+        :pt="{
+            mask: { class: 'container-tracking-mask' },
+            root: { class: 'container-tracking-dialog' },
+            content: { class: 'container-tracking-content' },
+        }"
         role="dialog"
         aria-modal="true"
-        :aria-labelledby="drawerTitleId"
+        :aria-labelledby="dialogTitleId"
         :aria-busy="loading"
         @hide="onHide"
         @show="onShow"
@@ -20,7 +24,7 @@
                 <div class="tracking-header-top">
                     <div>
                         <div class="tracking-kicker">تتبع الحاوية</div>
-                        <h2 :id="drawerTitleId" class="tracking-title">
+                        <h2 :id="dialogTitleId" class="tracking-title">
                             <template v-if="!loading">{{ headerContainer }}</template>
                             <Skeleton v-else width="12rem" height="1.35rem" />
                         </h2>
@@ -111,51 +115,39 @@
                     <l-polyline
                         v-if="routeLatLngs.length"
                         :lat-lngs="routeLatLngs"
-                        color="#22c55e"
+                        color="#14b8a6"
                         :weight="4"
                         :opacity="0.9"
                     />
-                    <l-marker
+                    <l-circle-marker
                         v-if="originLatLng"
                         :lat-lng="originLatLng"
-                        :icon="originIcon"
+                        :radius="8"
+                        color="#22c55e"
+                        :fill="true"
+                        fill-color="#22c55e"
+                        :fill-opacity="1"
                     />
-                    <l-marker
+                    <l-circle-marker
                         v-for="(wp, index) in waypointLatLngs"
                         :key="`wp-${index}`"
                         :lat-lng="wp"
-                        :icon="transshipmentIcon"
+                        :radius="7"
+                        color="#f59e0b"
+                        :fill="true"
+                        fill-color="#f59e0b"
+                        :fill-opacity="1"
                     />
-                    <l-marker
+                    <l-circle-marker
                         v-if="destinationLatLng"
                         :lat-lng="destinationLatLng"
-                        :icon="destinationIcon"
-                    />
-                    <l-marker
-                        v-if="currentPositionLatLng"
-                        :lat-lng="currentPositionLatLng"
-                        :icon="currentPositionIcon"
-                        :z-index-offset="1000"
+                        :radius="8"
+                        color="#ef4444"
+                        :fill="true"
+                        fill-color="#ef4444"
+                        :fill-opacity="1"
                     />
                 </l-map>
-                <div v-if="mapReady" class="map-legend" aria-label="دليل رموز الخريطة">
-                    <div v-if="currentPositionLatLng" class="map-legend-item">
-                        <span class="map-legend-icon map-legend-icon--current" aria-hidden="true" />
-                        <span>الموقع الحالي للحاوية</span>
-                    </div>
-                    <div v-if="originLatLng" class="map-legend-item">
-                        <span class="map-legend-icon map-legend-icon--origin" aria-hidden="true" />
-                        <span>المنشأ</span>
-                    </div>
-                    <div v-if="waypointLatLngs.length" class="map-legend-item">
-                        <span class="map-legend-icon map-legend-icon--transshipment" aria-hidden="true" />
-                        <span>محطة ترانزيت</span>
-                    </div>
-                    <div v-if="destinationLatLng" class="map-legend-item">
-                        <span class="map-legend-icon map-legend-icon--destination" aria-hidden="true" />
-                        <span>الوجهة</span>
-                    </div>
-                </div>
                 <div
                     v-if="mapReady && mapTilesLoading"
                     class="map-tiles-loading"
@@ -180,7 +172,6 @@
                 <ul v-if="mapReady" class="sr-only map-a11y-summary">
                     <li v-if="originLabel !== '—'">منشأ: {{ originLabel }}</li>
                     <li v-for="(wp, i) in waypointLabels" :key="`a11y-wp-${i}`">محطة: {{ wp }}</li>
-                    <li v-if="currentPositionLabel">الموقع الحالي: {{ currentPositionLabel }}</li>
                     <li v-if="destinationLabel !== '—'">وجهة: {{ destinationLabel }}</li>
                 </ul>
             </div>
@@ -227,15 +218,7 @@
                         >
                             <div class="event-marker" :class="`event-marker--${event.type || 'event'}`" />
                             <div class="event-content">
-                                <div class="event-title-row">
-                                    <div class="event-title">{{ event.title }}</div>
-                                    <span
-                                        v-if="event.type === 'estimated'"
-                                        class="event-estimated-badge"
-                                    >
-                                        تقديري
-                                    </span>
-                                </div>
+                                <div class="event-title">{{ event.title }}</div>
                                 <div
                                     v-if="event.location"
                                     class="event-location"
@@ -268,17 +251,16 @@
                 </p>
             </aside>
         </div>
-    </Drawer>
+    </Dialog>
 </template>
 
 <script setup>
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
-import Drawer from 'primevue/drawer';
+import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
 import Skeleton from 'primevue/skeleton';
 import ProgressSpinner from 'primevue/progressspinner';
-import { LMap, LTileLayer, LPolyline, LMarker } from '@vue-leaflet/vue-leaflet';
-import L from 'leaflet';
+import { LMap, LTileLayer, LPolyline, LCircleMarker } from '@vue-leaflet/vue-leaflet';
 import 'leaflet/dist/leaflet.css';
 import api from '../api/client';
 import { containerRefs, formatContainerDate } from '../utils/containerMeta';
@@ -301,7 +283,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:visible']);
 
-const drawerVisible = computed({
+const dialogVisible = computed({
     get: () => props.visible,
     set: (value) => emit('update:visible', value),
 });
@@ -316,50 +298,7 @@ const closeBtnRef = ref(null);
 const headerRef = ref(null);
 const bodyRef = ref(null);
 
-const drawerTitleId = 'container-tracking-title';
-
-const NAV_ARROW_SVG = '<svg viewBox="0 0 24 24" width="18" height="18" aria-hidden="true"><path fill="#fff" d="M12 3.5 7.5 19.5 12 15.5 16.5 19.5Z"/></svg>';
-const TRANSFER_ARROWS_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="#fff" d="M6 7h12.5l-2.5-2.5L18 3l5 5-5 5-1.5-1.5L18.5 9H6V7zm12 10H5.5l2.5 2.5L6 21l-5-5 5-5 1.5 1.5L5.5 15H18v2z"/></svg>';
-const PIN_SVG = '<svg viewBox="0 0 24 24" width="14" height="14" aria-hidden="true"><path fill="#fff" d="M12 2a5.5 5.5 0 0 0-5.5 5.5c0 4.1 5.5 10.5 5.5 10.5S17.5 11.6 17.5 7.5A5.5 5.5 0 0 0 12 2zm0 7.5a2 2 0 1 1 0-4 2 2 0 0 1 0 4z"/></svg>';
-
-function trackingDivIcon(kind) {
-    const configs = {
-        origin: {
-            html: '<span class="ct-map-marker ct-map-marker--origin"></span>',
-            size: [16, 16],
-            anchor: [8, 8],
-        },
-        current: {
-            html: `<span class="ct-map-marker ct-map-marker--current">${NAV_ARROW_SVG}</span>`,
-            size: [40, 40],
-            anchor: [20, 20],
-        },
-        transshipment: {
-            html: `<span class="ct-map-marker ct-map-marker--transshipment">${TRANSFER_ARROWS_SVG}</span>`,
-            size: [30, 30],
-            anchor: [15, 15],
-        },
-        destination: {
-            html: `<span class="ct-map-marker ct-map-marker--destination">${PIN_SVG}</span>`,
-            size: [30, 30],
-            anchor: [15, 15],
-        },
-    };
-
-    const config = configs[kind];
-
-    return L.divIcon({
-        className: 'ct-map-marker-wrap',
-        html: config.html,
-        iconSize: config.size,
-        iconAnchor: config.anchor,
-    });
-}
-
-const originIcon = trackingDivIcon('origin');
-const currentPositionIcon = trackingDivIcon('current');
-const transshipmentIcon = trackingDivIcon('transshipment');
-const destinationIcon = trackingDivIcon('destination');
+const dialogTitleId = 'container-tracking-title';
 
 const refs = computed(() => (props.container ? containerRefs(props.container) : { container: null }));
 
@@ -390,7 +329,6 @@ const routeLatLngs = computed(() => {
 
 const originLatLng = computed(() => pointFromLocation(tracking.value?.origin));
 const destinationLatLng = computed(() => pointFromLocation(tracking.value?.destination));
-const currentPositionLatLng = computed(() => pointFromLocation(tracking.value?.current_position));
 
 const waypointLatLngs = computed(() => {
     const wps = tracking.value?.waypoints;
@@ -440,12 +378,6 @@ const destinationLabel = computed(
         || '—',
 );
 
-const currentPositionLabel = computed(
-    () => tracking.value?.current_position?.label
-        || tracking.value?.current_position?.name
-        || null,
-);
-
 const hasPartialRoute = computed(
     () => originLabel.value !== '—' || destinationLabel.value !== '—',
 );
@@ -462,10 +394,6 @@ const sourceLabel = computed(() => {
 
     if (source === 'vinstack') {
         return 'Vinstack';
-    }
-
-    if (source === 'client_portal') {
-        return 'Vinstack (بوابة العميل)';
     }
 
     if (source === 'derived') {
@@ -559,14 +487,11 @@ watch(
     },
 );
 
-watch(
-    [routeLatLngs, originLatLng, destinationLatLng, currentPositionLatLng, waypointLatLngs],
-    () => {
-        if (leafletMap.value && mapReady.value) {
-            fitMapBounds(leafletMap.value);
-        }
-    },
-);
+watch(routeLatLngs, () => {
+    if (leafletMap.value && mapReady.value) {
+        fitMapBounds(leafletMap.value);
+    }
+});
 
 function resetState() {
     tracking.value = null;
@@ -577,7 +502,7 @@ function resetState() {
 }
 
 async function load() {
-    const number = containerRefs(props.container).container;
+    const number = props.container?.container_number?.trim();
 
     if (!number) {
         error.value = 'رقم الحاوية غير متوفر. تحقق من بيانات الصف وحاول مرة أخرى.';
@@ -613,10 +538,6 @@ function hasMapData(data) {
     const route = data?.route;
 
     if (Array.isArray(route) && route.length >= 2) {
-        return true;
-    }
-
-    if (pointFromLocation(data?.current_position)) {
         return true;
     }
 
@@ -724,7 +645,6 @@ function fitMapBounds(map) {
         ...routeLatLngs.value,
         ...(originLatLng.value ? [originLatLng.value] : []),
         ...(destinationLatLng.value ? [destinationLatLng.value] : []),
-        ...(currentPositionLatLng.value ? [currentPositionLatLng.value] : []),
         ...waypointLatLngs.value,
     ];
 
@@ -738,7 +658,7 @@ function close() {
         return;
     }
 
-    drawerVisible.value = false;
+    dialogVisible.value = false;
 }
 
 function onHide() {
@@ -767,8 +687,8 @@ function getFocusableElements(root) {
     )].filter((el) => el.offsetParent !== null || el === document.activeElement);
 }
 
-function onDrawerKeydown(event) {
-    if (!drawerVisible.value || loading.value) {
+function onDialogKeydown(event) {
+    if (!dialogVisible.value || loading.value) {
         return;
     }
 
@@ -783,7 +703,7 @@ function onDrawerKeydown(event) {
         return;
     }
 
-    const panel = document.querySelector('.p-drawer.container-tracking-drawer');
+    const panel = document.querySelector('.p-dialog.container-tracking-dialog');
 
     if (!panel) {
         return;
@@ -808,26 +728,53 @@ function onDrawerKeydown(event) {
 }
 
 function attachFocusTrap() {
-    document.addEventListener('keydown', onDrawerKeydown);
+    document.addEventListener('keydown', onDialogKeydown);
 }
 
 function removeFocusTrap() {
-    document.removeEventListener('keydown', onDrawerKeydown);
+    document.removeEventListener('keydown', onDialogKeydown);
 }
 
 onUnmounted(removeFocusTrap);
 </script>
 
 <style scoped>
-:deep(.p-drawer.container-tracking-drawer) {
-    transition: transform 0.3s cubic-bezier(0.22, 1, 0.36, 1);
+:deep(.p-dialog.container-tracking-dialog) {
+    width: calc(100% - 20px) !important;
+    max-width: 1200px;
+    margin: 10px;
+    border: 1px solid var(--vs-border);
+    border-radius: 14px;
+    box-shadow:
+        0 24px 48px rgb(0 0 0 / 0.16),
+        0 8px 16px rgb(0 0 0 / 0.08);
+    overflow: hidden;
+    animation: trackingDialogIn 0.28s cubic-bezier(0.22, 1, 0.36, 1);
 }
 
-:deep(.p-drawer.container-tracking-drawer .p-drawer-content) {
+@keyframes trackingDialogIn {
+    from {
+        opacity: 0;
+        transform: translateY(12px) scale(0.98);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0) scale(1);
+    }
+}
+
+:deep(.p-dialog.container-tracking-dialog .p-dialog-header) {
+    padding: 1rem 1.25rem;
+    border-bottom: 1px solid var(--vs-border);
+    background: var(--admin-surface);
+}
+
+:deep(.p-dialog.container-tracking-dialog .p-dialog-content) {
     padding: 0;
     display: flex;
     flex-direction: column;
-    height: 100%;
+    background: var(--admin-surface);
 }
 
 .tracking-header {
@@ -954,7 +901,7 @@ onUnmounted(removeFocusTrap);
     grid-template-columns: 1fr minmax(280px, 340px);
     flex: 1;
     min-height: 0;
-    height: calc(100vh - 140px);
+    height: min(calc(100vh - 160px), 720px);
 }
 
 .tracking-skeleton-map {
@@ -1023,7 +970,7 @@ onUnmounted(removeFocusTrap);
     grid-template-areas: 'map sidebar';
     flex: 1;
     min-height: 0;
-    height: calc(100vh - 140px);
+    height: min(calc(100vh - 160px), 720px);
     animation: trackingBodyIn 0.28s ease;
 }
 
@@ -1044,14 +991,12 @@ onUnmounted(removeFocusTrap);
     min-height: 280px;
     background: var(--vs-zinc-200);
     position: relative;
-    display: flex;
-    flex-direction: column;
 }
 
 .tracking-map {
     width: 100%;
-    flex: 1;
-    min-height: 280px;
+    height: 100%;
+    min-height: 320px;
     z-index: 1;
 }
 
@@ -1112,94 +1057,6 @@ onUnmounted(removeFocusTrap);
     max-width: 26rem;
     line-height: 1.5;
     color: var(--vs-text-muted);
-}
-
-.map-legend {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.65rem 1.25rem;
-    padding: 0.55rem 0.85rem;
-    background: rgb(255 255 255 / 0.94);
-    border-top: 1px solid var(--vs-border);
-    font-size: 0.74rem;
-    color: var(--vs-text-secondary);
-}
-
-.map-legend-item {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.4rem;
-    white-space: nowrap;
-}
-
-.map-legend-icon {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    flex-shrink: 0;
-    border-radius: 50%;
-    box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
-}
-
-.map-legend-icon--current {
-    width: 22px;
-    height: 22px;
-    background: #6366f1;
-    border: 2px solid #fff;
-    position: relative;
-}
-
-.map-legend-icon--current::after {
-    content: '';
-    position: absolute;
-    left: 50%;
-    top: 50%;
-    width: 0;
-    height: 0;
-    border-left: 4px solid transparent;
-    border-right: 4px solid transparent;
-    border-bottom: 8px solid #fff;
-    transform: translate(-50%, -58%);
-}
-
-.map-legend-icon--origin {
-    width: 12px;
-    height: 12px;
-    background: #22c55e;
-    border: 2px solid #fff;
-}
-
-.map-legend-icon--transshipment {
-    width: 20px;
-    height: 20px;
-    background: #f59e0b;
-    border: 2px solid #fff;
-    font-size: 0.55rem;
-    color: #fff;
-    font-weight: 700;
-    letter-spacing: -0.05em;
-}
-
-.map-legend-icon--transshipment::after {
-    content: '⇄';
-}
-
-.map-legend-icon--destination {
-    width: 20px;
-    height: 20px;
-    background: #64748b;
-    border: 2px solid #fff;
-    position: relative;
-}
-
-.map-legend-icon--destination::after {
-    content: '';
-    width: 6px;
-    height: 6px;
-    border-radius: 50%;
-    background: #fff;
-    box-shadow: 0 3px 0 0 #fff;
 }
 
 .tracking-sidebar {
@@ -1284,7 +1141,7 @@ onUnmounted(removeFocusTrap);
 }
 
 .route-dot--dest {
-    background: #64748b;
+    background: #ef4444;
 }
 
 .route-end-label {
@@ -1395,29 +1252,6 @@ onUnmounted(removeFocusTrap);
     background: #6366f1;
 }
 
-.event-marker--estimated {
-    background: #94a3b8;
-}
-
-.event-title-row {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.4rem;
-}
-
-.event-estimated-badge {
-    font-size: 0.62rem;
-    font-weight: 700;
-    text-transform: uppercase;
-    letter-spacing: 0.04em;
-    padding: 0.1rem 0.4rem;
-    border-radius: 999px;
-    background: #f1f5f9;
-    color: #64748b;
-    border: 1px solid #e2e8f0;
-}
-
 .event-title {
     font-size: 0.86rem;
     font-weight: 600;
@@ -1484,9 +1318,10 @@ onUnmounted(removeFocusTrap);
 }
 
 @media (max-width: 900px) {
-    :deep(.p-drawer.container-tracking-drawer) {
-        width: 100vw !important;
-        max-width: 100vw;
+    :deep(.p-dialog.container-tracking-dialog) {
+        width: calc(100% - 20px) !important;
+        max-width: calc(100% - 20px);
+        margin: 10px;
     }
 
     .tracking-skeleton,
@@ -1523,251 +1358,214 @@ onUnmounted(removeFocusTrap);
 </style>
 
 <style>
-/* Leaflet divIcon markers — unscoped (rendered inside map pane) */
-.ct-map-marker-wrap {
-    background: transparent;
-    border: none;
+/* Portaled dialog — mask blur + theme; unscoped for [data-theme] */
+.p-dialog-mask.container-tracking-mask {
+    backdrop-filter: blur(8px);
+    -webkit-backdrop-filter: blur(8px);
+    background: rgb(15 23 42 / 0.45);
 }
 
-.ct-map-marker {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 50%;
-    box-shadow: 0 2px 8px rgb(0 0 0 / 0.28);
-    border: 2.5px solid #fff;
-    box-sizing: border-box;
+[data-theme='dark'] .p-dialog-mask.container-tracking-mask {
+    background: rgb(0 0 0 / 0.62);
 }
 
-.ct-map-marker--origin {
-    width: 16px;
-    height: 16px;
-    background: #22c55e;
-}
-
-.ct-map-marker--current {
-    width: 40px;
-    height: 40px;
-    background: #6366f1;
-    box-shadow: 0 3px 12px rgb(99 102 241 / 0.55);
-}
-
-.ct-map-marker--transshipment {
-    width: 30px;
-    height: 30px;
-    background: #f59e0b;
-}
-
-.ct-map-marker--destination {
-    width: 30px;
-    height: 30px;
-    background: #64748b;
-}
-
-/* Portaled drawer — class on root via :pt; unscoped for [data-theme] */
-[data-theme='dark'] .p-drawer.container-tracking-drawer,
-[data-theme='dark'] .p-drawer.container-tracking-drawer .p-drawer-header,
-[data-theme='dark'] .p-drawer.container-tracking-drawer .p-drawer-content {
+[data-theme='dark'] .p-dialog.container-tracking-dialog,
+[data-theme='dark'] .p-dialog.container-tracking-dialog .p-dialog-header,
+[data-theme='dark'] .p-dialog.container-tracking-dialog .p-dialog-content {
     background: var(--admin-surface);
     color: var(--vs-text);
     border-color: var(--vs-border);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .tracking-kicker {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-kicker {
     color: var(--vs-text-secondary);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .tracking-title {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-title {
     color: var(--vs-text);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .meta-chip {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .meta-chip {
     background: var(--vs-surface-elevated);
     color: var(--vs-text);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .meta-label {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .meta-label {
     color: var(--vs-text-subtle);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .meta-chip--carrier {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .meta-chip--carrier {
     background: rgb(14 165 233 / 0.18);
     color: #7dd3fc;
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .status-badge {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .status-badge {
     background: var(--status-transit-bg);
     color: var(--status-transit-fg);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .status-badge--transit {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .status-badge--transit {
     background: var(--status-transit-bg);
     color: var(--status-transit-fg);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .status-badge--arrived {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .status-badge--arrived {
     background: var(--status-new-bg);
     color: var(--status-new-fg);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .cache-note {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .cache-note {
     color: var(--vs-text-muted);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .disclaimer-note {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .disclaimer-note {
     background: var(--vs-surface-elevated);
     border-color: var(--vs-border);
     color: var(--vs-text-secondary);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .disclaimer-note .pi {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .disclaimer-note .pi {
     color: var(--vs-text-muted);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .disclaimer-note--estimate {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .disclaimer-note--estimate {
     background: rgb(245 158 11 / 0.12);
     border-color: rgb(245 158 11 / 0.35);
     color: #fcd34d;
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .disclaimer-note--estimate .pi {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .disclaimer-note--estimate .pi {
     color: #fbbf24;
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .tracking-header-top .p-button {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-header-top .p-button {
     color: var(--vs-text-muted);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .tracking-header-top .p-button:not(:disabled):hover {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-header-top .p-button:not(:disabled):hover {
     color: var(--vs-text);
     background: var(--vs-surface-hover);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .map-legend {
-    background: rgb(24 24 27 / 0.94);
-    border-top-color: var(--vs-border);
-    color: var(--vs-text-secondary);
-}
-
-[data-theme='dark'] .p-drawer.container-tracking-drawer .tracking-skeleton-map,
-[data-theme='dark'] .p-drawer.container-tracking-drawer .tracking-map-wrap {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-skeleton-map,
+[data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-map-wrap {
     background: var(--vs-zinc-900);
     border: 1px solid var(--vs-border);
     border-inline-end: none;
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .tracking-skeleton-sidebar,
-[data-theme='dark'] .p-drawer.container-tracking-drawer .tracking-sidebar {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-skeleton-sidebar,
+[data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-sidebar {
     background: var(--vs-surface-elevated);
     border-color: var(--vs-border);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .map-tiles-loading {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .map-tiles-loading {
     background: rgb(9 9 11 / 0.55);
     color: var(--vs-text-secondary);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .map-empty {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .map-empty {
     color: var(--vs-text-muted);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .map-empty-illus {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .map-empty-illus {
     background: linear-gradient(145deg, var(--vs-surface-elevated), var(--vs-zinc-900));
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .map-empty-illus .pi {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .map-empty-illus .pi {
     color: var(--vs-text-subtle);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .map-empty-title {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .map-empty-title {
     color: var(--vs-text-secondary);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .map-empty-hint {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .map-empty-hint {
     color: var(--vs-text-muted);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .tracking-map-wrap .leaflet-control-attribution {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-map-wrap .leaflet-control-attribution {
     background: rgb(39 39 42 / 0.92);
     color: var(--vs-text-muted);
     border: 1px solid var(--vs-border);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .tracking-map-wrap .leaflet-control-attribution a {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-map-wrap .leaflet-control-attribution a {
     color: #7dd3fc;
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .route-card {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .route-card {
     background: var(--vs-surface);
     border-color: var(--vs-border);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .route-end-label {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .route-end-label {
     color: var(--vs-text-subtle);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .route-end-name {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .route-end-name {
     color: var(--vs-text);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .route-arrow {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .route-arrow {
     color: var(--vs-text-subtle);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .events-title {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .events-title {
     color: var(--vs-text-secondary);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .event-item:not(:last-child)::before {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .event-item:not(:last-child)::before {
     background: var(--vs-border);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .event-marker {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .event-marker {
     box-shadow: 0 0 0 3px var(--vs-surface-elevated);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .event-title {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .event-title {
     color: var(--vs-text);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .event-location,
-[data-theme='dark'] .p-drawer.container-tracking-drawer .event-date {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .event-location,
+[data-theme='dark'] .p-dialog.container-tracking-dialog .event-date {
     color: var(--vs-text-muted);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .event-date-relative {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .event-date-relative {
     color: #5eead4;
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .event-date-abs {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .event-date-abs {
     color: var(--vs-text-subtle);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .events-empty,
-[data-theme='dark'] .p-drawer.container-tracking-drawer .source-tag {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .events-empty,
+[data-theme='dark'] .p-dialog.container-tracking-dialog .source-tag {
     color: var(--vs-text-subtle);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .tracking-error-card {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-error-card {
     color: var(--vs-text-muted);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .tracking-error-title {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-error-title {
     color: var(--vs-text);
 }
 
-[data-theme='dark'] .p-drawer.container-tracking-drawer .tracking-error-msg {
+[data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-error-msg {
     color: var(--vs-text-muted);
 }
 
 @media (max-width: 900px) {
-    [data-theme='dark'] .p-drawer.container-tracking-drawer .tracking-map-wrap {
+    [data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-map-wrap {
         border-inline-end: 1px solid var(--vs-border);
         border-bottom: none;
     }
 
-    [data-theme='dark'] .p-drawer.container-tracking-drawer .tracking-sidebar,
-    [data-theme='dark'] .p-drawer.container-tracking-drawer .tracking-skeleton-sidebar {
+    [data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-sidebar,
+    [data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-skeleton-sidebar {
         border-top-color: var(--vs-border);
     }
 }

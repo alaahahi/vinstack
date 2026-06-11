@@ -3,13 +3,6 @@
         <AdminPageHeader :count="total" count-label="سيارة">
             <template #actions>
                 <Button
-                    label="استيراد نجوم الجزيرة"
-                    icon="pi pi-file-excel"
-                    severity="secondary"
-                    outlined
-                    @click="nujoomImportVisible = true"
-                />
-                <Button
                     label="إضافة سيارة يدوياً"
                     icon="pi pi-plus"
                     class="btn-add"
@@ -31,6 +24,7 @@
                     option-label="label"
                     option-value="value"
                     placeholder="الحالة"
+                    show-clear
                     @change="resetAndLoad"
                 />
                 <Button icon="pi pi-refresh" label="تحديث" outlined :loading="loading" @click="resetAndLoad" />
@@ -54,6 +48,7 @@
             mode="admin"
             infinite-scroll
             :has-more="hasMore"
+            :tracking-available="trackingAvailable"
             empty-text="لا توجد سيارات"
             empty-hint="ستظهر السيارات بعد المزامنة من Vinstack أو الإضافة اليدوية."
             empty-action-label="تحديث القائمة"
@@ -61,7 +56,6 @@
             @unassign="confirmUnassign"
             @edit="openEdit"
             @open-detail="openDetail"
-            @gallery-updated="onGalleryUpdated"
             @load-more="loadMore"
             @empty-action="resetAndLoad"
         />
@@ -87,11 +81,6 @@
                 @cancel="closeManualForm"
             />
         </Drawer>
-
-        <NujoomImportDialog
-            v-model:visible="nujoomImportVisible"
-            @applied="resetAndLoad"
-        />
 
         <Dialog v-model:visible="assignVisible" header="إسناد سيارة" modal style="width: min(420px, 100vw)">
             <Select
@@ -126,9 +115,7 @@ import DealerFilterBadges from '../../components/DealerFilterBadges.vue';
 import ManualVehicleForm from '../../components/ManualVehicleForm.vue';
 import VehicleListPanel from '../../components/VehicleListPanel.vue';
 import VehicleDetailDrawer from '../../components/VehicleDetailDrawer.vue';
-import NujoomImportDialog from '../../components/NujoomImportDialog.vue';
 import api from '../../api/client';
-import { replaceVehicleInList } from '../../utils/vehicleGalleryLive';
 
 const toast = useToast();
 const confirm = useConfirm();
@@ -138,16 +125,15 @@ const dealerSummary = ref([]);
 const loading = ref(false);
 const loadingMore = ref(false);
 const search = ref('');
-const ALL_STATUS_FILTER = '';
-const statusFilter = ref(ALL_STATUS_FILTER);
+const statusFilter = ref(null);
 const dealerFilter = ref(null);
 const page = ref(1);
 const perPage = ref(50);
 const total = ref(0);
 const hasMore = ref(false);
+const trackingAvailable = ref(false);
 
 const manualFormVisible = ref(false);
-const nujoomImportVisible = ref(false);
 const editingVehicle = ref(null);
 const manualFormHeader = computed(() =>
     editingVehicle.value ? 'تعديل سيارة يدوية' : 'إضافة سيارة يدوياً',
@@ -157,39 +143,24 @@ const detailVisible = ref(false);
 const detailVehicleId = ref(null);
 const selectedVehicle = ref(null);
 const selectedDealerId = ref(null);
-const SOURCE_FILTER_VALUES = new Set(['vinstack', 'manual', 'nujoom_al_jazeera']);
-
 const statusOptions = [
-    { label: 'عرض الكل', value: ALL_STATUS_FILTER },
     { label: 'متاحة', value: 'available' },
     { label: 'مسندة', value: 'assigned' },
     { label: 'محجوزة', value: 'reserved' },
-    { label: 'المستورد', value: 'vinstack' },
-    { label: 'اليدوي', value: 'manual' },
-    { label: 'نجوم الجزيرة', value: 'nujoom_al_jazeera' },
 ];
 
 const assigning = ref(false);
 
 function listParams(nextPage = page.value) {
     const dealerId = dealerFilter.value;
-    const filter = statusFilter.value;
-    const params = {
+
+    return {
         page: nextPage,
         per_page: perPage.value,
         search: search.value || undefined,
+        status: statusFilter.value || undefined,
         dealer_id: Number.isFinite(dealerId) && dealerId > 0 ? dealerId : undefined,
     };
-
-    if (filter && filter !== ALL_STATUS_FILTER) {
-        if (SOURCE_FILTER_VALUES.has(filter)) {
-            params.source = filter;
-        } else {
-            params.status = filter;
-        }
-    }
-
-    return params;
 }
 
 async function loadDealerSummary() {
@@ -220,6 +191,7 @@ async function fetchPage(nextPage, append = false) {
         vehicles.value = append ? [...vehicles.value, ...rows] : rows;
         total.value = data.meta?.total ?? data.total ?? rows.length;
         hasMore.value = Boolean(data.meta?.has_more);
+        trackingAvailable.value = Boolean(data.tracking_available);
         page.value = nextPage;
     } finally {
         loading.value = false;
@@ -289,10 +261,6 @@ function openAssign(vehicle) {
 function openDetail(vehicle) {
     detailVehicleId.value = vehicle.id;
     detailVisible.value = true;
-}
-
-function onGalleryUpdated(galleryPayload, vehicleId) {
-    vehicles.value = replaceVehicleInList(vehicles.value, galleryPayload, vehicleId);
 }
 
 async function confirmAssign() {

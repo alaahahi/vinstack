@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Dealer;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dealer\UpdateVehicleStatusRequest;
 use App\Models\Vehicle;
+use App\Services\ContainerTrackingService;
 use App\Services\VehicleDetailService;
 use App\Services\VehicleUploadedImageService;
 use Illuminate\Http\JsonResponse;
@@ -12,7 +13,11 @@ use Illuminate\Http\Request;
 
 class VehicleController extends Controller
 {
-    public function index(Request $request, VehicleUploadedImageService $gallery): JsonResponse
+    public function index(
+        Request $request,
+        VehicleUploadedImageService $gallery,
+        ContainerTrackingService $tracking,
+    ): JsonResponse
     {
         $dealer = $request->user()->dealer;
 
@@ -47,7 +52,9 @@ class VehicleController extends Controller
 
         $vehicles->through(fn (Vehicle $vehicle) => $gallery->enrichListVehicle($vehicle));
 
-        return response()->json($vehicles);
+        return $vehicles->additional([
+            'tracking_available' => $tracking->trackingAvailable(),
+        ]);
     }
 
     public function show(Request $request, Vehicle $vehicle, VehicleUploadedImageService $gallery): JsonResponse

@@ -1,44 +1,3 @@
-import { isGalleryStageBlock, isImageLikeString, scalarString } from './scalarString';
-
-function vehicleRawString(vehicle, key) {
-    return scalarString(vehicle?.raw_data?.[key]);
-}
-
-function locationFromRawValue(value) {
-    if (value === null || value === undefined || value === '') {
-        return null;
-    }
-
-    if (isGalleryStageBlock(value)) {
-        return scalarString(
-            value.name ?? value.label ?? value.title ?? value.port ?? value.city ?? null,
-        );
-    }
-
-    const label = scalarString(value);
-
-    if (label !== null && isImageLikeString(label)) {
-        return null;
-    }
-
-    return label;
-}
-
-function vehicleLocationLabel(vehicle, primaryKey, fallbackKeys = []) {
-    const raw = vehicle?.raw_data ?? {};
-    const candidates = [raw[primaryKey], ...fallbackKeys.map((key) => raw[key])];
-
-    for (const value of candidates) {
-        const label = locationFromRawValue(value);
-
-        if (label !== null) {
-            return label;
-        }
-    }
-
-    return null;
-}
-
 function formatVehicleDate(value) {
     if (! value) {
         return null;
@@ -66,7 +25,7 @@ export function vehicleTitle(vehicle) {
 }
 
 export function vehicleFuelType(vehicle) {
-    return vehicleRawString(vehicle, 'fuel_type');
+    return vehicle?.raw_data?.fuel_type?.trim() || null;
 }
 
 export function vehicleFuelClass(fuel) {
@@ -88,23 +47,23 @@ export function vehicleFuelClass(fuel) {
 }
 
 export function vehicleLot(vehicle) {
-    return vehicleRawString(vehicle, 'lot');
+    return vehicle?.raw_data?.lot?.trim() || null;
 }
 
 export function vehicleAuction(vehicle) {
-    return vehicleRawString(vehicle, 'auction');
+    return vehicle?.raw_data?.auction?.trim() || null;
 }
 
 export function vehicleOrigin(vehicle) {
-    return vehicleLocationLabel(vehicle, 'loading_point', ['pol', 'prepol']);
+    return vehicle?.raw_data?.loading_point?.trim() || null;
 }
 
 export function vehicleDestination(vehicle) {
-    return vehicleLocationLabel(vehicle, 'destination', ['postpod', 'pod', 'shipping_destination']);
+    return vehicle?.raw_data?.destination?.trim() || null;
 }
 
 export function vehicleVinstackStatus(vehicle) {
-    return vehicleRawString(vehicle, 'status');
+    return vehicle?.raw_data?.status?.trim() || null;
 }
 
 export function vehicleStatusClass(status) {
@@ -126,11 +85,28 @@ export function vehicleStatusClass(status) {
 }
 
 export function vehicleContainerRef(vehicle) {
-    return vehicleRawString(vehicle, 'container_number');
+    return vehicle?.raw_data?.container_number?.trim() || null;
+}
+
+/** Container payload for ContainerTrackingDialog from a vehicle list row. */
+export function vehicleContainerForTracking(vehicle) {
+    const raw = vehicle?.raw_data ?? {};
+    const containerNumber = raw.container_number?.trim();
+
+    if (! containerNumber) {
+        return null;
+    }
+
+    return {
+        container_number: containerNumber,
+        booking_number: raw.booking_number?.trim() || null,
+        loading_point: raw.loading_point?.trim() || null,
+        destination: raw.destination?.trim() || null,
+    };
 }
 
 export function vehicleBookingRef(vehicle) {
-    return vehicleRawString(vehicle, 'booking_number');
+    return vehicle?.raw_data?.booking_number?.trim() || null;
 }
 
 const KEYS_ABSENT = new Set(['no keys', 'missing', 'no key', 'no', 'false']);
@@ -170,7 +146,9 @@ export function vehicleKeysInfo(vehicle) {
 }
 
 export function vehicleTitleStatus(vehicle) {
-    return vehicleRawString(vehicle, 'title_status') || 'Pending';
+    const status = vehicle?.raw_data?.title_status?.trim();
+
+    return status || 'Pending';
 }
 
 export function vehiclePurchaseDate(vehicle) {
@@ -187,28 +165,6 @@ export function vehicleIsAssigned(vehicle) {
 
 export function vehicleAssignmentBadgeClass(vehicle) {
     return vehicleIsAssigned(vehicle) ? 'assignment-pill--assigned' : 'assignment-pill--unassigned';
-}
-
-const VEHICLE_SOURCE_LABELS = {
-    vinstack: 'المستورد',
-    manual: 'اليدوي',
-    nujoom_al_jazeera: 'نجوم الجزيرة',
-};
-
-export function vehicleSourceLabel(source) {
-    return VEHICLE_SOURCE_LABELS[source] ?? VEHICLE_SOURCE_LABELS.vinstack;
-}
-
-export function vehicleSourcePillClass(source) {
-    if (source === 'manual') {
-        return 'source-pill--manual';
-    }
-
-    if (source === 'nujoom_al_jazeera') {
-        return 'source-pill--nujoom';
-    }
-
-    return 'source-pill--vinstack';
 }
 
 export function vehicleEnteredBy(vehicle) {
@@ -235,7 +191,7 @@ export function vehicleRouteText(vehicle) {
 
 /** @deprecated */
 export function vehicleShippingMethod(vehicle) {
-    return vehicleRawString(vehicle, 'shipping_method');
+    return vehicle?.raw_data?.shipping_method?.trim() || null;
 }
 
 /** @deprecated */

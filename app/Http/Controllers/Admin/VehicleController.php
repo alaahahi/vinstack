@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\AssignVehicleRequest;
 use App\Enums\VehicleSource;
 use App\Models\Dealer;
 use App\Models\Vehicle;
+use App\Services\ContainerTrackingService;
 use App\Services\VehicleDetailService;
 use App\Services\VehicleUploadedImageService;
 use Illuminate\Http\JsonResponse;
@@ -16,7 +17,11 @@ use Illuminate\Http\Request;
 
 class VehicleController extends Controller
 {
-    public function index(Request $request, VehicleUploadedImageService $gallery): JsonResponse
+    public function index(
+        Request $request,
+        VehicleUploadedImageService $gallery,
+        ContainerTrackingService $tracking,
+    ): JsonResponse
     {
         $query = Vehicle::query()
             ->with(['activeAssignment.dealer.user:id,name,email', 'uploadedImages']);
@@ -40,7 +45,7 @@ class VehicleController extends Controller
         }
 
         if ($source = $request->input('source')) {
-            $allowedSources = array_column(VehicleSource::cases(), 'value');
+            $allowedSources = [VehicleSource::Vinstack->value, VehicleSource::Manual->value];
 
             if (in_array($source, $allowedSources, true)) {
                 $query->where('source', $source);
@@ -91,6 +96,7 @@ class VehicleController extends Controller
                 'to' => $vehicles->lastItem(),
                 'has_more' => $vehicles->hasMorePages(),
             ],
+            'tracking_available' => $tracking->trackingAvailable(),
         ]);
     }
 

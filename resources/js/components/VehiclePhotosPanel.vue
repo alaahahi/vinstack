@@ -62,7 +62,7 @@
 
                 <div class="stage-dropzone-hint">
                     <i class="pi pi-cloud-upload" />
-                    <span>اسحب الصور هنا أو استخدم زر الرفع</span>
+                    <span>اسحب الصور أو ملف ZIP هنا أو استخدم أزرار الرفع</span>
                 </div>
 
                 <div class="stage-upload-row">
@@ -74,13 +74,37 @@
                         class="file-input"
                         @change="onFilesSelected(stage.key, $event)"
                     />
+                    <input
+                        :ref="(el) => setZipInput(stage.key, el)"
+                        type="file"
+                        accept=".zip,application/zip,application/x-zip-compressed"
+                        class="file-input"
+                        @change="onZipSelected(stage.key, $event)"
+                    />
                     <Button
                         icon="pi pi-upload"
                         label="رفع صور جديدة"
                         :loading="uploadingStage === stage.key"
+                        :disabled="zipUploadingStage === stage.key"
                         class="upload-btn btn-add"
                         @click="triggerUpload(stage.key)"
                     />
+                    <Button
+                        icon="pi pi-file-import"
+                        label="رفع ملف مضغوط"
+                        severity="secondary"
+                        :loading="zipUploadingStage === stage.key"
+                        :disabled="uploadingStage === stage.key"
+                        class="upload-btn upload-btn--zip"
+                        @click="triggerZipUpload(stage.key)"
+                    />
+                    <span
+                        v-if="zipUploadingStage === stage.key"
+                        class="zip-upload-progress"
+                    >
+                        <i class="pi pi-spin pi-spinner" />
+                        جاري رفع ZIP إلى Vinstack…
+                    </span>
                 </div>
 
                 <div v-if="stageUrls(stage.key).length" class="stage-thumbs">
@@ -241,6 +265,10 @@ import {
     mergeGalleryIntoVehicle,
     vehicleUsesLiveGallery,
 } from '../utils/vehicleGalleryLive';
+import {
+    isZipFile,
+    uploadVehicleZipImages,
+} from '../utils/vehicleVinstackZipUpload';
 
 const props = defineProps({
     vehicle: {
@@ -270,8 +298,10 @@ const confirm = useConfirm();
 const zoomVisible = ref(false);
 const zoomStartUrl = ref(null);
 const uploadingStage = ref(null);
+const zipUploadingStage = ref(null);
 const deletingId = ref(null);
 const fileInputs = ref({});
+const zipInputs = ref({});
 const dragOverStage = ref(null);
 const galleryIndex = ref(0);
 const galleryNavLock = ref(false);
@@ -365,6 +395,12 @@ function setFileInput(stageKey, el) {
     }
 }
 
+function setZipInput(stageKey, el) {
+    if (el) {
+        zipInputs.value[stageKey] = el;
+    }
+}
+
 function stageUrls(stageKey) {
     return stages.value[stageKey] ?? [];
 }
@@ -396,6 +432,10 @@ function triggerUpload(stageKey) {
     fileInputs.value[stageKey]?.click();
 }
 
+function triggerZipUpload(stageKey) {
+    zipInputs.value[stageKey]?.click();
+}
+
 function onDragEnter(stageKey) {
     dragOverStage.value = stageKey;
 }
@@ -417,9 +457,25 @@ function onDragLeave(stageKey, event) {
 function onDrop(stageKey, event) {
     dragOverStage.value = null;
 
-    const files = [...(event.dataTransfer?.files ?? [])].filter((file) => file.type.startsWith('image/'));
+    const dropped = [...(event.dataTransfer?.files ?? [])];
+    const zipFile = dropped.find((file) => isZipFile(file));
+
+    if (zipFile) {
+        uploadZipFile(stageKey, zipFile);
+
+        return;
+    }
+
+    const files = dropped.filter((file) => file.type.startsWith('image/'));
 
     if (! files.length) {
+        toast.add({
+            severity: 'warn',
+            summary: 'ملف غير مدعوم',
+            detail: 'اسحب صوراً أو ملف ZIP فقط',
+            life: 3500,
+        });
+
         return;
     }
 
@@ -437,6 +493,81 @@ async function onFilesSelected(stageKey, event) {
     }
 
     await uploadFiles(stageKey, files);
+}
+
+async function onZipSelected(stageKey, event) {
+    const input = event.target;
+    const file = input.files?.[0];
+
+    input.value = '';
+
+    if (! file) {
+        return;
+    }
+
+    if (! isZipFile(file)) {
+        toast.add({
+            severity: 'warn',
+            summary: 'ملف غير مدعوم',
+            detail: 'يُقبل ملف ZIP فقط',
+            life: 3500,
+        });
+
+        return;
+    }
+
+    await uploadZipFile(stageKey, file);
+}
+
+async function uploadZipFile(stageKey, zipFile) {
+    if (! zipFile || ! props.vehicle?.id) {
+        return;
+    }
+
+    if (! vehicleUsesLiveGallery(props.vehicle)) {
+        toast.add({
+            severity: 'warn',
+            summary: 'غير متاح',
+            detail: 'رفع ZIP إلى Vinstack متاح لسيارات المزامنة فقط',
+            life: 4000,
+        });
+
+        return;
+    }
+
+    zipUploadingStage.value = stageKey;
+
+    try {
+        const result = await uploadVehicleZipImages(props.vehicle.id, stageKey, zipFile);
+        const galleryPayload = result.data?.gallery;
+
+        if (galleryPayload) {
+            displayVehicle.value = mergeGalleryIntoVehicle(props.vehicle, galleryPayload);
+            galleryFresh.value = Boolean(galleryPayload.gallery_fresh);
+            galleryTokenExpired.value = Boolean(galleryPayload.gallery_token_expired);
+            galleryError.value = galleryPayload.gallery_error ?? null;
+            galleryNewImagesCount.value = Number(galleryPayload.gallery_new_images_count ?? result.data?.uploaded ?? 0);
+            emit('updated', displayVehicle.value);
+        } else {
+            await loadLiveGallery();
+        }
+
+        toast.add({
+            severity: 'success',
+            summary: 'تم رفع ZIP',
+            detail: result.message || 'تم رفع الصور إلى Vinstack وتحديث المعرض',
+            life: 4500,
+        });
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: 'فشل رفع ZIP',
+            detail: e.message || 'تعذّر رفع ملف ZIP إلى Vinstack',
+            life: 5000,
+        });
+    } finally {
+        zipUploadingStage.value = null;
+    }
 }
 
 async function uploadFiles(stageKey, files) {
@@ -824,11 +955,26 @@ function goGalleryNext() {
 }
 
 .stage-upload-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
     margin-bottom: 0.85rem;
 }
 
 .upload-btn {
     width: 100%;
+}
+
+.upload-btn--zip :deep(.p-button-icon) {
+    color: var(--vs-text-secondary);
+}
+
+.zip-upload-progress {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.78rem;
+    color: var(--status-terminal-fg);
 }
 
 .file-input {

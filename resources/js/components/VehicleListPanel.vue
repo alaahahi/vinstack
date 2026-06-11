@@ -68,6 +68,8 @@
 
                 :mode="mode"
 
+                :tracking-available="trackingAvailable"
+
                 @assign="$emit('assign', $event)"
 
                 @unassign="$emit('unassign', $event)"
@@ -78,7 +80,7 @@
 
                 @edit="$emit('edit', $event)"
 
-                @gallery-updated="(...args) => emit('gallery-updated', ...args)"
+                @track-container="openContainerTracking"
 
             />
 
@@ -112,6 +114,18 @@
 
         />
 
+        <ContainerTrackingDialog
+
+            v-if="trackingAvailable"
+
+            v-model:visible="trackingVisible"
+
+            :api-role="mode"
+
+            :container="trackingContainer"
+
+        />
+
     </div>
 
 </template>
@@ -120,7 +134,7 @@
 
 <script setup>
 
-import { toRef } from 'vue';
+import { ref, toRef } from 'vue';
 
 import Button from 'primevue/button';
 
@@ -130,7 +144,11 @@ import ProgressSpinner from 'primevue/progressspinner';
 
 import VehicleListRow from './VehicleListRow.vue';
 
+import ContainerTrackingDialog from './ContainerTrackingDialog.vue';
+
 import { useInfiniteScroll } from '../composables/useInfiniteScroll';
+
+import { vehicleContainerForTracking } from '../utils/vehicleMeta';
 
 
 
@@ -240,11 +258,19 @@ const props = defineProps({
 
     },
 
+    trackingAvailable: {
+
+        type: Boolean,
+
+        default: false,
+
+    },
+
 });
 
 
 
-const emit = defineEmits(['assign', 'unassign', 'update-status', 'open-detail', 'edit', 'gallery-updated', 'page', 'empty-action', 'load-more']);
+const emit = defineEmits(['assign', 'unassign', 'update-status', 'open-detail', 'edit', 'page', 'empty-action', 'load-more']);
 
 
 
@@ -263,6 +289,21 @@ const { sentinel } = useInfiniteScroll({
 
 
 const sentinelRef = sentinel;
+
+const trackingVisible = ref(false);
+
+const trackingContainer = ref(null);
+
+function openContainerTracking(vehicle) {
+    const container = vehicleContainerForTracking(vehicle);
+
+    if (! container) {
+        return;
+    }
+
+    trackingContainer.value = container;
+    trackingVisible.value = true;
+}
 
 </script>
 

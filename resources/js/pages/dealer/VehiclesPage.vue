@@ -18,11 +18,11 @@
             :page="page"
             :per-page="perPage"
             mode="dealer"
+            :tracking-available="trackingAvailable"
             empty-hint="عند إسناد سيارات من الإدارة ستظهر هنا تلقائياً."
             empty-action-label="تحديث القائمة"
             @update-status="openStatus"
             @open-detail="openDetail"
-            @gallery-updated="onGalleryUpdated"
             @page="onPage"
             @empty-action="load"
         />
@@ -34,7 +34,7 @@
         />
 
         <Dialog v-model:visible="statusVisible" header="تحديث الحالة" modal style="width: min(480px, 100vw)">
-            <VehiclePhotosPanel v-if="selectedVehicle" :vehicle="selectedVehicle" api-mode="dealer" />
+            <VehiclePhotosPanel v-if="selectedVehicle" :vehicle="selectedVehicle" />
             <Select
                 v-model="selectedStatus"
                 :options="statusOptions"
@@ -66,7 +66,6 @@ import VehicleListPanel from '../../components/VehicleListPanel.vue';
 import VehicleDetailDrawer from '../../components/VehicleDetailDrawer.vue';
 import VehiclePhotosPanel from '../../components/VehiclePhotosPanel.vue';
 import api from '../../api/client';
-import { replaceVehicleInList } from '../../utils/vehicleGalleryLive';
 
 const toast = useToast();
 const vehicles = ref([]);
@@ -75,6 +74,7 @@ const search = ref('');
 const page = ref(1);
 const perPage = ref(15);
 const total = ref(0);
+const trackingAvailable = ref(false);
 
 const statusVisible = ref(false);
 const detailVisible = ref(false);
@@ -103,6 +103,7 @@ async function load() {
         });
         vehicles.value = data.data;
         total.value = data.total;
+        trackingAvailable.value = Boolean(data.tracking_available);
     } catch (e) {
         toast.add({
             severity: 'error',
@@ -131,10 +132,6 @@ function openStatus(vehicle) {
 function openDetail(vehicle) {
     detailVehicleId.value = vehicle.id;
     detailVisible.value = true;
-}
-
-function onGalleryUpdated(galleryPayload, vehicleId) {
-    vehicles.value = replaceVehicleInList(vehicles.value, galleryPayload, vehicleId);
 }
 
 async function saveStatus() {

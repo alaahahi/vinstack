@@ -358,8 +358,192 @@ class VinstackGalleryService
     }
 
     /**
+     * Upload one image to a Vinstack gallery stage (client-portal API).
+     *
+     * @return array{url: string, response: array<string, mixed>}
+     */
+    public function uploadStageImage(Vehicle $vehicle, string $stage, string $absolutePath, string $originalName): array
+    {
+        if (! in_array($stage, VehicleImageStages::STAGES, true)) {
+            throw new RuntimeException('invalid_stage');
+        }
+
+        if (! is_file($absolutePath) || ! is_readable($absolutePath)) {
+            throw new RuntimeException('upload_file_unreadable');
+        }
+
+        $identifiers = $this->resolveGalleryIdentifiers($vehicle);
+
+        if ($identifiers === []) {
+            throw new RuntimeException('gallery_vehicle_id_missing');
+        }
+
+        $lastException = null;
+
+        foreach ($identifiers as $index => $identifier) {
+            try {
+                return $this->postGalleryImage($identifier, $stage, $absolutePath, $originalName);
+            } catch (RuntimeException $e) {
+                $lastException = $e;
+
+                if (
+                    $this->isInvalidVehicleIdError($e)
+                    && $index < count($identifiers) - 1
+                ) {
+                    continue;
+                }
+
+                throw $e;
+            }
+        }
+
+        throw $lastException ?? new RuntimeException('gallery_upload_failed');
+    }
+
+    /**
+     * @return array{url: string, response: array<string, mixed>}
+     */
+    protected function postGalleryImage(string $vehicleId, string $stage, string $absolutePath, string $originalName): array
+    {
+        $encodedId = rawurlencode($vehicleId);
+        $encodedStage = rawurlencode($stage);
+        $contents = (string) file_get_contents($absolutePath);
+
+        $attempts = [
+            [
+                'path' => "/autos/{$encodedId}/gallery/{$encodedStage}",
+                'fields' => [],
+                'field' => 'image',
+            ],
+            [
+                'path' => "/autos/{$encodedId}/gallery",
+                'fields' => ['stage' => $stage],
+                'field' => 'image',
+            ],
+            [
+                'path' => "/autos/{$encodedId}/gallery/{$encodedStage}",
+                'fields' => [],
+                'field' => 'file',
+            ],
+        ];
+
+        $lastError = null;
+
+        foreach ($attempts as $attempt) {
+            try {
+                $json = $this->multipartRequest(
+                    $attempt['path'],
+                    $attempt['field'],
+                    $contents,
+                    $originalName,
+                    $attempt['fields'],
+                );
+
+                $url = $this->extractUploadedImageUrl($json, $stage);
+
+                if ($url === null) {
+                    throw new RuntimeException('gallery_upload_missing_url');
+                }
+
+                return [
+                    'url' => $url,
+                    'response' => $json,
+                ];
+            } catch (RuntimeException $e) {
+                $lastError = $e;
+
+                if (! $this->isRetryableUploadError($e)) {
+                    throw $e;
+                }
+            }
+        }
+
+        throw $lastError ?? new RuntimeException('gallery_upload_failed');
+    }
+
+    /**
+     * @param  array<string, string>  $fields
      * @return array<string, mixed>
      */
+    protected function multipartRequest(
+        string $path,
+        string $fileField,
+        string $contents,
+        string $filename,
+        array $fields = [],
+    ): array {
+        /** @var Response $response */
+        $response = $this->client()
+            ->attach($fileField, $contents, $filename)
+            ->post($path, $fields);
+
+        if ($response->status() === 401) {
+            $this->markGalleryTokenExpired();
+
+            throw new GalleryTokenExpiredException;
+        }
+
+        if ($response->failed()) {
+            $message = $response->json('error')
+                ?? $response->json('message')
+                ?? $response->body();
+
+            throw new RuntimeException(
+                "Gallery API error ({$response->status()}): {$message}"
+            );
+        }
+
+        $this->markGalleryTokenValid();
+
+        $json = $response->json();
+
+        return is_array($json) ? $json : [];
+    }
+
+    /**
+     * @param  array<string, mixed>  $json
+     */
+    protected function extractUploadedImageUrl(array $json, string $stage): ?string
+    {
+        $candidates = [
+            data_get($json, 'data.url'),
+            data_get($json, 'url'),
+            data_get($json, 'data.image.url'),
+            data_get($json, 'image.url'),
+        ];
+
+        foreach ($candidates as $candidate) {
+            if (is_string($candidate) && $candidate !== '') {
+                return $candidate;
+            }
+        }
+
+        $stageUrls = data_get($json, "data.{$stage}.urls")
+            ?? data_get($json, "{$stage}.urls");
+
+        if (is_array($stageUrls)) {
+            $filtered = array_values(array_filter(
+                $stageUrls,
+                fn ($url) => is_string($url) && $url !== '',
+            ));
+
+            if ($filtered !== []) {
+                return (string) end($filtered);
+            }
+        }
+
+        return null;
+    }
+
+    protected function isRetryableUploadError(RuntimeException $e): bool
+    {
+        $message = strtolower($e->getMessage());
+
+        return str_contains($message, '(404)')
+            || str_contains($message, '(405)')
+            || str_contains($message, 'gallery_upload_missing_url');
+    }
+
     public function fetchGallery(string $vehicleId): array
     {
         $json = $this->request('get', '/autos/'.rawurlencode($vehicleId).'/gallery');

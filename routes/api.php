@@ -11,6 +11,7 @@ use App\Http\Controllers\Admin\SystemController;
 use App\Http\Controllers\Admin\VehicleController as AdminVehicleController;
 use App\Http\Controllers\Admin\VehicleOptionsController;
 use App\Http\Controllers\Admin\VehicleUploadedImageController;
+use App\Http\Controllers\Admin\VehicleVinstackImageController;
 use App\Http\Controllers\Admin\VinstackBrowseController;
 use App\Http\Controllers\Admin\VinstackSettingsController;
 use App\Http\Controllers\Api\AuthController;
@@ -63,6 +64,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/vehicles/{vehicle}/gallery', [VehicleGalleryController::class, 'show']);
         Route::get('/vehicles/{vehicle}/images/download', [VehicleImageDownloadController::class, 'download']);
         Route::post('/vehicles/{vehicle}/images', [VehicleUploadedImageController::class, 'store']);
+        Route::post('/vehicles/{vehicle}/images/zip', [VehicleVinstackImageController::class, 'uploadZip']);
         Route::delete('/vehicles/{vehicle}/images/{image}', [VehicleUploadedImageController::class, 'destroy']);
         Route::post('/vehicles/{vehicle}/assign', [AdminVehicleController::class, 'assign']);
         Route::delete('/vehicles/{vehicle}/unassign', [AdminVehicleController::class, 'unassign']);
