@@ -10,14 +10,6 @@
                     </button>
                     <span v-if="fuel" class="fuel-badge" :class="fuelClass">{{ fuel }}</span>
                     <span class="source-pill" :class="sourcePillClass">{{ sourceLabel }}</span>
-                    <span
-                        v-if="hdGalleryCount > 1"
-                        class="gallery-pill"
-                        :title="`${hdGalleryCount} صورة HD`"
-                    >
-                        <i class="pi pi-images" />
-                        {{ hdGalleryCount }}
-                    </span>
                     <i
                         v-if="mode === 'admin' && hasLocalUploads"
                         class="pi pi-images local-upload-hint"
@@ -165,7 +157,6 @@ import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import VehicleImageGallery from './VehicleImageGallery.vue';
 import VinCopyLabel from './VinCopyLabel.vue';
-import { vehicleGalleryCount } from '../utils/vehicleImages';
 import {
     vehicleArrivedDate,
     vehicleAssignmentBadgeClass,
@@ -213,7 +204,6 @@ const sourceLabel = computed(() => vehicleSourceLabel(props.vehicle));
 const sourcePillClass = computed(() => vehicleSourcePillClass(props.vehicle));
 
 const title = computed(() => vehicleTitle(props.vehicle));
-const hdGalleryCount = computed(() => vehicleGalleryCount(props.vehicle));
 const hasLocalUploads = computed(() => (props.vehicle?.uploaded_images?.length ?? 0) > 0);
 const fuel = computed(() => vehicleFuelType(props.vehicle));
 const fuelClass = computed(() => vehicleFuelClass(fuel.value));

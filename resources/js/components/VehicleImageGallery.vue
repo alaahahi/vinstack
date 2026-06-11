@@ -44,7 +44,11 @@
 
             </span>
 
-            <span v-if="showCountBadge" class="count-badge">{{ galleryCount }}</span>
+            <span
+                v-if="showCountBadge"
+                class="count-badge"
+                :class="{ 'count-badge--row': variant === 'row' }"
+            >{{ galleryCount }}</span>
 
         </button>
 
@@ -184,7 +188,7 @@ const canOpenGallery = computed(() => {
     );
 });
 
-const showCountBadge = computed(() => props.variant !== 'row' && galleryCount.value > 1);
+const showCountBadge = computed(() => galleryCount.value > 1);
 
 const showGalleryButton = computed(() => props.showButton && galleryCount.value > 1);
 
@@ -375,31 +379,32 @@ async function openGallery() {
 
 
 .count-badge {
-
     position: absolute;
-
     bottom: 3px;
-
     inset-inline-end: 3px;
-
     min-width: 16px;
-
     height: 16px;
-
     padding: 0 4px;
-
     border-radius: 999px;
-
     background: rgb(24 24 27 / 82%);
-
     color: #fff;
-
     font-size: 10px;
-
+    font-weight: 700;
     line-height: 16px;
-
     text-align: center;
+    pointer-events: none;
+    z-index: 2;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+}
 
+.count-badge--row {
+    bottom: 4px;
+    inset-inline-end: 4px;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    font-size: 11px;
+    line-height: 20px;
 }
 
 </style>

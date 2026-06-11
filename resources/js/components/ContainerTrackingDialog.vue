@@ -123,8 +123,8 @@
                     @ready="onMapReady"
                 >
                     <l-tile-layer
-                        url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                        attribution="&copy; OpenStreetMap"
+                        :url="mapTileUrl"
+                        :attribution="mapTileAttribution"
                         @loading="mapTilesLoading = true"
                         @load="mapTilesLoading = false"
                     />
@@ -135,35 +135,41 @@
                         :weight="4"
                         :opacity="0.9"
                     />
-                    <l-circle-marker
+                    <l-marker
                         v-if="originLatLng"
                         :lat-lng="originLatLng"
-                        :radius="8"
-                        color="#22c55e"
-                        :fill="true"
-                        fill-color="#22c55e"
-                        :fill-opacity="1"
+                        :icon="markerIcons.origin"
                     />
-                    <l-circle-marker
+                    <l-marker
                         v-for="(wp, index) in waypointLatLngs"
                         :key="`wp-${index}`"
                         :lat-lng="wp"
-                        :radius="7"
-                        color="#f59e0b"
-                        :fill="true"
-                        fill-color="#f59e0b"
-                        :fill-opacity="1"
+                        :icon="markerIcons.waypoint"
                     />
-                    <l-circle-marker
+                    <l-marker
                         v-if="destinationLatLng"
                         :lat-lng="destinationLatLng"
-                        :radius="8"
-                        color="#ef4444"
-                        :fill="true"
-                        fill-color="#ef4444"
-                        :fill-opacity="1"
+                        :icon="markerIcons.destination"
+                    />
+                    <l-marker
+                        v-if="currentLatLng"
+                        :lat-lng="currentLatLng"
+                        :icon="markerIcons.current"
+                        :z-index-offset="1000"
                     />
                 </l-map>
+                <div v-if="mapReady" class="map-legend" dir="rtl">
+                    <div
+                        v-for="item in legendItems"
+                        :key="item.key"
+                        class="map-legend-item"
+                    >
+                        <span class="map-legend-swatch" :class="item.class" aria-hidden="true">
+                            <i v-if="item.icon" :class="item.icon" />
+                        </span>
+                        <span class="map-legend-label">{{ item.label }}</span>
+                    </div>
+                </div>
                 <div
                     v-if="mapReady && mapTilesLoading"
                     class="map-tiles-loading"
@@ -276,10 +282,28 @@ import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
 import Skeleton from 'primevue/skeleton';
 import ProgressSpinner from 'primevue/progressspinner';
-import { LMap, LTileLayer, LPolyline, LCircleMarker } from '@vue-leaflet/vue-leaflet';
+import { LMap, LTileLayer, LPolyline, LMarker } from '@vue-leaflet/vue-leaflet';
 import 'leaflet/dist/leaflet.css';
 import api from '../api/client';
 import { containerRefs, formatContainerDate } from '../utils/containerMeta';
+import { createTrackingMarkerIcon } from '../utils/containerMapIcons';
+import { useThemeStore } from '../stores/theme';
+
+const markerIcons = {
+    origin: createTrackingMarkerIcon('origin'),
+    waypoint: createTrackingMarkerIcon('waypoint'),
+    destination: createTrackingMarkerIcon('destination'),
+    current: createTrackingMarkerIcon('current'),
+};
+
+const legendItems = [
+    { key: 'origin', label: 'المنشأ', class: 'legend-swatch--origin', icon: 'pi pi-arrow-up' },
+    { key: 'waypoint', label: 'محطة ترانزيت', class: 'legend-swatch--waypoint', icon: 'pi pi-send' },
+    { key: 'destination', label: 'الوجهة', class: 'legend-swatch--destination', icon: 'pi pi-circle' },
+    { key: 'current', label: 'الموقع الحالي', class: 'legend-swatch--current', icon: 'pi pi-car' },
+];
+
+const themeStore = useThemeStore();
 
 const props = defineProps({
     visible: {
@@ -353,6 +377,16 @@ const routeLatLngs = computed(() => {
 
 const originLatLng = computed(() => pointFromLocation(tracking.value?.origin));
 const destinationLatLng = computed(() => pointFromLocation(tracking.value?.destination));
+
+const currentLatLng = computed(() => pointFromLocation(tracking.value?.current_position));
+
+const mapTileUrl = computed(() => (
+    themeStore.isDark
+        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
+        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
+));
+
+const mapTileAttribution = '&copy; OpenStreetMap &copy; CARTO';
 
 const waypointLatLngs = computed(() => {
     const wps = tracking.value?.waypoints;
@@ -511,7 +545,7 @@ watch(
     },
 );
 
-watch(routeLatLngs, () => {
+watch([routeLatLngs, currentLatLng], () => {
     if (leafletMap.value && mapReady.value) {
         fitMapBounds(leafletMap.value);
     }
@@ -669,6 +703,7 @@ function fitMapBounds(map) {
         ...routeLatLngs.value,
         ...(originLatLng.value ? [originLatLng.value] : []),
         ...(destinationLatLng.value ? [destinationLatLng.value] : []),
+        ...(currentLatLng.value ? [currentLatLng.value] : []),
         ...waypointLatLngs.value,
     ];
 
@@ -1018,6 +1053,8 @@ onUnmounted(removeFocusTrap);
     min-height: 0;
     height: 100%;
     animation: trackingBodyIn 0.28s ease;
+    /* خريطة يسار / لوحة يمين — مثل Vinstack حتى في واجهة RTL */
+    direction: ltr;
 }
 
 @keyframes trackingBodyIn {
@@ -1038,13 +1075,68 @@ onUnmounted(removeFocusTrap);
     height: 100%;
     background: var(--vs-zinc-200);
     position: relative;
+    display: flex;
+    flex-direction: column;
 }
 
 .tracking-map {
     width: 100%;
-    height: 100%;
+    flex: 1 1 auto;
     min-height: 0;
     z-index: 1;
+}
+
+.map-legend {
+    flex-shrink: 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.65rem 1.25rem;
+    padding: 0.55rem 0.85rem;
+    background: var(--vs-surface);
+    border-top: 1px solid var(--vs-border);
+    z-index: 2;
+}
+
+.map-legend-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.72rem;
+    color: var(--vs-text-secondary);
+}
+
+.map-legend-swatch {
+    width: 1.35rem;
+    height: 1.35rem;
+    border-radius: 50%;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 0.62rem;
+    color: #fff;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.2);
+}
+
+.legend-swatch--origin {
+    background: linear-gradient(145deg, #7c3aed, #a78bfa);
+}
+
+.legend-swatch--waypoint {
+    background: linear-gradient(145deg, #ea580c, #fb923c);
+}
+
+.legend-swatch--destination {
+    background: linear-gradient(145deg, #52525b, #71717a);
+}
+
+.legend-swatch--current {
+    background: linear-gradient(145deg, #0d9488, #14b8a6);
+}
+
+.map-legend-label {
+    font-weight: 600;
 }
 
 .map-tiles-loading {
@@ -1114,6 +1206,7 @@ onUnmounted(removeFocusTrap);
     overflow-x: hidden;
     background: var(--vs-surface-elevated);
     min-height: 0;
+    direction: rtl;
 }
 
 .eta-card {
@@ -1671,5 +1764,72 @@ onUnmounted(removeFocusTrap);
     [data-theme='dark'] .p-dialog.container-tracking-dialog .tracking-skeleton-sidebar {
         border-top-color: var(--vs-border);
     }
+}
+
+/* Leaflet divIcon markers (portaled inside map, needs global styles) */
+.tracking-map-marker {
+    background: transparent !important;
+    border: none !important;
+}
+
+.tracking-map-marker .tm {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    width: 36px;
+    height: 36px;
+    border-radius: 50%;
+    color: #fff;
+    box-shadow: 0 2px 8px rgb(0 0 0 / 0.28);
+    border: 2px solid rgb(255 255 255 / 0.85);
+}
+
+.tracking-map-marker .tm--origin {
+    background: linear-gradient(145deg, #7c3aed, #a78bfa);
+    font-size: 0.95rem;
+}
+
+.tracking-map-marker .tm--waypoint {
+    background: linear-gradient(145deg, #ea580c, #fb923c);
+    position: relative;
+    font-size: 0.75rem;
+}
+
+.tracking-map-marker .tm--waypoint .tm__arrow {
+    position: absolute;
+    inset-inline-start: 4px;
+    font-size: 0.55rem;
+    opacity: 0.9;
+}
+
+.tracking-map-marker .tm--destination {
+    background: linear-gradient(145deg, #52525b, #71717a);
+    font-size: 1rem;
+}
+
+.tracking-map-marker .tm--destination .pi-circle {
+    font-size: 0.55rem;
+}
+
+.tracking-map-marker .tm--current {
+    background: linear-gradient(145deg, #0d9488, #14b8a6);
+    font-size: 0.85rem;
+    animation: trackingPulse 2s ease-in-out infinite;
+}
+
+@keyframes trackingPulse {
+    0%,
+    100% {
+        box-shadow: 0 2px 8px rgb(0 0 0 / 0.28), 0 0 0 0 rgb(20 184 166 / 0.5);
+    }
+
+    50% {
+        box-shadow: 0 2px 12px rgb(0 0 0 / 0.32), 0 0 0 8px rgb(20 184 166 / 0);
+    }
+}
+
+[data-theme='dark'] .p-dialog.container-tracking-dialog .map-legend {
+    background: var(--vs-surface-elevated);
+    border-top-color: var(--vs-border);
 }
 </style>
