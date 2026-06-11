@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UploadContainerImagesRequest;
+use App\Models\ContainerImage;
 use App\Services\CloudinaryService;
 use App\Services\ContainerImageService;
 use Illuminate\Http\JsonResponse;
@@ -106,6 +107,20 @@ class ContainerImageController extends Controller
             'failed' => $failed,
             'received' => $received,
         ], $uploaded > 0 ? 201 : 422);
+    }
+
+    public function destroy(
+        string $container,
+        ContainerImage $image,
+        ContainerImageService $images,
+    ): JsonResponse {
+        $result = $images->delete($container, $image);
+
+        return response()->json([
+            'data' => $result['payload'],
+            'message' => $result['cloudinary_warning'] ?? 'Image removed successfully.',
+            'cloudinary_warning' => $result['cloudinary_warning'],
+        ]);
     }
 
     /**

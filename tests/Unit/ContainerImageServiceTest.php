@@ -102,4 +102,31 @@ class ContainerImageServiceTest extends TestCase
 
         $this->assertFileDoesNotExist($path);
     }
+
+    public function test_delete_removes_db_record_even_when_cloudinary_destroy_fails(): void
+    {
+        $image = \App\Models\ContainerImage::query()->create([
+            'container_number' => 'MSCU123',
+            'original_name' => 'photo.jpg',
+            'cloudinary_url' => 'https://res.cloudinary.com/demo/image/upload/v1/photo.jpg',
+            'public_id' => 'vinstack/containers/MSCU123/photo-1',
+            'uploaded_at' => now(),
+        ]);
+
+        $this->mock(CloudinaryService::class, function ($mock): void {
+            $mock->shouldReceive('destroy')
+                ->once()
+                ->andThrow(new \RuntimeException('Cloudinary unavailable'));
+        });
+
+        $service = app(ContainerImageService::class);
+        $result = $service->delete('MSCU123', $image);
+
+        $this->assertSame(
+            'Image removed from container gallery; Cloudinary delete failed.',
+            $result['cloudinary_warning'],
+        );
+        $this->assertDatabaseMissing('container_images', ['id' => $image->id]);
+        $this->assertSame(0, $result['payload']['meta']['count']);
+    }
 }

@@ -54,7 +54,7 @@
                             </span>
                             <span class="count-pill count-pill--local" title="صور مرفوعة من الإدارة">
                                 <i class="pi pi-upload" />
-                                مرفوعة محلياً: {{ stageCounts(stage.key).local }}
+                                مرفوعة من الإدارة: {{ stageCounts(stage.key).uploaded }}
                             </span>
                         </div>
                     </div>
@@ -88,23 +88,23 @@
                         v-for="url in stageUrls(stage.key)"
                         :key="url"
                         class="thumb-card"
-                        :class="{ 'thumb-card--local': isLocalUrl(url) }"
+                        :class="{ 'thumb-card--uploaded': isUploadedUrl(url) }"
                     >
                         <button type="button" class="thumb-btn" @click="openZoom(url)">
                             <img :src="url" :alt="label" loading="lazy" decoding="async" />
                         </button>
-                        <span v-if="isLocalUrl(url)" class="source-tag source-tag--local">مرفوعة محلياً</span>
+                        <span v-if="isUploadedUrl(url)" class="source-tag source-tag--local">مرفوعة من الإدارة</span>
                         <span v-else class="source-tag source-tag--vinstack">Vinstack</span>
                         <Button
-                            v-if="isLocalUrl(url)"
+                            v-if="isUploadedUrl(url)"
                             icon="pi pi-trash"
                             severity="danger"
                             rounded
                             size="small"
                             class="thumb-delete"
-                            :loading="deletingId === localId(url)"
+                            :loading="deletingId === uploadedImageId(url)"
                             aria-label="حذف الصورة"
-                            @click="confirmRemoveLocal(url)"
+                            @click="confirmRemoveUploaded(url)"
                         />
                     </div>
                 </div>
@@ -161,7 +161,7 @@
                             :alt="label"
                             decoding="async"
                         />
-                        <span v-if="isLocalUrl(currentGalleryUrl)" class="local-badge-inline">مرفوعة محلياً</span>
+                        <span v-if="isUploadedUrl(currentGalleryUrl)" class="local-badge-inline">مرفوعة من الإدارة</span>
                         <span class="zoom-hint"><i class="pi pi-search-plus" /> تكبير</span>
                     </button>
 
@@ -186,7 +186,7 @@
                         @click="setGalleryIndex(index)"
                     >
                         <img :src="url" :alt="`${label} thumbnail`" loading="lazy" decoding="async" />
-                        <span v-if="isLocalUrl(url)" class="local-dot" title="مرفوعة محلياً" />
+                        <span v-if="isUploadedUrl(url)" class="local-dot" title="مرفوعة من الإدارة" />
                     </button>
                 </div>
 
@@ -231,6 +231,7 @@ import {
 } from '../utils/vehicleImages';
 import {
     deleteVehicleImage,
+    isDeletableUploadedUrl,
     isLocalUploadedUrl,
     localImageIdForUrl,
     uploadVehicleImages,
@@ -370,20 +371,24 @@ function stageUrls(stageKey) {
 
 function stageCounts(stageKey) {
     const urls = stageUrls(stageKey);
-    const local = urls.filter((url) => isLocalUrl(url)).length;
+    const uploaded = urls.filter((url) => isUploadedUrl(url)).length;
 
     return {
         total: urls.length,
-        local,
-        vinstack: urls.length - local,
+        uploaded,
+        vinstack: urls.length - uploaded,
     };
+}
+
+function isUploadedUrl(url) {
+    return isDeletableUploadedUrl(url, uploadedList.value);
 }
 
 function isLocalUrl(url) {
     return isLocalUploadedUrl(url, uploadedList.value);
 }
 
-function localId(url) {
+function uploadedImageId(url) {
     return localImageIdForUrl(url, uploadedList.value);
 }
 
@@ -466,8 +471,8 @@ async function uploadFiles(stageKey, files) {
     }
 }
 
-function confirmRemoveLocal(url) {
-    const imageId = localId(url);
+function confirmRemoveUploaded(url) {
+    const imageId = uploadedImageId(url);
 
     if (! imageId || ! props.vehicle?.id) {
         return;
@@ -480,12 +485,12 @@ function confirmRemoveLocal(url) {
         rejectLabel: 'إلغاء',
         acceptLabel: 'حذف',
         acceptClass: 'p-button-danger',
-        accept: () => removeLocal(url),
+        accept: () => removeUploaded(url),
     });
 }
 
-async function removeLocal(url) {
-    const imageId = localId(url);
+async function removeUploaded(url) {
+    const imageId = uploadedImageId(url);
 
     if (! imageId || ! props.vehicle?.id) {
         return;
@@ -500,9 +505,9 @@ async function removeLocal(url) {
         await loadLiveGallery();
 
         toast.add({
-            severity: 'success',
+            severity: result.cloudinary_warning ? 'warn' : 'success',
             summary: 'تم الحذف',
-            detail: result.message || 'تم حذف الصورة من المعرض',
+            detail: result.message || result.cloudinary_warning || 'تم حذف الصورة من المعرض',
             life: 3000,
         });
     } catch (e) {
@@ -840,7 +845,7 @@ function goGalleryNext() {
     position: relative;
 }
 
-.thumb-card--local {
+.thumb-card--uploaded {
     outline: 2px solid #a7f3d0;
     outline-offset: 2px;
     border-radius: 10px;

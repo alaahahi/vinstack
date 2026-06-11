@@ -219,6 +219,46 @@
             @hide="closeContainerGallery"
         />
 
+        <Dialog
+            v-model:visible="containerManageVisible"
+            modal
+            :draggable="false"
+            header="معرض الحاوية"
+            :style="{ width: 'min(920px, 96vw)' }"
+            :pt="{ root: { class: 'container-gallery-manage-dialog' } }"
+        >
+            <p v-if="! containerManageImages.length" class="container-gallery-empty">
+                لا توجد صور في معرض الحاوية
+            </p>
+            <div v-else class="container-gallery-grid">
+                <div
+                    v-for="(image, index) in containerManageImages"
+                    :key="image.id ?? image.url"
+                    class="container-gallery-thumb"
+                >
+                    <button
+                        type="button"
+                        class="container-gallery-thumb-btn"
+                        @click="openContainerLightboxAt(index)"
+                    >
+                        <img :src="image.url" :alt="image.name || `صورة ${index + 1}`" loading="lazy" decoding="async" />
+                    </button>
+                    <span v-if="image.vin" class="container-gallery-vin">{{ image.vin }}</span>
+                    <Button
+                        v-if="apiRole === 'admin' && image.id"
+                        icon="pi pi-trash"
+                        severity="danger"
+                        rounded
+                        size="small"
+                        class="container-gallery-delete"
+                        :loading="deletingContainerImageId === image.id"
+                        aria-label="حذف الصورة"
+                        @click="confirmDeleteContainerImage(image)"
+                    />
+                </div>
+            </div>
+        </Dialog>
+
         <Teleport to="body">
             <div
                 v-if="containerGalleryVisible && containerGalleryImgs.length > 1"
@@ -265,6 +305,7 @@
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
+import { useConfirm } from 'primevue/useconfirm';
 import Dialog from 'primevue/dialog';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -295,6 +336,7 @@ import {
     vehicleZipImageCount,
 } from '../utils/containerZipImages';
 import {
+    deleteContainerCloudImage,
     fetchContainerCloudImages,
     formatCloudinaryUploadError,
     testCloudinaryConnection,
@@ -324,6 +366,7 @@ const props = defineProps({
 const emit = defineEmits(['update:visible']);
 
 const toast = useToast();
+const confirm = useConfirm();
 
 const loading = ref(false);
 const error = ref(null);
@@ -340,6 +383,8 @@ const galleryVisible = ref(false);
 const galleryVehicle = ref(null);
 const containerGalleryVisible = ref(false);
 const containerGalleryIndex = ref(0);
+const containerManageVisible = ref(false);
+const deletingContainerImageId = ref(null);
 
 const dialogVisible = computed({
     get: () => props.visible,
@@ -387,6 +432,8 @@ const containerLightboxSlide = computed(() => {
 
     return slide ? [slide] : [];
 });
+
+const containerManageImages = computed(() => zipPayload.value?.images ?? []);
 
 const apiPrefix = computed(() => (props.apiRole === 'dealer' ? '/dealer' : '/admin'));
 
@@ -454,7 +501,73 @@ function openContainerGallery() {
     }
 
     containerGalleryIndex.value = 0;
+
+    if (props.apiRole === 'admin') {
+        containerManageVisible.value = true;
+
+        return;
+    }
+
     containerGalleryVisible.value = true;
+}
+
+function openContainerLightboxAt(index) {
+    containerGalleryIndex.value = index;
+    containerGalleryVisible.value = true;
+}
+
+function confirmDeleteContainerImage(image) {
+    if (! image?.id || props.apiRole !== 'admin') {
+        return;
+    }
+
+    confirm.require({
+        message: 'هل أنت متأكد من حذف هذه الصورة من معرض الحاوية؟',
+        header: 'حذف الصورة',
+        icon: 'pi pi-exclamation-triangle',
+        rejectLabel: 'إلغاء',
+        acceptLabel: 'حذف',
+        acceptClass: 'p-button-danger',
+        accept: () => removeContainerImage(image),
+    });
+}
+
+async function removeContainerImage(image) {
+    const ref = containerApiRef();
+
+    if (! ref || ! image?.id) {
+        return;
+    }
+
+    deletingContainerImageId.value = image.id;
+
+    try {
+        const result = await deleteContainerCloudImage(ref, image.id, apiPrefix.value);
+        zipPayload.value = applyCloudinaryContainerPayload(containerKey.value, result.data);
+
+        if (! containerManageImages.value.length) {
+            containerManageVisible.value = false;
+            closeContainerGallery();
+        } else if (containerGalleryIndex.value >= containerGalleryImgs.value.length) {
+            containerGalleryIndex.value = Math.max(0, containerGalleryImgs.value.length - 1);
+        }
+
+        toast.add({
+            severity: result.cloudinary_warning ? 'warn' : 'success',
+            summary: 'تم الحذف',
+            detail: result.message || result.cloudinary_warning || 'تم حذف الصورة من معرض الحاوية',
+            life: 3500,
+        });
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: 'فشل الحذف',
+            detail: e.response?.data?.message || 'تعذر حذف الصورة',
+            life: 4000,
+        });
+    } finally {
+        deletingContainerImageId.value = null;
+    }
 }
 
 function closeContainerGallery() {
@@ -551,6 +664,7 @@ function onHide() {
     error.value = null;
     galleryVisible.value = false;
     closeContainerGallery();
+    containerManageVisible.value = false;
     clearPendingZipImages();
     settingsCheckResult.value = null;
 }
@@ -967,6 +1081,67 @@ onBeforeUnmount(() => {
 
 .images-truck-btn--active:hover {
     background: rgb(37 99 235 / 18%);
+}
+
+.container-gallery-empty {
+    margin: 0;
+    padding: 1.5rem;
+    text-align: center;
+    color: var(--vs-text-muted);
+}
+
+.container-gallery-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(120px, 1fr));
+    gap: 0.75rem;
+}
+
+.container-gallery-thumb {
+    position: relative;
+}
+
+.container-gallery-thumb-btn {
+    display: block;
+    width: 100%;
+    padding: 0;
+    border: 1px solid var(--vs-border);
+    border-radius: 8px;
+    overflow: hidden;
+    cursor: zoom-in;
+    background: var(--vs-surface-elevated);
+}
+
+.container-gallery-thumb-btn img {
+    width: 100%;
+    aspect-ratio: 4 / 3;
+    object-fit: cover;
+    display: block;
+}
+
+.container-gallery-vin {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.62rem;
+    font-family: ui-monospace, monospace;
+    color: var(--vs-text-muted);
+    text-align: center;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.container-gallery-delete {
+    position: absolute;
+    top: 4px;
+    inset-inline-end: 4px;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 20%);
+}
+
+.container-gallery-thumb:hover .container-gallery-delete,
+.container-gallery-thumb:focus-within .container-gallery-delete {
+    opacity: 1;
 }
 
 .status-pill {

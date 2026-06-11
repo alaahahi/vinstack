@@ -151,6 +151,42 @@ class ContainerImageService
     }
 
     /**
+     * @return array{payload: array<string, mixed>, cloudinary_warning: ?string}
+     */
+    public function delete(string $container, ContainerImage $image): array
+    {
+        $number = $this->normalizeContainerNumber($container);
+
+        if ($number === '' || $image->container_number !== $number) {
+            abort(404);
+        }
+
+        $cloudinaryWarning = null;
+
+        if (filled($image->public_id)) {
+            try {
+                $this->cloudinary->destroy($image->public_id);
+            } catch (\Throwable $e) {
+                Log::warning('Cloudinary delete failed for container image', [
+                    'image_id' => $image->id,
+                    'container' => $number,
+                    'public_id' => $image->public_id,
+                    'error' => $e->getMessage(),
+                ]);
+
+                $cloudinaryWarning = 'Image removed from container gallery; Cloudinary delete failed.';
+            }
+        }
+
+        $image->delete();
+
+        return [
+            'payload' => $this->payloadForContainer($number),
+            'cloudinary_warning' => $cloudinaryWarning,
+        ];
+    }
+
+    /**
      * @param  Collection<int, ContainerImage>  $records
      * @return array{images: list<array<string, mixed>>, byVin: array<string, list<string>>, unmatched: list<string>, meta: array<string, mixed>}
      */

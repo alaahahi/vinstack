@@ -48,6 +48,10 @@ function normalizeStorageUrl(url) {
 }
 
 export function isLocalUploadedUrl(url, uploadedImages = []) {
+    return isDeletableUploadedUrl(url, uploadedImages);
+}
+
+export function isDeletableUploadedUrl(url, uploadedImages = []) {
     if (! url || ! Array.isArray(uploadedImages)) {
         return false;
     }
@@ -55,10 +59,6 @@ export function isLocalUploadedUrl(url, uploadedImages = []) {
     const normalized = normalizeStorageUrl(url);
 
     return uploadedImages.some((image) => {
-        if (image?.source === 'cloudinary') {
-            return false;
-        }
-
         const imageUrl = image?.url;
 
         return imageUrl === url || normalizeStorageUrl(imageUrl) === normalized;

@@ -188,6 +188,18 @@ export async function fetchContainerCloudImages(containerRef, apiPrefix = '/admi
     return data.data ?? null;
 }
 
+export async function deleteContainerCloudImage(containerRef, imageId, apiPrefix = '/admin') {
+    if (! containerRef || ! imageId) {
+        throw new Error('Container reference and image id are required.');
+    }
+
+    const { data } = await api.delete(
+        `${apiPrefix}/containers/${encodeURIComponent(containerRef)}/images/${imageId}`,
+    );
+
+    return data;
+}
+
 async function blobFromImageRecord(image) {
     if (image.file instanceof Blob) {
         return image.file;

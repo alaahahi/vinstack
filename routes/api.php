@@ -91,6 +91,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/containers/cloudinary-status', [AdminContainerImageController::class, 'cloudinaryStatus']);
         Route::get('/containers/{container}/images', [AdminContainerImageController::class, 'index']);
         Route::post('/containers/{container}/images/upload', [AdminContainerImageController::class, 'upload']);
+        Route::delete('/containers/{container}/images/{image}', [AdminContainerImageController::class, 'destroy']);
         Route::get('/containers/{container}/vehicles', [AdminContainerController::class, 'vehicles']);
         Route::get('/containers/{container}/tracking', [AdminContainerController::class, 'tracking']);
         Route::get('/vinstack/containers', [VinstackBrowseController::class, 'containers']);

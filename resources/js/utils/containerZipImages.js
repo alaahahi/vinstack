@@ -249,13 +249,18 @@ export function mergeZipImagesIntoVehicle(vehicle, zipPayload) {
         return vehicle;
     }
 
-    const zipUploaded = zipUrls.map((url, index) => ({
-        id: `zip-${vin}-${index}`,
-        stage: 'destination',
-        url,
-        original_name: `zip-${index + 1}`,
-        source: zipPayload.storage === 'cloudinary' || zipPayload.meta?.storage === 'cloudinary' ? 'cloudinary' : 'zip',
-    }));
+    const zipUploaded = zipUrls.map((url, index) => {
+        const record = zipPayload.images?.find((image) => image.url === url);
+
+        return {
+            id: record?.id ?? `zip-${vin}-${index}`,
+            stage: 'destination',
+            url,
+            original_name: record?.name ?? `zip-${index + 1}`,
+            source: record?.source
+                ?? (zipPayload.storage === 'cloudinary' || zipPayload.meta?.storage === 'cloudinary' ? 'cloudinary' : 'zip'),
+        };
+    });
 
     const existing = vehicle.uploaded_images ?? vehicle?.raw_data?.uploaded_images ?? [];
     const mergedUploaded = [...existing, ...zipUploaded];

@@ -49,11 +49,12 @@ class VehicleUploadedImageController extends Controller
             abort(404);
         }
 
-        $uploads->delete($vehicle, $image);
+        $result = $uploads->delete($vehicle, $image);
 
         return response()->json([
             'data' => $details->build($vehicle, includeAssignment: true),
-            'message' => 'Image removed successfully.',
+            'message' => $result['cloudinary_warning'] ?? 'Image removed successfully.',
+            'cloudinary_warning' => $result['cloudinary_warning'],
         ]);
     }
 }

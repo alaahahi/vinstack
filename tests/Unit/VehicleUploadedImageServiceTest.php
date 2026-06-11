@@ -193,4 +193,39 @@ class VehicleUploadedImageServiceTest extends TestCase
         $this->assertSame('Mersin', $enriched['raw_data']['destination'] ?? null);
         $this->assertSame('Toronto', $enriched['raw_data']['loading_point'] ?? null);
     }
+
+    public function test_delete_removes_db_record_even_when_cloudinary_destroy_fails(): void
+    {
+        $vehicle = Vehicle::query()->create([
+            'source' => VehicleSource::Manual,
+            'vin' => 'DELETECLOUD1234567',
+            'status' => VehicleStatus::Available,
+        ]);
+
+        $user = User::factory()->create();
+
+        $image = VehicleUploadedImage::query()->create([
+            'vehicle_id' => $vehicle->id,
+            'stage' => 'terminal',
+            'cloudinary_url' => 'https://res.cloudinary.com/demo/image/upload/v1/terminal.jpg',
+            'public_id' => 'vinstack/vehicles/1/terminal/uuid',
+            'original_name' => 'terminal.jpg',
+            'uploaded_by' => $user->id,
+        ]);
+
+        $this->mock(CloudinaryService::class, function ($mock): void {
+            $mock->shouldReceive('destroy')
+                ->once()
+                ->andThrow(new \RuntimeException('Cloudinary unavailable'));
+        });
+
+        $service = app(VehicleUploadedImageService::class);
+        $result = $service->delete($vehicle, $image);
+
+        $this->assertSame(
+            'Image removed from gallery; Cloudinary delete failed.',
+            $result['cloudinary_warning'],
+        );
+        $this->assertDatabaseMissing('vehicle_uploaded_images', ['id' => $image->id]);
+    }
 }
