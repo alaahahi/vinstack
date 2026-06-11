@@ -287,7 +287,6 @@ import 'leaflet/dist/leaflet.css';
 import api from '../api/client';
 import { containerRefs, formatContainerDate } from '../utils/containerMeta';
 import { createTrackingMarkerIcon } from '../utils/containerMapIcons';
-import { useThemeStore } from '../stores/theme';
 
 const markerIcons = {
     origin: createTrackingMarkerIcon('origin'),
@@ -300,10 +299,8 @@ const legendItems = [
     { key: 'origin', label: 'المنشأ', class: 'legend-swatch--origin', icon: 'pi pi-arrow-up' },
     { key: 'waypoint', label: 'محطة ترانزيت', class: 'legend-swatch--waypoint', icon: 'pi pi-send' },
     { key: 'destination', label: 'الوجهة', class: 'legend-swatch--destination', icon: 'pi pi-circle' },
-    { key: 'current', label: 'الموقع الحالي', class: 'legend-swatch--current', icon: 'pi pi-car' },
+    { key: 'current', label: 'الموقع الحالي', class: 'legend-swatch--current legend-swatch--current-car' },
 ];
-
-const themeStore = useThemeStore();
 
 const props = defineProps({
     visible: {
@@ -380,11 +377,7 @@ const destinationLatLng = computed(() => pointFromLocation(tracking.value?.desti
 
 const currentLatLng = computed(() => pointFromLocation(tracking.value?.current_position));
 
-const mapTileUrl = computed(() => (
-    themeStore.isDark
-        ? 'https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png'
-        : 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png'
-));
+const mapTileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
 
 const mapTileAttribution = '&copy; OpenStreetMap &copy; CARTO';
 
@@ -1135,6 +1128,18 @@ onUnmounted(removeFocusTrap);
     background: linear-gradient(145deg, #0d9488, #14b8a6);
 }
 
+.legend-swatch--current-car::before {
+    content: '';
+    display: block;
+    width: 0.72rem;
+    height: 0.72rem;
+    background-color: #fff;
+    mask-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'%3E%3Cpath fill='black' d='M18.92 6.01C18.72 5.42 18.15 5 17.5 5h-11c-.66 0-1.22.42-1.42 1.01L3 12v7c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-1h12v1c0 .55.45 1 1 1h1c.55 0 1-.45 1-1v-7l-2.08-5.99zM6.5 16c-.83 0-1.5-.67-1.5-1.5S5.67 13 6.5 13s1.5.67 1.5 1.5S7.33 16 6.5 16zm11 0c-.83 0-1.5-.67-1.5-1.5s.67-1.5 1.5-1.5 1.5.67 1.5 1.5-.67 1.5-1.5 1.5zM5 11l1.5-4.5h11L19 11H5z'/%3E%3C/svg%3E");
+    mask-size: contain;
+    mask-repeat: no-repeat;
+    mask-position: center;
+}
+
 .map-legend-label {
     font-weight: 600;
 }
@@ -1811,20 +1816,44 @@ onUnmounted(removeFocusTrap);
     font-size: 0.55rem;
 }
 
+.tracking-map-marker--current .tm--current {
+    width: 42px;
+    height: 42px;
+}
+
 .tracking-map-marker .tm--current {
+    position: relative;
     background: linear-gradient(145deg, #0d9488, #14b8a6);
-    font-size: 0.85rem;
-    animation: trackingPulse 2s ease-in-out infinite;
+    border-width: 2.5px;
+    box-shadow: 0 3px 10px rgb(0 0 0 / 0.32);
+}
+
+.tracking-map-marker .tm--current .tm__car-svg {
+    width: 1.35rem;
+    height: 1.35rem;
+    color: #fff;
+    filter: drop-shadow(0 1px 1px rgb(0 0 0 / 0.2));
+}
+
+.tracking-map-marker .tm--current .tm__pulse {
+    position: absolute;
+    inset: -4px;
+    border-radius: 50%;
+    border: 2px solid rgb(20 184 166 / 0.55);
+    animation: trackingPulse 2.2s ease-out infinite;
+    pointer-events: none;
 }
 
 @keyframes trackingPulse {
-    0%,
-    100% {
-        box-shadow: 0 2px 8px rgb(0 0 0 / 0.28), 0 0 0 0 rgb(20 184 166 / 0.5);
+    0% {
+        transform: scale(0.92);
+        opacity: 0.85;
     }
 
-    50% {
-        box-shadow: 0 2px 12px rgb(0 0 0 / 0.32), 0 0 0 8px rgb(20 184 166 / 0);
+    70%,
+    100% {
+        transform: scale(1.35);
+        opacity: 0;
     }
 }
 

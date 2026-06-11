@@ -351,24 +351,6 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     color: #b45309;
 }
 
-.gallery-pill {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.25rem;
-    padding: 0.12rem 0.45rem;
-    border-radius: 999px;
-    border: 1px solid var(--vs-border);
-    background: var(--vs-surface-hover);
-    font-size: 0.62rem;
-    font-weight: 600;
-    line-height: 1.4;
-    color: var(--vs-text-muted);
-}
-
-.gallery-pill i {
-    font-size: 0.6rem;
-}
-
 .vehicle-vin-line {
     margin-bottom: 0.15rem;
 }
