@@ -135,7 +135,13 @@
                 title="تعديل سيارة يدوية"
                 @click="$emit('edit', vehicle)"
             />
-            <Button label="إسناد" size="small" class="btn-assign" @click="$emit('assign', vehicle)" />
+            <Button
+                v-if="!isAssigned"
+                label="إسناد"
+                size="small"
+                class="btn-assign"
+                @click="$emit('assign', vehicle)"
+            />
         </div>
 
         <!-- Dealer: local status + action -->
@@ -168,6 +174,7 @@ import {
     vehicleContainerRef,
     vehicleDestination,
     vehicleEnteredBy,
+    vehicleIsAssigned,
     vehicleFuelClass,
     vehicleFuelType,
     vehicleKeysInfo,
@@ -201,6 +208,7 @@ const props = defineProps({
 defineEmits(['assign', 'update-status', 'open-detail', 'edit', 'unassign', 'track-container']);
 
 const isManual = computed(() => props.vehicle?.source === 'manual');
+const isAssigned = computed(() => vehicleIsAssigned(props.vehicle));
 const sourceLabel = computed(() => vehicleSourceLabel(props.vehicle));
 const sourcePillClass = computed(() => vehicleSourcePillClass(props.vehicle));
 

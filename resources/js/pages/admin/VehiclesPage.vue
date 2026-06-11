@@ -3,6 +3,13 @@
         <AdminPageHeader :count="total" count-label="سيارة">
             <template #actions>
                 <Button
+                    label="استيراد من نجوم الجزيرة"
+                    icon="pi pi-file-import"
+                    severity="secondary"
+                    outlined
+                    @click="nujoomImportVisible = true"
+                />
+                <Button
                     label="إضافة سيارة يدوياً"
                     icon="pi pi-plus"
                     class="btn-add"
@@ -82,6 +89,8 @@
             />
         </Drawer>
 
+        <NujoomImportDialog v-model:visible="nujoomImportVisible" @applied="resetAndLoad" />
+
         <Dialog v-model:visible="assignVisible" header="إسناد سيارة" modal style="width: min(420px, 100vw)">
             <Select
                 v-model="selectedDealerId"
@@ -115,6 +124,7 @@ import DealerFilterBadges from '../../components/DealerFilterBadges.vue';
 import ManualVehicleForm from '../../components/ManualVehicleForm.vue';
 import VehicleListPanel from '../../components/VehicleListPanel.vue';
 import VehicleDetailDrawer from '../../components/VehicleDetailDrawer.vue';
+import NujoomImportDialog from '../../components/NujoomImportDialog.vue';
 import api from '../../api/client';
 
 const toast = useToast();
@@ -138,6 +148,7 @@ const editingVehicle = ref(null);
 const manualFormHeader = computed(() =>
     editingVehicle.value ? 'تعديل سيارة يدوية' : 'إضافة سيارة يدوياً',
 );
+const nujoomImportVisible = ref(false);
 const assignVisible = ref(false);
 const detailVisible = ref(false);
 const detailVehicleId = ref(null);
