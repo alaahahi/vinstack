@@ -7,6 +7,7 @@ use App\Enums\VehicleStatus;
 use App\Models\Vehicle;
 use App\Models\VinstackSetting;
 use App\Services\VinstackService;
+use App\Support\VehicleGalleryMerger;
 use App\Support\VehicleImageStages;
 use Illuminate\Support\Arr;
 
@@ -54,7 +55,7 @@ class SyncVehiclesAction
                     continue;
                 }
 
-                $vehicle->update($payload);
+                $vehicle->update(VehicleGalleryMerger::mergeSyncPayload($vehicle, $payload));
                 $updated++;
 
                 continue;
