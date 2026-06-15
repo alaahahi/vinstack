@@ -120,13 +120,13 @@
             <span v-if="isAssigned" class="chat-btn-wrap">
                 <Button
                     icon="pi pi-comments"
-                    severity="secondary"
+                    :severity="hasUnreadMessages ? 'info' : 'secondary'"
+                    :class="{ 'chat-btn--unread': hasUnreadMessages }"
                     text
                     rounded
-                    title="محادثة التاجر"
+                    :title="hasUnreadMessages ? 'رسائل جديدة — محادثة التاجر' : 'محادثة التاجر'"
                     @click="$emit('open-chat', vehicle)"
                 />
-                <i v-if="hasUnreadMessages" class="pi pi-star-fill chat-btn__star" aria-label="رسائل جديدة" />
             </span>
             <Button
                 v-if="isManual"
@@ -153,13 +153,13 @@
             <span class="chat-btn-wrap">
                 <Button
                     icon="pi pi-comments"
-                    severity="secondary"
+                    :severity="hasUnreadMessages ? 'info' : 'secondary'"
+                    :class="{ 'chat-btn--unread': hasUnreadMessages }"
                     text
                     rounded
-                    title="محادثة السيارة"
+                    :title="hasUnreadMessages ? 'رسائل جديدة — محادثة السيارة' : 'محادثة السيارة'"
                     @click="$emit('open-chat', vehicle)"
                 />
-                <i v-if="hasUnreadMessages" class="pi pi-star-fill chat-btn__star" aria-label="رسائل جديدة" />
             </span>
         </div>
     </div>
@@ -646,18 +646,31 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
 }
 
 .chat-btn-wrap {
-    position: relative;
     display: inline-flex;
 }
 
-.chat-btn__star {
-    position: absolute;
-    top: -2px;
-    inset-inline-end: -2px;
-    font-size: 0.55rem;
-    color: #f59e0b;
-    filter: drop-shadow(0 0 2px rgb(0 0 0 / 0.35));
-    pointer-events: none;
+.chat-btn-wrap :deep(.chat-btn--unread) {
+    color: #0d9488 !important;
+    background: rgb(20 184 166 / 0.14) !important;
+}
+
+.chat-btn-wrap :deep(.chat-btn--unread .p-button-icon) {
+    color: #14b8a6;
+    font-weight: 700;
+}
+
+.chat-btn-wrap :deep(.chat-btn--unread:hover) {
+    color: #0f766e !important;
+    background: rgb(20 184 166 / 0.22) !important;
+}
+
+[data-theme='dark'] .chat-btn-wrap :deep(.chat-btn--unread) {
+    color: #5eead4 !important;
+    background: rgb(20 184 166 / 0.2) !important;
+}
+
+[data-theme='dark'] .chat-btn-wrap :deep(.chat-btn--unread .p-button-icon) {
+    color: #5eead4;
 }
 
 @media (max-width: 1100px) {

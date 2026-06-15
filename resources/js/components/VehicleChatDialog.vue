@@ -4,21 +4,22 @@
         :header="dialogTitle"
         modal
         class="vehicle-chat-dialog"
-        :style="{ width: 'min(560px, 100vw)' }"
+        :style="{ width: 'min(680px, 94vw)' }"
+        :content-style="{ padding: '0 1rem 1rem' }"
         @show="onOpen"
         @hide="onClose"
     >
         <div v-if="vehicle" class="vehicle-chat">
-            <div class="vehicle-chat__header">
+            <div class="vehicle-chat__header" dir="rtl">
                 <div class="vehicle-chat__title">{{ vehicleTitle(vehicle) }}</div>
                 <VinCopyLabel :vin="vehicle.vin" block />
             </div>
 
-            <div ref="scrollEl" class="vehicle-chat__messages">
+            <div ref="scrollEl" class="vehicle-chat__messages" dir="ltr">
                 <div v-if="loading" class="vehicle-chat__loading">
                     <ProgressSpinner style="width: 28px; height: 28px" stroke-width="4" />
                 </div>
-                <div v-else-if="!messages.length" class="vehicle-chat__empty">
+                <div v-else-if="!messages.length" class="vehicle-chat__empty" dir="rtl">
                     ابدأ المحادثة بإرسال رسالة أو صورة.
                 </div>
                 <div
@@ -34,9 +35,11 @@
                     >
                         {{ message.author_initial }}
                     </div>
+
                     <div class="vehicle-chat__bubble-wrap">
                         <div
                             class="vehicle-chat__bubble"
+                            dir="rtl"
                             :class="message.author_role === 'dealer' ? 'vehicle-chat__bubble--dealer' : 'vehicle-chat__bubble--admin'"
                         >
                             <div v-if="!message.is_mine" class="vehicle-chat__sender">{{ message.author_name }}</div>
@@ -51,8 +54,15 @@
                                 <img :src="message.attachment_url" alt="مرفق" class="vehicle-chat__image" loading="lazy" />
                             </a>
                         </div>
-                        <div class="vehicle-chat__time" dir="ltr">{{ formatDateTime(message.created_at) }}</div>
+                        <div
+                            class="vehicle-chat__time"
+                            dir="ltr"
+                            :class="message.is_mine ? 'vehicle-chat__time--mine' : 'vehicle-chat__time--theirs'"
+                        >
+                            {{ formatDateTime(message.created_at) }}
+                        </div>
                     </div>
+
                     <div
                         v-if="message.is_mine"
                         class="vehicle-chat__avatar"
@@ -63,7 +73,7 @@
                 </div>
             </div>
 
-            <div class="vehicle-chat__composer">
+            <div class="vehicle-chat__composer" dir="rtl">
                 <input
                     ref="fileInput"
                     type="file"
@@ -75,12 +85,13 @@
                     <img :src="pendingPreview" alt="معاينة" class="vehicle-chat__pending-img" />
                     <Button icon="pi pi-times" text rounded severity="secondary" @click="clearPendingFile" />
                 </div>
-                <div class="vehicle-chat__composer-row">
+                <div class="vehicle-chat__composer-box">
                     <Button
                         icon="pi pi-image"
                         severity="secondary"
                         text
                         rounded
+                        class="vehicle-chat__attach"
                         aria-label="إرفاق صورة"
                         :disabled="sending"
                         @click="pickFile"
@@ -297,30 +308,46 @@ watch(
 .vehicle-chat {
     display: flex;
     flex-direction: column;
-    min-height: 420px;
-    max-height: min(72vh, 640px);
+    min-height: 460px;
+    max-height: min(78vh, 700px);
 }
 
 .vehicle-chat__header {
-    padding: 0.65rem 0.85rem;
+    padding: 0.75rem 1rem;
     border: 1px solid var(--vs-border);
-    border-radius: 0.75rem;
+    border-radius: 0.85rem;
     background: var(--vs-surface-hover);
-    margin-bottom: 0.75rem;
+    margin-bottom: 0.85rem;
 }
 
 .vehicle-chat__title {
     font-weight: 700;
-    margin-bottom: 0.35rem;
+    font-size: 1rem;
+    margin-bottom: 0.4rem;
 }
 
 .vehicle-chat__messages {
     flex: 1;
     overflow-y: auto;
-    padding: 0.35rem 0.15rem;
+    overflow-x: hidden;
+    padding: 0.5rem 0.35rem;
     display: flex;
     flex-direction: column;
-    gap: 0.75rem;
+    gap: 0.85rem;
+    background: var(--vs-surface);
+    border: 1px solid var(--vs-border);
+    border-radius: 0.85rem;
+    scrollbar-width: thin;
+    scrollbar-color: var(--vs-border) transparent;
+}
+
+.vehicle-chat__messages::-webkit-scrollbar {
+    width: 6px;
+}
+
+.vehicle-chat__messages::-webkit-scrollbar-thumb {
+    background: var(--vs-border);
+    border-radius: 999px;
 }
 
 .vehicle-chat__loading,
@@ -328,7 +355,7 @@ watch(
     display: flex;
     justify-content: center;
     align-items: center;
-    min-height: 180px;
+    min-height: 200px;
     color: var(--vs-text-muted);
     text-align: center;
     padding: 1rem;
@@ -337,30 +364,30 @@ watch(
 .vehicle-chat__row {
     display: flex;
     align-items: flex-end;
-    gap: 0.45rem;
-    max-width: 100%;
+    gap: 0.55rem;
+    width: 100%;
 }
 
 .vehicle-chat__row--mine {
-    justify-content: flex-start;
+    justify-content: flex-end;
 }
 
 .vehicle-chat__row--theirs {
-    justify-content: flex-end;
-    flex-direction: row-reverse;
+    justify-content: flex-start;
 }
 
 .vehicle-chat__avatar {
-    width: 2rem;
-    height: 2rem;
+    width: 2.15rem;
+    height: 2.15rem;
     border-radius: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.82rem;
+    font-size: 0.84rem;
     font-weight: 700;
     color: #fff;
     flex-shrink: 0;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.18);
 }
 
 .vehicle-chat__avatar--dealer {
@@ -372,82 +399,91 @@ watch(
 }
 
 .vehicle-chat__bubble-wrap {
-    max-width: min(78%, 360px);
-    min-width: 0;
+    max-width: min(72%, 440px);
+    min-width: 5.5rem;
 }
 
 .vehicle-chat__bubble {
-    border-radius: 1rem;
-    padding: 0.55rem 0.75rem;
-    box-shadow: 0 1px 2px rgb(0 0 0 / 0.08);
+    border-radius: 1.1rem;
+    padding: 0.65rem 0.9rem;
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.1);
+}
+
+.vehicle-chat__row--mine .vehicle-chat__bubble {
+    border-bottom-right-radius: 0.3rem;
+}
+
+.vehicle-chat__row--theirs .vehicle-chat__bubble {
+    border-bottom-left-radius: 0.3rem;
 }
 
 .vehicle-chat__bubble--dealer {
-    background: #dbeafe;
+    background: linear-gradient(145deg, #dbeafe, #bfdbfe);
     color: #0f172a;
 }
 
 .vehicle-chat__bubble--admin {
-    background: #ccfbf1;
+    background: linear-gradient(145deg, #ccfbf1, #99f6e4);
     color: #134e4a;
 }
 
-.vehicle-chat__row--mine .vehicle-chat__bubble--dealer,
-.vehicle-chat__row--mine .vehicle-chat__bubble--admin {
-    border-end-end-radius: 0.25rem;
-}
-
-.vehicle-chat__row--theirs .vehicle-chat__bubble--dealer,
-.vehicle-chat__row--theirs .vehicle-chat__bubble--admin {
-    border-end-start-radius: 0.25rem;
-}
-
 [data-theme='dark'] .vehicle-chat__bubble--dealer {
-    background: #1e3a5f;
+    background: linear-gradient(145deg, #1e3a5f, #1d4ed8);
     color: #e2e8f0;
 }
 
 [data-theme='dark'] .vehicle-chat__bubble--admin {
-    background: #134e4a;
+    background: linear-gradient(145deg, #134e4a, #0f766e);
     color: #ecfdf5;
 }
 
 .vehicle-chat__sender {
-    font-size: 0.68rem;
+    font-size: 0.7rem;
     font-weight: 700;
-    margin-bottom: 0.2rem;
-    opacity: 0.85;
+    margin-bottom: 0.25rem;
+    opacity: 0.88;
 }
 
 .vehicle-chat__text {
     margin: 0;
     white-space: pre-wrap;
-    line-height: 1.5;
+    line-height: 1.55;
     word-break: break-word;
+    font-size: 0.92rem;
 }
 
 .vehicle-chat__image-link {
     display: block;
-    margin-top: 0.35rem;
+    margin-top: 0.45rem;
 }
 
 .vehicle-chat__image {
     display: block;
-    max-width: 100%;
-    border-radius: 0.55rem;
+    width: 100%;
+    max-width: 280px;
+    border-radius: 0.65rem;
+    border: 1px solid rgb(0 0 0 / 0.08);
 }
 
 .vehicle-chat__time {
-    font-size: 0.68rem;
+    font-size: 0.66rem;
     color: var(--vs-text-subtle);
-    margin-top: 0.2rem;
-    padding-inline: 0.25rem;
+    margin-top: 0.25rem;
+    padding-inline: 0.35rem;
+}
+
+.vehicle-chat__time--mine {
+    text-align: right;
+}
+
+.vehicle-chat__time--theirs {
+    text-align: left;
 }
 
 .vehicle-chat__composer {
+    padding-top: 0.75rem;
+    margin-top: 0.65rem;
     border-top: 1px solid var(--vs-border);
-    padding-top: 0.65rem;
-    margin-top: 0.5rem;
 }
 
 .vehicle-chat__file-input {
@@ -458,29 +494,79 @@ watch(
     display: flex;
     align-items: center;
     gap: 0.5rem;
-    margin-bottom: 0.5rem;
+    margin-bottom: 0.55rem;
+    padding-inline: 0.25rem;
 }
 
 .vehicle-chat__pending-img {
-    width: 72px;
-    height: 72px;
+    width: 76px;
+    height: 76px;
     object-fit: cover;
-    border-radius: 0.5rem;
+    border-radius: 0.55rem;
     border: 1px solid var(--vs-border);
 }
 
-.vehicle-chat__composer-row {
+.vehicle-chat__composer-box {
     display: flex;
     align-items: flex-end;
-    gap: 0.35rem;
+    gap: 0.45rem;
+    padding: 0.45rem 0.5rem;
+    border: 1px solid var(--vs-border);
+    border-radius: 1.25rem;
+    background: var(--vs-surface-hover);
 }
 
 .vehicle-chat__input {
     flex: 1;
     min-width: 0;
+    border: none !important;
+    background: transparent !important;
+    box-shadow: none !important;
+    padding: 0.35rem 0.15rem !important;
+    font-size: 0.92rem;
+    line-height: 1.45;
+    max-height: 120px;
+}
+
+.vehicle-chat__input:focus {
+    outline: none;
+    box-shadow: none !important;
+}
+
+.vehicle-chat__attach,
+.vehicle-chat__send {
+    flex-shrink: 0;
 }
 
 .vehicle-chat__send {
-    flex-shrink: 0;
+    width: 2.5rem !important;
+    height: 2.5rem !important;
+    padding: 0 !important;
+    border-radius: 50% !important;
+}
+
+.vehicle-chat__send :deep(.p-button-icon) {
+    transform: scaleX(-1);
+}
+
+@media (max-width: 520px) {
+    .vehicle-chat {
+        min-height: 70vh;
+        max-height: 82vh;
+    }
+
+    .vehicle-chat__bubble-wrap {
+        max-width: 82%;
+    }
+}
+</style>
+
+<style>
+.vehicle-chat-dialog .p-dialog-header {
+    padding: 1rem 1.25rem 0.65rem;
+}
+
+.vehicle-chat-dialog .p-dialog-content {
+    overflow: hidden;
 }
 </style>
