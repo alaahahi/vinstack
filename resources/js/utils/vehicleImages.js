@@ -248,7 +248,6 @@ export function vehicleGalleryByStage(vehicle) {
     }
 
     const raw = vehicle.raw_data ?? {};
-    const liveGallery = hasClientPortalGalleryBlocks(raw) || (raw.gallery && typeof raw.gallery === 'object');
 
     // Live gallery endpoint returns merged images_by_stage — trust it over re-parsing raw_data blocks.
     if (vehicle.gallery_fresh && vehicle.images_by_stage && typeof vehicle.images_by_stage === 'object') {
@@ -257,7 +256,7 @@ export function vehicleGalleryByStage(vehicle) {
 
     const precomputed = vehicle.images_by_stage ?? vehicle.raw_data?.images_by_stage;
 
-    if (precomputed && typeof precomputed === 'object' && ! liveGallery) {
+    if (precomputed && typeof precomputed === 'object') {
         return stagesFromPrecomputed(precomputed, vehicle);
     }
 

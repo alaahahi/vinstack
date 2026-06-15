@@ -164,12 +164,28 @@ class VehicleGalleryMerger
         $mergedRaw['images'] = $mergedImages;
         $mergedRaw['images_by_stage'] = $mergedStages;
 
-        foreach (VehicleImageStages::STAGES as $stage) {
-            $mergedRaw[$stage] = self::mergeRawStageBlock(
-                Arr::get($existingRaw, $stage),
-                Arr::get($newRaw, $stage),
-                $mergedStages[$stage],
-            );
+        $hasGalleryStructure = is_array(Arr::get($existingRaw, 'gallery'))
+            || is_array(Arr::get($newRaw, 'gallery'))
+            || (isset($existingRaw['photos']) && is_array($existingRaw['photos']));
+
+        if (! $hasGalleryStructure) {
+            foreach (VehicleImageStages::STAGES as $stage) {
+                $mergedRaw[$stage] = self::mergeRawStageBlock(
+                    Arr::get($existingRaw, $stage),
+                    Arr::get($newRaw, $stage),
+                    $mergedStages[$stage],
+                );
+            }
+        } else {
+            foreach (VehicleImageStages::STAGES as $stage) {
+                $existing = Arr::get($existingRaw, $stage);
+
+                if (is_string($existing) && $existing !== '') {
+                    $mergedRaw[$stage] = $existing;
+                } else {
+                    unset($mergedRaw[$stage]);
+                }
+            }
         }
 
         $mergedRaw['gallery'] = self::mergeRawGalleryNode(
