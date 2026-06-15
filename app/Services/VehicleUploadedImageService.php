@@ -275,7 +275,13 @@ class VehicleUploadedImageService
 
         $raw = is_array($vehicle->raw_data) ? $vehicle->raw_data : [];
 
-        $vinstackStages = VehicleGalleryMerger::resolveVinstackStages($raw, $vehicle);
+        $persistedStages = Arr::get($raw, 'images_by_stage');
+
+        if (is_array($persistedStages) && VehicleGalleryMerger::persistedStagesHaveUrls($persistedStages)) {
+            $vinstackStages = VehicleGalleryMerger::normalizePersistedStages($persistedStages);
+        } else {
+            $vinstackStages = VehicleGalleryMerger::resolveVinstackStages($raw, $vehicle);
+        }
 
         $imagesByStage = VehicleGalleryMerger::merge($vinstackStages, $vehicle);
 

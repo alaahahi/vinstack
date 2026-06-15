@@ -380,6 +380,10 @@ export function vehicleImages(vehicle) {
 }
 
 export function vehicleGalleryCount(vehicle) {
+    if (Array.isArray(vehicle?.images) && vehicle.images_by_stage && typeof vehicle.images_by_stage === 'object') {
+        return vehicle.images.reduce((count, url) => (normalizeUrl(url) ? count + 1 : count), 0);
+    }
+
     return vehicleGalleryImages(vehicle).length;
 }
 

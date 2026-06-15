@@ -131,14 +131,20 @@ class VehicleGalleryMerger
         $existingStages = self::resolveVinstackStages($existingRaw, $vehicle);
         self::appendPersistedStageImages($existingStages, $existingRaw, $vehicle);
         $newStages = VehicleImageStages::resolve($newRaw);
+        $preserveGalleryImages = isset($existingRaw['gallery_synced_at'])
+            || self::rawHasGalleryImageUrls($existingRaw);
 
         $mergedStages = [];
 
         foreach (VehicleImageStages::STAGES as $stage) {
-            $mergedStages[$stage] = self::unionUrlLists(
-                $existingStages[$stage] ?? [],
-                $newStages[$stage] ?? [],
-            );
+            if ($preserveGalleryImages) {
+                $mergedStages[$stage] = $existingStages[$stage] ?? [];
+            } else {
+                $mergedStages[$stage] = self::unionStageImages(
+                    $existingStages[$stage] ?? [],
+                    $newStages[$stage] ?? [],
+                );
+            }
         }
 
         $mergedImages = self::flatten($mergedStages, $vehicle, ['images' => []]);
@@ -251,6 +257,153 @@ class VehicleGalleryMerger
 
             $stages['terminal'] = self::unionUrlLists($stages['terminal'] ?? [], [$url]);
         }
+    }
+
+    /**
+     * @param  array<string, mixed>  $raw
+     */
+    public static function rawHasGalleryImageUrls(array $raw): bool
+    {
+        if (is_array($raw['images_by_stage'] ?? null)) {
+            foreach (VehicleImageStages::STAGES as $stage) {
+                if (($raw['images_by_stage'][$stage] ?? []) !== []) {
+                    return true;
+                }
+            }
+        }
+
+        foreach (['gallery', 'photos'] as $nodeKey) {
+            $node = $raw[$nodeKey] ?? null;
+
+            if (! is_array($node)) {
+                continue;
+            }
+
+            foreach (VehicleImageStages::STAGES as $stage) {
+                $block = $node[$stage] ?? null;
+
+                if (is_array($block) && ($block['urls'] ?? []) !== []) {
+                    return true;
+                }
+            }
+        }
+
+        foreach (VehicleImageStages::STAGES as $stage) {
+            $block = $raw[$stage] ?? null;
+
+            if (is_array($block) && ($block['urls'] ?? []) !== []) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $persistedStages
+     * @return array{terminal: list<string>, pickup: list<string>, destination: list<string>}
+     */
+    public static function normalizePersistedStages(array $persistedStages): array
+    {
+        $stages = [
+            'terminal' => [],
+            'pickup' => [],
+            'destination' => [],
+        ];
+
+        foreach (VehicleImageStages::STAGES as $stage) {
+            $list = $persistedStages[$stage] ?? [];
+
+            if (! is_array($list)) {
+                continue;
+            }
+
+            $stages[$stage] = self::unionUrlLists($list);
+        }
+
+        return $stages;
+    }
+
+    /**
+     * @param  array<string, mixed>  $persistedStages
+     */
+    public static function persistedStagesHaveUrls(array $persistedStages): bool
+    {
+        foreach (VehicleImageStages::STAGES as $stage) {
+            if (($persistedStages[$stage] ?? []) !== []) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
+     * @param  list<string>  $existing
+     * @param  list<string>  $incoming
+     * @return list<string>
+     */
+    public static function unionStageImages(array $existing, array $incoming): array
+    {
+        $merged = self::unionUrlLists($existing);
+        $fingerprints = [];
+
+        foreach ($merged as $url) {
+            $fingerprint = self::imageUrlFingerprint($url);
+
+            if ($fingerprint !== null) {
+                $fingerprints[$fingerprint] = true;
+            }
+        }
+
+        foreach ($incoming as $url) {
+            if (! is_string($url) || $url === '' || str_contains($url, 'no_photo')) {
+                continue;
+            }
+
+            if (in_array($url, $merged, true)) {
+                continue;
+            }
+
+            $fingerprint = self::imageUrlFingerprint($url);
+
+            if ($fingerprint !== null && isset($fingerprints[$fingerprint])) {
+                continue;
+            }
+
+            $merged[] = $url;
+
+            if ($fingerprint !== null) {
+                $fingerprints[$fingerprint] = true;
+            }
+        }
+
+        return $merged;
+    }
+
+    protected static function imageUrlFingerprint(string $url): ?string
+    {
+        if (preg_match('/images-(\d{10,13})-/i', $url, $matches)) {
+            return 'batch:'.$matches[1];
+        }
+
+        if (preg_match('/(?:^|\/)thumbnail[-_](.+)$/i', $url, $matches)) {
+            return 'file:'.strtolower($matches[1]);
+        }
+
+        $path = parse_url($url, PHP_URL_PATH);
+
+        if (! is_string($path) || $path === '') {
+            return null;
+        }
+
+        $basename = strtolower(basename($path));
+
+        if ($basename === '' || str_contains($basename, 'no_photo')) {
+            return null;
+        }
+
+        return 'file:'.$basename;
     }
 
     /**
