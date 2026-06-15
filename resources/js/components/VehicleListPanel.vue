@@ -75,6 +75,7 @@
                 @unassign="$emit('unassign', $event)"
 
                 @update-status="$emit('update-status', $event)"
+                @open-chat="$emit('open-chat', $event)"
 
                 @open-detail="$emit('open-detail', $event)"
 
@@ -270,7 +271,7 @@ const props = defineProps({
 
 
 
-const emit = defineEmits(['assign', 'unassign', 'update-status', 'open-detail', 'edit', 'page', 'empty-action', 'load-more']);
+const emit = defineEmits(['assign', 'unassign', 'update-status', 'open-chat', 'open-detail', 'edit', 'page', 'empty-action', 'load-more']);
 
 
 

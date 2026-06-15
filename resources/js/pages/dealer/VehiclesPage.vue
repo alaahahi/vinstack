@@ -21,7 +21,7 @@
             :tracking-available="trackingAvailable"
             empty-hint="عند إسناد سيارات من الإدارة ستظهر هنا تلقائياً."
             empty-action-label="تحديث القائمة"
-            @update-status="openNotes"
+            @open-chat="openChat"
             @open-detail="openDetail"
             @page="onPage"
             @empty-action="load"
@@ -33,29 +33,13 @@
             mode="dealer"
         />
 
-        <Dialog
-            v-model:visible="notesVisible"
-            header="رسالة على السيارة"
-            modal
-            style="width: min(480px, 100vw)"
-        >
-            <div v-if="selectedVehicle" class="notes-dialog">
-                <div class="notes-dialog__vehicle">
-                    <div class="notes-dialog__title">{{ vehicleTitle(selectedVehicle) }}</div>
-                    <VinCopyLabel :vin="selectedVehicle.vin" block />
-                </div>
-                <Textarea
-                    v-model="notes"
-                    rows="5"
-                    class="w-full"
-                    placeholder="اكتب رسالتك أو ملاحظتك على هذه السيارة..."
-                />
-            </div>
-            <template #footer>
-                <Button label="إلغاء" text @click="notesVisible = false" />
-                <Button label="إرسال" class="btn-cta" :loading="saving" @click="saveNotes" />
-            </template>
-        </Dialog>
+        <VehicleChatDialog
+            v-model:visible="chatVisible"
+            :vehicle="chatVehicle"
+            mode="dealer"
+            @read="onChatRead"
+            @sent="load"
+        />
     </div>
 </template>
 
@@ -65,14 +49,11 @@ import { useToast } from 'primevue/usetoast';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
 import InputText from 'primevue/inputtext';
-import Textarea from 'primevue/textarea';
 import Button from 'primevue/button';
-import Dialog from 'primevue/dialog';
 import DealerDashboardCards from '../../components/DealerDashboardCards.vue';
 import VehicleListPanel from '../../components/VehicleListPanel.vue';
 import VehicleDetailDrawer from '../../components/VehicleDetailDrawer.vue';
-import VinCopyLabel from '../../components/VinCopyLabel.vue';
-import { vehicleTitle } from '../../utils/vehicleMeta';
+import VehicleChatDialog from '../../components/VehicleChatDialog.vue';
 import api from '../../api/client';
 
 const toast = useToast();
@@ -84,12 +65,10 @@ const perPage = ref(15);
 const total = ref(0);
 const trackingAvailable = ref(false);
 
-const notesVisible = ref(false);
+const chatVisible = ref(false);
+const chatVehicle = ref(null);
 const detailVisible = ref(false);
 const detailVehicleId = ref(null);
-const selectedVehicle = ref(null);
-const notes = ref('');
-const saving = ref(false);
 
 async function load() {
     loading.value = true;
@@ -123,50 +102,22 @@ function onPage(event) {
     load();
 }
 
-function openNotes(vehicle) {
-    selectedVehicle.value = vehicle;
-    notes.value = vehicle.notes || '';
-    notesVisible.value = true;
+function openChat(vehicle) {
+    chatVehicle.value = vehicle;
+    chatVisible.value = true;
+}
+
+function onChatRead(vehicle) {
+    const row = vehicles.value.find((item) => item.id === vehicle.id);
+
+    if (row) {
+        row.unread_messages_count = 0;
+    }
 }
 
 function openDetail(vehicle) {
     detailVehicleId.value = vehicle.id;
     detailVisible.value = true;
-}
-
-async function saveNotes() {
-    const message = notes.value.trim();
-
-    if (! message) {
-        toast.add({
-            severity: 'warn',
-            summary: 'الرسالة فارغة',
-            detail: 'اكتب رسالة قبل الإرسال.',
-            life: 3500,
-        });
-
-        return;
-    }
-
-    saving.value = true;
-
-    try {
-        await api.patch(`/dealer/vehicles/${selectedVehicle.value.id}/status`, {
-            notes: message,
-        });
-        notesVisible.value = false;
-        toast.add({ severity: 'success', summary: 'تم إرسال الرسالة', life: 3000 });
-        await load();
-    } catch (e) {
-        toast.add({
-            severity: 'error',
-            summary: 'خطأ',
-            detail: e.response?.data?.message || 'فشل إرسال الرسالة',
-            life: 4000,
-        });
-    } finally {
-        saving.value = false;
-    }
 }
 
 onMounted(load);
@@ -197,22 +148,5 @@ onMounted(load);
     flex: 1;
     min-width: min(100%, 220px);
     max-width: 320px;
-}
-
-.notes-dialog__vehicle {
-    margin-bottom: 0.85rem;
-    padding: 0.75rem 0.85rem;
-    border: 1px solid var(--vs-border);
-    border-radius: 0.75rem;
-    background: var(--vs-surface-hover);
-}
-
-.notes-dialog__title {
-    font-weight: 700;
-    margin-bottom: 0.35rem;
-}
-
-.w-full {
-    width: 100%;
 }
 </style>

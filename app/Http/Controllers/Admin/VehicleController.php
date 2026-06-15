@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Actions\AssignVehicleAction;
 use App\Actions\UnassignVehicleAction;
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\AssignVehicleRequest;
 use App\Enums\VehicleSource;
@@ -11,6 +12,7 @@ use App\Models\Dealer;
 use App\Models\Vehicle;
 use App\Services\ContainerTrackingService;
 use App\Services\VehicleDetailService;
+use App\Services\VehicleMessageService;
 use App\Services\VehicleUploadedImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -21,6 +23,7 @@ class VehicleController extends Controller
         Request $request,
         VehicleUploadedImageService $gallery,
         ContainerTrackingService $tracking,
+        VehicleMessageService $messages,
     ): JsonResponse
     {
         $query = Vehicle::query()
@@ -89,8 +92,10 @@ class VehicleController extends Controller
 
         $vehicles->through(fn (Vehicle $vehicle) => $gallery->enrichListVehicle($vehicle));
 
+        $items = $messages->attachUnreadCounts($vehicles->items(), UserRole::Admin);
+
         return response()->json([
-            'data' => $vehicles->items(),
+            'data' => $items,
             'meta' => [
                 'current_page' => $vehicles->currentPage(),
                 'last_page' => $vehicles->lastPage(),

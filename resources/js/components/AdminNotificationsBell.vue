@@ -14,69 +14,43 @@
 
         <Dialog
             v-model:visible="listVisible"
-            header="إشعارات الملاحظات"
+            header="رسائل التجار"
             modal
             :style="{ width: 'min(520px, 100vw)' }"
-            @hide="onListHide"
+            @hide="fetchUnreadCount"
         >
             <div v-if="loadingList" class="admin-notifications__loading">
                 <ProgressSpinner style="width: 28px; height: 28px" stroke-width="4" />
             </div>
             <div v-else-if="!items.length" class="admin-notifications__empty">
-                لا توجد إشعارات حالياً.
+                لا توجد رسائل جديدة.
             </div>
             <ul v-else class="admin-notifications__list">
                 <li
                     v-for="item in items"
-                    :key="item.id"
+                    :key="item.vehicle_id"
                     class="admin-notifications__item"
-                    :class="{ 'admin-notifications__item--unread': !item.read_at }"
                 >
-                    <button type="button" class="admin-notifications__item-btn" @click="openDetail(item)">
+                    <button type="button" class="admin-notifications__item-btn" @click="openChat(item)">
                         <span class="admin-notifications__item-top">
                             <strong>{{ item.vehicle?.title || 'سيارة' }}</strong>
-                            <span v-if="!item.read_at" class="admin-notifications__dot" aria-hidden="true" />
+                            <span class="admin-notifications__count">{{ item.unread_count }}</span>
                         </span>
                         <span class="admin-notifications__dealer">{{ item.dealer_name || 'تاجر' }}</span>
-                        <span class="admin-notifications__preview">{{ preview(item.message) }}</span>
+                        <span class="admin-notifications__preview">{{ preview(item.preview) }}</span>
                         <span class="admin-notifications__time" dir="ltr">{{ formatDateTime(item.created_at) }}</span>
                     </button>
                 </li>
             </ul>
         </Dialog>
 
-        <Dialog
-            v-model:visible="detailVisible"
-            header="رسالة التاجر"
-            modal
-            :style="{ width: 'min(560px, 100vw)' }"
-        >
-            <div v-if="loadingDetail" class="admin-notifications__loading">
-                <ProgressSpinner style="width: 28px; height: 28px" stroke-width="4" />
-            </div>
-            <div v-else-if="selected" class="admin-notifications__detail">
-                <div class="admin-notifications__vehicle-card">
-                    <div class="admin-notifications__vehicle-title">{{ selected.vehicle?.title || '—' }}</div>
-                    <div class="admin-notifications__vehicle-meta">
-                        <span v-if="selected.vehicle?.year">{{ selected.vehicle.year }}</span>
-                        <span v-if="selected.dealer_name">{{ selected.dealer_name }}</span>
-                    </div>
-                    <div class="admin-notifications__vin-row">
-                        <span class="admin-notifications__vin-label">الشانصي</span>
-                        <VinCopyLabel :vin="selected.vehicle?.vin" block />
-                    </div>
-                </div>
-
-                <div class="admin-notifications__message-box">
-                    <div class="admin-notifications__message-label">الرسالة</div>
-                    <p class="admin-notifications__message-text">{{ selected.message }}</p>
-                    <div class="admin-notifications__message-meta" dir="ltr">
-                        {{ formatDateTime(selected.created_at) }}
-                        <span v-if="selected.author_name"> · {{ selected.author_name }}</span>
-                    </div>
-                </div>
-            </div>
-        </Dialog>
+        <VehicleChatDialog
+            v-model:visible="chatVisible"
+            :vehicle="chatVehicle"
+            mode="admin"
+            @read="onChatRead"
+            @sent="onChatSent"
+        />
     </div>
 </template>
 
@@ -85,17 +59,16 @@ import { computed, onMounted, onUnmounted, ref } from 'vue';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import ProgressSpinner from 'primevue/progressspinner';
-import VinCopyLabel from './VinCopyLabel.vue';
+import VehicleChatDialog from './VehicleChatDialog.vue';
 import api from '../api/client';
 import { formatDateTime } from '../utils/formatDateTime';
 
 const items = ref([]);
 const unreadCount = ref(0);
 const loadingList = ref(false);
-const loadingDetail = ref(false);
 const listVisible = ref(false);
-const detailVisible = ref(false);
-const selected = ref(null);
+const chatVisible = ref(false);
+const chatVehicle = ref(null);
 
 let pollTimer = null;
 
@@ -113,7 +86,7 @@ function preview(message) {
 
 async function fetchUnreadCount() {
     try {
-        const { data } = await api.get('/admin/notifications/unread-count');
+        const { data } = await api.get('/admin/messages/unread-count');
         unreadCount.value = Number(data.unread_count || 0);
     } catch {
         // ignore polling errors
@@ -137,30 +110,19 @@ async function openList() {
     await loadList();
 }
 
-function onListHide() {
-    fetchUnreadCount();
+function openChat(item) {
+    chatVehicle.value = item.vehicle;
+    listVisible.value = false;
+    chatVisible.value = true;
 }
 
-async function openDetail(item) {
-    detailVisible.value = true;
-    loadingDetail.value = true;
-    selected.value = null;
+function onChatRead() {
+    fetchUnreadCount();
+    loadList();
+}
 
-    try {
-        const { data } = await api.post(`/admin/notifications/${item.id}/read`);
-        selected.value = data.data;
-        unreadCount.value = Number(data.unread_count || 0);
-
-        const index = items.value.findIndex((row) => row.id === item.id);
-
-        if (index !== -1) {
-            items.value[index] = data.data;
-        }
-    } catch {
-        selected.value = item;
-    } finally {
-        loadingDetail.value = false;
-    }
+function onChatSent() {
+    fetchUnreadCount();
 }
 
 onMounted(() => {
@@ -217,12 +179,7 @@ onUnmounted(() => {
 
 .admin-notifications__item-btn:hover {
     background: var(--vs-surface-hover);
-    border-color: var(--vs-border-strong, var(--vs-border));
-}
-
-.admin-notifications__item--unread .admin-notifications__item-btn {
     border-color: rgb(20 184 166 / 0.45);
-    background: rgb(20 184 166 / 0.06);
 }
 
 .admin-notifications__item-top {
@@ -238,12 +195,18 @@ onUnmounted(() => {
     color: var(--vs-text);
 }
 
-.admin-notifications__dot {
-    width: 0.5rem;
-    height: 0.5rem;
-    border-radius: 50%;
+.admin-notifications__count {
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.35rem;
+    border-radius: 999px;
     background: #14b8a6;
-    flex-shrink: 0;
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
 }
 
 .admin-notifications__dealer {
@@ -263,66 +226,6 @@ onUnmounted(() => {
 
 .admin-notifications__time {
     display: block;
-    font-size: 0.72rem;
-    color: var(--vs-text-subtle);
-}
-
-.admin-notifications__vehicle-card {
-    border: 1px solid var(--vs-border);
-    border-radius: 0.75rem;
-    padding: 0.85rem 1rem;
-    margin-bottom: 0.85rem;
-    background: var(--vs-surface-hover);
-}
-
-.admin-notifications__vehicle-title {
-    font-size: 1rem;
-    font-weight: 700;
-    color: var(--vs-text);
-    margin-bottom: 0.25rem;
-}
-
-.admin-notifications__vehicle-meta {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.5rem 0.85rem;
-    font-size: 0.78rem;
-    color: var(--vs-text-muted);
-    margin-bottom: 0.65rem;
-}
-
-.admin-notifications__vin-row {
-    display: flex;
-    flex-direction: column;
-    gap: 0.25rem;
-}
-
-.admin-notifications__vin-label {
-    font-size: 0.72rem;
-    color: var(--vs-text-muted);
-}
-
-.admin-notifications__message-box {
-    border: 1px solid var(--vs-border);
-    border-radius: 0.75rem;
-    padding: 0.85rem 1rem;
-}
-
-.admin-notifications__message-label {
-    font-size: 0.72rem;
-    color: var(--vs-text-muted);
-    margin-bottom: 0.35rem;
-}
-
-.admin-notifications__message-text {
-    margin: 0;
-    white-space: pre-wrap;
-    line-height: 1.55;
-    color: var(--vs-text);
-}
-
-.admin-notifications__message-meta {
-    margin-top: 0.65rem;
     font-size: 0.72rem;
     color: var(--vs-text-subtle);
 }

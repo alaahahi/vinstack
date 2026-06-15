@@ -10,6 +10,7 @@ use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\Admin\SystemController;
 use App\Http\Controllers\Admin\VehicleController as AdminVehicleController;
+use App\Http\Controllers\Admin\VehicleMessageController as AdminVehicleMessageController;
 use App\Http\Controllers\Admin\VehicleOptionsController;
 use App\Http\Controllers\Admin\VehicleUploadedImageController;
 use App\Http\Controllers\Admin\VehicleVinstackImageController;
@@ -26,6 +27,7 @@ use App\Http\Controllers\Dealer\HeartbeatController as DealerHeartbeatController
 use App\Http\Controllers\Dealer\ProfileController as DealerProfileController;
 use App\Http\Controllers\Dealer\TwoFactorController as DealerTwoFactorController;
 use App\Http\Controllers\Dealer\VehicleController as DealerVehicleController;
+use App\Http\Controllers\Dealer\VehicleMessageController as DealerVehicleMessageController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/settings/public', [PublicSettingsController::class, 'show']);
@@ -47,8 +49,6 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/notifications', [NotificationController::class, 'index']);
         Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
-        Route::get('/notifications/{notification}', [NotificationController::class, 'show']);
-        Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
 
         Route::get('/dealers', [DealerController::class, 'index']);
         Route::get('/dealers/summary', [DealerController::class, 'summary']);
@@ -74,6 +74,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/vehicles/{vehicle}/images/{image}', [VehicleUploadedImageController::class, 'destroy']);
         Route::post('/vehicles/{vehicle}/assign', [AdminVehicleController::class, 'assign']);
         Route::delete('/vehicles/{vehicle}/unassign', [AdminVehicleController::class, 'unassign']);
+        Route::get('/vehicles/{vehicle}/messages', [AdminVehicleMessageController::class, 'index']);
+        Route::post('/vehicles/{vehicle}/messages', [AdminVehicleMessageController::class, 'store']);
+        Route::post('/vehicles/{vehicle}/messages/read', [AdminVehicleMessageController::class, 'markRead']);
+        Route::get('/messages/unread-count', [AdminVehicleMessageController::class, 'unreadCount']);
 
         Route::get('/settings/vehicle-options', [VehicleOptionsController::class, 'show']);
         Route::put('/settings/vehicle-options', [VehicleOptionsController::class, 'update']);
@@ -126,5 +130,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/vehicles/{vehicle}/gallery', [VehicleGalleryController::class, 'show']);
         Route::get('/vehicles/{vehicle}/images/download', [VehicleImageDownloadController::class, 'download']);
         Route::patch('/vehicles/{vehicle}/status', [DealerVehicleController::class, 'updateStatus']);
+        Route::get('/vehicles/{vehicle}/messages', [DealerVehicleMessageController::class, 'index']);
+        Route::post('/vehicles/{vehicle}/messages', [DealerVehicleMessageController::class, 'store']);
+        Route::post('/vehicles/{vehicle}/messages/read', [DealerVehicleMessageController::class, 'markRead']);
+        Route::get('/messages/unread-count', [DealerVehicleMessageController::class, 'unreadCount']);
     });
 });

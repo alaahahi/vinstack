@@ -2,52 +2,28 @@
 
 namespace App\Http\Controllers\Admin;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
-use App\Services\VehicleDealerNoteNotificationService;
+use App\Services\VehicleMessageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
 
 class NotificationController extends Controller
 {
-    public function index(Request $request, VehicleDealerNoteNotificationService $notifications): JsonResponse
+    public function index(Request $request, VehicleMessageService $messages): JsonResponse
     {
         $limit = min((int) $request->input('limit', 30), 100);
 
         return response()->json([
-            'data' => $notifications->listRecent($limit),
-            'unread_count' => $notifications->unreadCount(),
+            'data' => $messages->listUnreadThreadsForAdmin($limit),
+            'unread_count' => $messages->unreadCountForViewer(UserRole::Admin),
         ]);
     }
 
-    public function unreadCount(VehicleDealerNoteNotificationService $notifications): JsonResponse
+    public function unreadCount(VehicleMessageService $messages): JsonResponse
     {
         return response()->json([
-            'unread_count' => $notifications->unreadCount(),
-        ]);
-    }
-
-    public function show(int $notification, VehicleDealerNoteNotificationService $notifications): JsonResponse
-    {
-        $payload = $notifications->findForAdmin($notification);
-
-        if ($payload === null) {
-            return response()->json(['message' => 'Notification not found.'], 404);
-        }
-
-        return response()->json(['data' => $payload]);
-    }
-
-    public function markRead(int $notification, VehicleDealerNoteNotificationService $notifications): JsonResponse
-    {
-        $payload = $notifications->markRead($notification);
-
-        if ($payload === null) {
-            return response()->json(['message' => 'Notification not found.'], 404);
-        }
-
-        return response()->json([
-            'data' => $payload,
-            'unread_count' => $notifications->unreadCount(),
+            'unread_count' => $messages->unreadCountForViewer(UserRole::Admin),
         ]);
     }
 }

@@ -117,6 +117,17 @@
                     <i class="pi pi-times" />
                 </button>
             </div>
+            <span v-if="isAssigned" class="chat-btn-wrap">
+                <Button
+                    icon="pi pi-comments"
+                    severity="secondary"
+                    text
+                    rounded
+                    title="محادثة التاجر"
+                    @click="$emit('open-chat', vehicle)"
+                />
+                <i v-if="hasUnreadMessages" class="pi pi-star-fill chat-btn__star" aria-label="رسائل جديدة" />
+            </span>
             <Button
                 v-if="isManual"
                 icon="pi pi-pencil"
@@ -139,14 +150,17 @@
         <!-- Dealer: local status + action -->
         <div v-else class="cell cell-actions">
             <Tag :value="vehicle.status" class="local-tag" />
-            <Button
-                icon="pi pi-comment"
-                severity="secondary"
-                text
-                rounded
-                title="رسالة على السيارة"
-                @click="$emit('update-status', vehicle)"
-            />
+            <span class="chat-btn-wrap">
+                <Button
+                    icon="pi pi-comments"
+                    severity="secondary"
+                    text
+                    rounded
+                    title="محادثة السيارة"
+                    @click="$emit('open-chat', vehicle)"
+                />
+                <i v-if="hasUnreadMessages" class="pi pi-star-fill chat-btn__star" aria-label="رسائل جديدة" />
+            </span>
         </div>
     </div>
 </template>
@@ -196,10 +210,11 @@ const props = defineProps({
     },
 });
 
-defineEmits(['assign', 'update-status', 'open-detail', 'edit', 'unassign', 'track-container']);
+defineEmits(['assign', 'update-status', 'open-chat', 'open-detail', 'edit', 'unassign', 'track-container']);
 
 const isManual = computed(() => props.vehicle?.source === 'manual');
 const isAssigned = computed(() => vehicleIsAssigned(props.vehicle));
+const hasUnreadMessages = computed(() => Number(props.vehicle?.unread_messages_count || 0) > 0);
 const sourceLabel = computed(() => vehicleSourceLabel(props.vehicle));
 const sourcePillClass = computed(() => vehicleSourcePillClass(props.vehicle));
 
@@ -628,6 +643,21 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
 
 .local-tag {
     font-size: 0.72rem;
+}
+
+.chat-btn-wrap {
+    position: relative;
+    display: inline-flex;
+}
+
+.chat-btn__star {
+    position: absolute;
+    top: -2px;
+    inset-inline-end: -2px;
+    font-size: 0.55rem;
+    color: #f59e0b;
+    filter: drop-shadow(0 0 2px rgb(0 0 0 / 0.35));
+    pointer-events: none;
 }
 
 @media (max-width: 1100px) {

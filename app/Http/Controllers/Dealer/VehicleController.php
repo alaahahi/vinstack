@@ -2,12 +2,13 @@
 
 namespace App\Http\Controllers\Dealer;
 
+use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Dealer\UpdateVehicleStatusRequest;
 use App\Models\Vehicle;
 use App\Services\ContainerTrackingService;
-use App\Services\VehicleDealerNoteNotificationService;
 use App\Services\VehicleDetailService;
+use App\Services\VehicleMessageService;
 use App\Services\VehicleUploadedImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -18,6 +19,7 @@ class VehicleController extends Controller
         Request $request,
         VehicleUploadedImageService $gallery,
         ContainerTrackingService $tracking,
+        VehicleMessageService $messages,
     ): JsonResponse
     {
         $dealer = $request->user()->dealer;
@@ -53,8 +55,11 @@ class VehicleController extends Controller
 
         $vehicles->through(fn (Vehicle $vehicle) => $gallery->enrichListVehicle($vehicle));
 
+        $payload = $vehicles->toArray();
+        $payload['data'] = $messages->attachUnreadCounts($payload['data'] ?? [], UserRole::Dealer);
+
         return response()->json(array_merge(
-            $vehicles->toArray(),
+            $payload,
             ['tracking_available' => $tracking->trackingAvailable()],
         ));
     }
@@ -83,33 +88,19 @@ class VehicleController extends Controller
     public function updateStatus(
         UpdateVehicleStatusRequest $request,
         Vehicle $vehicle,
-        VehicleDealerNoteNotificationService $noteNotifications,
     ): JsonResponse {
         $this->ensureAssigned($request, $vehicle);
 
         $validated = $request->validated();
-        $previousNotes = $vehicle->notes;
 
         $vehicle->update([
             'status' => $validated['status'] ?? $vehicle->status,
             'notes' => array_key_exists('notes', $validated) ? $validated['notes'] : $vehicle->notes,
         ]);
 
-        $dealer = $request->user()->dealer;
-
-        if ($dealer && array_key_exists('notes', $validated)) {
-            $noteNotifications->recordIfChanged(
-                $vehicle,
-                $dealer,
-                $request->user(),
-                $previousNotes,
-                $validated['notes'],
-            );
-        }
-
         return response()->json([
             'data' => $vehicle->fresh(),
-            'message' => 'Notes saved.',
+            'message' => 'Status updated.',
         ]);
     }
 

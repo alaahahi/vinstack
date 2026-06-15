@@ -71,6 +71,7 @@
             @assign="openAssign"
             @unassign="confirmUnassign"
             @edit="openEdit"
+            @open-chat="openChat"
             @open-detail="openDetail"
             @load-more="loadMore"
             @empty-action="resetAndLoad"
@@ -80,6 +81,14 @@
             v-model:visible="detailVisible"
             :vehicle-id="detailVehicleId"
             mode="admin"
+        />
+
+        <VehicleChatDialog
+            v-model:visible="chatVisible"
+            :vehicle="chatVehicle"
+            mode="admin"
+            @read="onChatRead"
+            @sent="resetAndLoad"
         />
 
         <Drawer
@@ -133,6 +142,7 @@ import DealerFilterBadges from '../../components/DealerFilterBadges.vue';
 import ManualVehicleForm from '../../components/ManualVehicleForm.vue';
 import VehicleListPanel from '../../components/VehicleListPanel.vue';
 import VehicleDetailDrawer from '../../components/VehicleDetailDrawer.vue';
+import VehicleChatDialog from '../../components/VehicleChatDialog.vue';
 import NujoomImportDialog from '../../components/NujoomImportDialog.vue';
 import api from '../../api/client';
 
@@ -162,6 +172,8 @@ const nujoomImportVisible = ref(false);
 const assignVisible = ref(false);
 const detailVisible = ref(false);
 const detailVehicleId = ref(null);
+const chatVisible = ref(false);
+const chatVehicle = ref(null);
 const selectedVehicle = ref(null);
 const selectedDealerId = ref(null);
 const statusOptions = [
@@ -288,6 +300,19 @@ function openAssign(vehicle) {
 function openDetail(vehicle) {
     detailVehicleId.value = vehicle.id;
     detailVisible.value = true;
+}
+
+function openChat(vehicle) {
+    chatVehicle.value = vehicle;
+    chatVisible.value = true;
+}
+
+function onChatRead(vehicle) {
+    const row = vehicles.value.find((item) => item.id === vehicle.id);
+
+    if (row) {
+        row.unread_messages_count = 0;
+    }
 }
 
 async function confirmAssign() {
