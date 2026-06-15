@@ -52,9 +52,10 @@ class VehicleController extends Controller
 
         $vehicles->through(fn (Vehicle $vehicle) => $gallery->enrichListVehicle($vehicle));
 
-        return $vehicles->additional([
-            'tracking_available' => $tracking->trackingAvailable(),
-        ]);
+        return response()->json(array_merge(
+            $vehicles->toArray(),
+            ['tracking_available' => $tracking->trackingAvailable()],
+        ));
     }
 
     public function show(Request $request, Vehicle $vehicle, VehicleUploadedImageService $gallery): JsonResponse
