@@ -73,6 +73,7 @@
                 </div>
 
                 <div class="admin-topbar__actions">
+                    <AdminNotificationsBell />
                     <slot name="topbar-actions" />
                     <Button
                         icon="pi pi-user"
@@ -104,6 +105,7 @@ import { useConfirm } from 'primevue/useconfirm';
 import { useAuthStore } from '../stores/auth';
 import { useTheme } from '../composables/useTheme';
 import ThemeToggle from '../components/ThemeToggle.vue';
+import AdminNotificationsBell from '../components/AdminNotificationsBell.vue';
 
 const auth = useAuthStore();
 const { themeLogo } = useTheme();

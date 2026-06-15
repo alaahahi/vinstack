@@ -140,11 +140,11 @@
         <div v-else class="cell cell-actions">
             <Tag :value="vehicle.status" class="local-tag" />
             <Button
-                icon="pi pi-pencil"
+                icon="pi pi-comment"
                 severity="secondary"
                 text
                 rounded
-                title="تحديث الحالة"
+                title="رسالة على السيارة"
                 @click="$emit('update-status', vehicle)"
             />
         </div>

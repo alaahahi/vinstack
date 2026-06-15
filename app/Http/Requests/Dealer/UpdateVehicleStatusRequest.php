@@ -16,7 +16,7 @@ class UpdateVehicleStatusRequest extends FormRequest
     public function rules(): array
     {
         return [
-            'status' => ['required', Rule::enum(VehicleStatus::class)],
+            'status' => ['sometimes', Rule::enum(VehicleStatus::class)],
             'notes' => ['nullable', 'string', 'max:5000'],
         ];
     }

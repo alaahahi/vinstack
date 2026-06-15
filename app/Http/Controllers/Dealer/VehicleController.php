@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Dealer\UpdateVehicleStatusRequest;
 use App\Models\Vehicle;
 use App\Services\ContainerTrackingService;
+use App\Services\VehicleDealerNoteNotificationService;
 use App\Services\VehicleDetailService;
 use App\Services\VehicleUploadedImageService;
 use Illuminate\Http\JsonResponse;
@@ -82,14 +83,33 @@ class VehicleController extends Controller
     public function updateStatus(
         UpdateVehicleStatusRequest $request,
         Vehicle $vehicle,
+        VehicleDealerNoteNotificationService $noteNotifications,
     ): JsonResponse {
         $this->ensureAssigned($request, $vehicle);
 
-        $vehicle->update($request->validated());
+        $validated = $request->validated();
+        $previousNotes = $vehicle->notes;
+
+        $vehicle->update([
+            'status' => $validated['status'] ?? $vehicle->status,
+            'notes' => array_key_exists('notes', $validated) ? $validated['notes'] : $vehicle->notes,
+        ]);
+
+        $dealer = $request->user()->dealer;
+
+        if ($dealer && array_key_exists('notes', $validated)) {
+            $noteNotifications->recordIfChanged(
+                $vehicle,
+                $dealer,
+                $request->user(),
+                $previousNotes,
+                $validated['notes'],
+            );
+        }
 
         return response()->json([
             'data' => $vehicle->fresh(),
-            'message' => 'Status updated.',
+            'message' => 'Notes saved.',
         ]);
     }
 

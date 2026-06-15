@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\DatabaseBackupController;
 use App\Http\Controllers\Admin\DealerController;
 use App\Http\Controllers\Admin\ManualVehicleController;
 use App\Http\Controllers\Admin\NujoomAlJazeeraImportController;
+use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\Admin\SystemController;
 use App\Http\Controllers\Admin\VehicleController as AdminVehicleController;
@@ -43,6 +44,11 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/profile', [AdminProfileController::class, 'show']);
         Route::put('/profile', [AdminProfileController::class, 'update']);
         Route::put('/profile/password', [AdminProfileController::class, 'updatePassword']);
+
+        Route::get('/notifications', [NotificationController::class, 'index']);
+        Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+        Route::get('/notifications/{notification}', [NotificationController::class, 'show']);
+        Route::post('/notifications/{notification}/read', [NotificationController::class, 'markRead']);
 
         Route::get('/dealers', [DealerController::class, 'index']);
         Route::get('/dealers/summary', [DealerController::class, 'summary']);

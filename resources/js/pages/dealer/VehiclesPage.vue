@@ -21,7 +21,7 @@
             :tracking-available="trackingAvailable"
             empty-hint="عند إسناد سيارات من الإدارة ستظهر هنا تلقائياً."
             empty-action-label="تحديث القائمة"
-            @update-status="openStatus"
+            @update-status="openNotes"
             @open-detail="openDetail"
             @page="onPage"
             @empty-action="load"
@@ -33,19 +33,27 @@
             mode="dealer"
         />
 
-        <Dialog v-model:visible="statusVisible" header="تحديث الحالة" modal style="width: min(480px, 100vw)">
-            <VehiclePhotosPanel v-if="selectedVehicle" :vehicle="selectedVehicle" />
-            <Select
-                v-model="selectedStatus"
-                :options="statusOptions"
-                option-label="label"
-                option-value="value"
-                class="w-full mt"
-            />
-            <Textarea v-model="notes" rows="4" class="w-full mt" placeholder="ملاحظات" />
+        <Dialog
+            v-model:visible="notesVisible"
+            header="رسالة على السيارة"
+            modal
+            style="width: min(480px, 100vw)"
+        >
+            <div v-if="selectedVehicle" class="notes-dialog">
+                <div class="notes-dialog__vehicle">
+                    <div class="notes-dialog__title">{{ vehicleTitle(selectedVehicle) }}</div>
+                    <VinCopyLabel :vin="selectedVehicle.vin" block />
+                </div>
+                <Textarea
+                    v-model="notes"
+                    rows="5"
+                    class="w-full"
+                    placeholder="اكتب رسالتك أو ملاحظتك على هذه السيارة..."
+                />
+            </div>
             <template #footer>
-                <Button label="إلغاء" text @click="statusVisible = false" />
-                <Button label="حفظ" class="btn-cta" :loading="saving" @click="saveStatus" />
+                <Button label="إلغاء" text @click="notesVisible = false" />
+                <Button label="إرسال" class="btn-cta" :loading="saving" @click="saveNotes" />
             </template>
         </Dialog>
     </div>
@@ -60,11 +68,11 @@ import InputText from 'primevue/inputtext';
 import Textarea from 'primevue/textarea';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
-import Select from 'primevue/select';
 import DealerDashboardCards from '../../components/DealerDashboardCards.vue';
 import VehicleListPanel from '../../components/VehicleListPanel.vue';
 import VehicleDetailDrawer from '../../components/VehicleDetailDrawer.vue';
-import VehiclePhotosPanel from '../../components/VehiclePhotosPanel.vue';
+import VinCopyLabel from '../../components/VinCopyLabel.vue';
+import { vehicleTitle } from '../../utils/vehicleMeta';
 import api from '../../api/client';
 
 const toast = useToast();
@@ -76,19 +84,12 @@ const perPage = ref(15);
 const total = ref(0);
 const trackingAvailable = ref(false);
 
-const statusVisible = ref(false);
+const notesVisible = ref(false);
 const detailVisible = ref(false);
 const detailVehicleId = ref(null);
 const selectedVehicle = ref(null);
-const selectedStatus = ref('assigned');
 const notes = ref('');
 const saving = ref(false);
-
-const statusOptions = [
-    { label: 'مسندة', value: 'assigned' },
-    { label: 'محجوزة', value: 'reserved' },
-    { label: 'مستوردة', value: 'imported' },
-];
 
 async function load() {
     loading.value = true;
@@ -122,11 +123,10 @@ function onPage(event) {
     load();
 }
 
-function openStatus(vehicle) {
+function openNotes(vehicle) {
     selectedVehicle.value = vehicle;
-    selectedStatus.value = vehicle.status;
     notes.value = vehicle.notes || '';
-    statusVisible.value = true;
+    notesVisible.value = true;
 }
 
 function openDetail(vehicle) {
@@ -134,22 +134,34 @@ function openDetail(vehicle) {
     detailVisible.value = true;
 }
 
-async function saveStatus() {
+async function saveNotes() {
+    const message = notes.value.trim();
+
+    if (! message) {
+        toast.add({
+            severity: 'warn',
+            summary: 'الرسالة فارغة',
+            detail: 'اكتب رسالة قبل الإرسال.',
+            life: 3500,
+        });
+
+        return;
+    }
+
     saving.value = true;
 
     try {
         await api.patch(`/dealer/vehicles/${selectedVehicle.value.id}/status`, {
-            status: selectedStatus.value,
-            notes: notes.value,
+            notes: message,
         });
-        statusVisible.value = false;
-        toast.add({ severity: 'success', summary: 'تم التحديث', life: 3000 });
+        notesVisible.value = false;
+        toast.add({ severity: 'success', summary: 'تم إرسال الرسالة', life: 3000 });
         await load();
     } catch (e) {
         toast.add({
             severity: 'error',
             summary: 'خطأ',
-            detail: e.response?.data?.message || 'فشل التحديث',
+            detail: e.response?.data?.message || 'فشل إرسال الرسالة',
             life: 4000,
         });
     } finally {
@@ -187,11 +199,20 @@ onMounted(load);
     max-width: 320px;
 }
 
-.w-full {
-    width: 100%;
+.notes-dialog__vehicle {
+    margin-bottom: 0.85rem;
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--vs-border);
+    border-radius: 0.75rem;
+    background: var(--vs-surface-hover);
 }
 
-.mt {
-    margin-top: 0.75rem;
+.notes-dialog__title {
+    font-weight: 700;
+    margin-bottom: 0.35rem;
+}
+
+.w-full {
+    width: 100%;
 }
 </style>
