@@ -47,8 +47,10 @@
         <!-- References -->
         <div class="cell cell-refs">
             <div v-if="container" class="ref-line ref-line--container">
-                <i class="pi pi-box ref-icon" />
-                <span class="ref-container-num">{{ container }}</span>
+                <div class="ref-line__meta">
+                    <i class="pi pi-box ref-icon" />
+                    <span class="ref-container-num">{{ container }}</span>
+                </div>
                 <Button
                     icon="pi pi-map-marker"
                     :severity="canTrackContainer ? 'info' : 'secondary'"
@@ -98,7 +100,7 @@
         <!-- Admin: dealer + local status -->
         <div v-if="mode === 'admin'" class="cell cell-admin">
             <span
-                v-if="vehicle.status"
+                v-if="vehicle.status && !isAssigned"
                 class="status-pill assignment-pill"
                 :class="assignmentBadgeClass"
             >
@@ -149,7 +151,7 @@
 
         <!-- Dealer: local status + action -->
         <div v-else class="cell cell-actions">
-            <Tag :value="vehicle.status" class="local-tag" />
+            <Tag v-if="vehicle.status && vehicle.status !== 'assigned'" :value="vehicle.status" class="local-tag" />
             <span class="chat-btn-wrap">
                 <Button
                     icon="pi pi-comments"
@@ -475,11 +477,21 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
 }
 
 .ref-line--container {
-    flex-wrap: wrap;
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.5rem;
+}
+
+.ref-line__meta {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    min-width: 0;
+    flex: 1;
 }
 
 .ref-container-num {
-    flex: 1;
     min-width: 0;
     word-break: break-all;
 }
@@ -487,6 +499,7 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
 .track-btn {
     flex-shrink: 0;
     margin-inline-start: auto;
+    margin-inline-end: 0;
 }
 
 .track-btn--ready :deep(.p-button-icon) {

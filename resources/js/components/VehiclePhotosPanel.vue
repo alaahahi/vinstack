@@ -155,85 +155,19 @@
             @gallery-updated="onCompactGalleryUpdated"
         />
 
-        <template v-else>
+        <section v-else class="dealer-photos-card">
             <header class="photos-section-header photos-section-header--dealer">
                 <h3 class="photos-section-title">صور السيارة</h3>
+                <p class="photos-section-sub">معرض للعرض فقط — اضغط الصورة لفتح المعرض</p>
             </header>
-
-            <div v-if="preview" class="preview-block">
-                <img :src="preview" :alt="label" class="preview-img" loading="lazy" decoding="async" />
-                <span class="preview-label">معاينة</span>
-            </div>
-
-            <div v-if="galleryImages.length" class="gallery-block">
-                <div class="gallery-main">
-                    <button
-                        type="button"
-                        class="gallery-nav gallery-nav--prev"
-                        :disabled="galleryIndex === 0"
-                        aria-label="الصورة السابقة"
-                        @click="goGalleryPrev"
-                    >
-                        <i class="pi pi-chevron-right" />
-                    </button>
-
-                    <button type="button" class="main-photo" @click="openZoom(currentGalleryUrl)">
-                        <img
-                            v-if="currentGalleryUrl"
-                            :key="currentGalleryUrl"
-                            :src="currentGalleryUrl"
-                            :alt="label"
-                            decoding="async"
-                        />
-                        <span v-if="isUploadedUrl(currentGalleryUrl)" class="local-badge-inline">مرفوعة من الإدارة</span>
-                        <span class="zoom-hint"><i class="pi pi-search-plus" /> تكبير</span>
-                    </button>
-
-                    <button
-                        type="button"
-                        class="gallery-nav gallery-nav--next"
-                        :disabled="galleryIndex >= galleryImages.length - 1"
-                        aria-label="الصورة التالية"
-                        @click="goGalleryNext"
-                    >
-                        <i class="pi pi-chevron-left" />
-                    </button>
-                </div>
-
-                <div v-if="galleryImages.length > 1" class="gallery-thumb-strip">
-                    <button
-                        v-for="(url, index) in galleryImages"
-                        :key="`${index}-${url}`"
-                        type="button"
-                        class="gallery-thumb-btn"
-                        :class="{ active: index === galleryIndex }"
-                        @click="setGalleryIndex(index)"
-                    >
-                        <img :src="url" :alt="`${label} thumbnail`" loading="lazy" decoding="async" />
-                        <span v-if="isUploadedUrl(url)" class="local-dot" title="مرفوعة من الإدارة" />
-                    </button>
-                </div>
-
-                <p class="gallery-counter">{{ galleryIndex + 1 }} / {{ galleryImages.length }}</p>
-            </div>
-
-            <div v-else-if="preview" class="no-hd">
-                <i class="pi pi-info-circle" />
-                <span>لا توجد صور عالية الدقة — المعاينة فقط متاحة</span>
-            </div>
-
-            <div v-else class="no-photos">
-                <i class="pi pi-image" />
-                <span>لا توجد صور لهذه السيارة</span>
-            </div>
-
-            <VehicleGalleryLightbox
-                v-model:visible="zoomVisible"
-                :vehicle="displayVehicle"
-                :start-url="zoomStartUrl"
+            <VehicleImageGallery
+                :vehicle="displayVehicle ?? vehicle"
                 :api-mode="apiMode"
+                variant="drawer"
+                show-button
+                @gallery-updated="onCompactGalleryUpdated"
             />
-        </template>
+        </section>
     </div>
 </template>
 
@@ -248,7 +182,6 @@ import VehicleGalleryLightbox from './VehicleGalleryLightbox.vue';
 import {
     GALLERY_STAGES,
     vehicleGalleryByStage,
-    vehicleGalleryImages,
     vehicleLabel,
     vehicleThumbnail,
     vehicleUploadedImages,
@@ -303,8 +236,6 @@ const deletingId = ref(null);
 const fileInputs = ref({});
 const zipInputs = ref({});
 const dragOverStage = ref(null);
-const galleryIndex = ref(0);
-const galleryNavLock = ref(false);
 const galleryLoading = ref(false);
 const displayVehicle = ref(null);
 const galleryFresh = ref(false);
@@ -328,11 +259,9 @@ const galleryErrorText = computed(() => {
 });
 
 const preview = computed(() => vehicleThumbnail(displayVehicle.value ?? props.vehicle));
-const galleryImages = computed(() => vehicleGalleryImages(displayVehicle.value ?? props.vehicle));
 const label = computed(() => vehicleLabel(displayVehicle.value ?? props.vehicle));
 const stages = computed(() => vehicleGalleryByStage(displayVehicle.value ?? props.vehicle));
 const uploadedList = computed(() => vehicleUploadedImages(displayVehicle.value ?? props.vehicle));
-const currentGalleryUrl = computed(() => galleryImages.value[galleryIndex.value] ?? null);
 
 async function loadLiveGallery() {
     const vehicleId = props.vehicle?.id;
@@ -382,12 +311,6 @@ watch(
         loadLiveGallery();
     },
 );
-
-watch(galleryImages, (images) => {
-    if (galleryIndex.value >= images.length) {
-        galleryIndex.value = Math.max(0, images.length - 1);
-    }
-});
 
 function setFileInput(stageKey, el) {
     if (el) {
@@ -661,31 +584,6 @@ function openZoom(url) {
     zoomStartUrl.value = url;
     zoomVisible.value = true;
 }
-
-function setGalleryIndex(index) {
-    if (galleryNavLock.value || index === galleryIndex.value) {
-        return;
-    }
-
-    galleryNavLock.value = true;
-    galleryIndex.value = index;
-
-    window.setTimeout(() => {
-        galleryNavLock.value = false;
-    }, 120);
-}
-
-function goGalleryPrev() {
-    if (galleryIndex.value > 0) {
-        setGalleryIndex(galleryIndex.value - 1);
-    }
-}
-
-function goGalleryNext() {
-    if (galleryIndex.value < galleryImages.value.length - 1) {
-        setGalleryIndex(galleryIndex.value + 1);
-    }
-}
 </script>
 
 <style scoped>
@@ -697,6 +595,16 @@ function goGalleryNext() {
 
 .photos-section-header--dealer {
     margin-bottom: 0.75rem;
+    border-bottom: none;
+    padding-bottom: 0;
+}
+
+.dealer-photos-card {
+    padding: 1rem;
+    border: 1px solid var(--vs-border);
+    border-radius: 12px;
+    background: var(--vs-surface-elevated);
+    box-shadow: var(--admin-shadow, 0 1px 3px rgb(0 0 0 / 6%));
 }
 
 .photos-section-title {

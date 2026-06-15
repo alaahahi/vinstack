@@ -1,6 +1,6 @@
 <template>
 
-    <div class="vehicle-gallery">
+    <div class="vehicle-gallery" :class="{ 'vehicle-gallery--drawer': variant === 'drawer' }">
 
         <button
 
@@ -15,6 +15,7 @@
                 clickable: canOpenGallery,
 
                 'thumb-btn--row': variant === 'row',
+                'thumb-btn--drawer': variant === 'drawer',
 
             }"
 
@@ -47,7 +48,10 @@
             <span
                 v-if="showCountBadge"
                 class="count-badge"
-                :class="{ 'count-badge--row': variant === 'row' }"
+                :class="{
+                    'count-badge--row': variant === 'row',
+                    'count-badge--drawer': variant === 'drawer',
+                }"
             >{{ galleryCount }}</span>
 
         </button>
@@ -141,7 +145,7 @@ const props = defineProps({
 
         default: 'table',
 
-        validator: (v) => ['table', 'row'].includes(v),
+        validator: (v) => ['table', 'row', 'drawer'].includes(v),
 
     },
 
@@ -276,6 +280,20 @@ async function openGallery() {
 
 }
 
+.vehicle-gallery--drawer {
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: stretch;
+
+    width: 100%;
+
+    gap: 0.65rem;
+
+}
+
 
 
 .thumb-btn {
@@ -315,6 +333,36 @@ async function openGallery() {
     border-radius: 10px;
 
     border-color: #ececef;
+
+}
+
+.thumb-btn--drawer {
+
+    width: 100%;
+
+    height: auto;
+
+    min-height: 160px;
+
+    border-radius: 12px;
+
+    border-color: var(--vs-border, #ececef);
+
+}
+
+.thumb-btn--drawer .thumb-img {
+
+    width: 100%;
+
+    height: 180px;
+
+    object-fit: cover;
+
+}
+
+.thumb-btn--drawer .thumb-empty {
+
+    min-height: 160px;
 
 }
 
@@ -405,6 +453,16 @@ async function openGallery() {
     padding: 0 5px;
     font-size: 11px;
     line-height: 20px;
+}
+
+.count-badge--drawer {
+    bottom: 10px;
+    inset-inline-end: 10px;
+    min-width: 24px;
+    height: 24px;
+    padding: 0 6px;
+    font-size: 12px;
+    line-height: 24px;
 }
 
 </style>

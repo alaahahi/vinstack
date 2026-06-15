@@ -80,29 +80,17 @@
                 <i class="pi pi-images" />
                 {{ pendingZipImages.length }} صورة جاهزة للرفع
             </span>
-            <button
-                v-if="zipMeta && zipPayload"
-                type="button"
-                class="zip-meta zip-meta--link"
-                title="عرض كل صور الحاوية"
-                @click="openContainerGallery"
-            >
-                <i class="pi pi-images" />
-                {{ zipMeta.count }} صورة ({{ zipMeta.matched }} مطابقة)
-            </button>
+            <ContainerImageGallery
+                v-if="containerManageImages.length"
+                :images="containerManageImages"
+                variant="row"
+                show-button
+                label="معرض الحاوية"
+            />
             <span v-else-if="zipMeta" class="zip-meta">
                 <i class="pi pi-images" />
                 {{ zipMeta.count }} صورة ({{ zipMeta.matched }} مطابقة)
             </span>
-            <Button
-                v-if="zipPayload"
-                icon="pi pi-truck"
-                label="معرض الحاوية"
-                size="small"
-                severity="info"
-                outlined
-                @click="openContainerGallery"
-            />
             <span v-if="settingsCheckResult" class="zip-settings-result" :class="settingsCheckResult.ok ? 'zip-settings-result--ok' : 'zip-settings-result--error'">
                 {{ settingsCheckResult.summary }}
             </span>
@@ -211,6 +199,7 @@
         />
 
         <VueEasyLightbox
+            v-if="apiRole === 'admin'"
             :visible="containerGalleryVisible"
             :imgs="containerLightboxSlide"
             :index="0"
@@ -219,14 +208,25 @@
             @hide="closeContainerGallery"
         />
 
+        <ContainerGalleryLightbox
+            v-else
+            v-model:visible="containerGalleryVisible"
+            :images="containerManageImages"
+            :start-index="containerGalleryIndex"
+        />
+
         <Dialog
             v-model:visible="containerManageVisible"
             modal
             :draggable="false"
-            header="معرض الحاوية"
+            :header="apiRole === 'admin' ? 'معرض الحاوية' : 'صور الحاوية'"
             :style="{ width: 'min(920px, 96vw)' }"
             :pt="{ root: { class: 'container-gallery-manage-dialog' } }"
         >
+            <p v-if="apiRole === 'dealer'" class="container-gallery-view-note">
+                <i class="pi pi-info-circle" />
+                معرض للعرض فقط — صور مرفوعة من الإدارة
+            </p>
             <p v-if="! containerManageImages.length" class="container-gallery-empty">
                 لا توجد صور في معرض الحاوية
             </p>
@@ -236,13 +236,11 @@
                     :key="image.id ?? image.url"
                     class="container-gallery-thumb"
                 >
-                    <button
-                        type="button"
-                        class="container-gallery-thumb-btn"
-                        @click="openContainerLightboxAt(index)"
-                    >
-                        <img :src="image.url" :alt="image.name || `صورة ${index + 1}`" loading="lazy" decoding="async" />
-                    </button>
+                    <ContainerImageGallery
+                        :images="[image]"
+                        variant="table"
+                        :label="image.vin || `صورة ${index + 1}`"
+                    />
                     <span v-if="image.vin" class="container-gallery-vin">{{ image.vin }}</span>
                     <Button
                         v-if="apiRole === 'admin' && image.id"
@@ -259,7 +257,7 @@
             </div>
         </Dialog>
 
-        <Teleport to="body">
+        <Teleport v-if="apiRole === 'admin'" to="body">
             <div
                 v-if="containerGalleryVisible && containerGalleryImgs.length > 1"
                 class="gallery-nav-bar"
@@ -314,6 +312,8 @@ import ProgressSpinner from 'primevue/progressspinner';
 import VueEasyLightbox from 'vue-easy-lightbox';
 import api from '../api/client';
 import VehicleImageGallery from './VehicleImageGallery.vue';
+import ContainerImageGallery from './ContainerImageGallery.vue';
+import ContainerGalleryLightbox from './ContainerGalleryLightbox.vue';
 import VehicleGalleryLightbox from './VehicleGalleryLightbox.vue';
 import VinCopyLabel from './VinCopyLabel.vue';
 import {
@@ -489,11 +489,11 @@ function openVehicleGallery(vehicle) {
 }
 
 function openContainerGallery() {
-    if (! containerGalleryImgs.value.length) {
+    if (! containerManageImages.value.length) {
         toast.add({
             severity: 'warn',
             summary: 'لا توجد صور',
-            detail: 'ارفع ملف ZIP يحتوي صوراً أولاً',
+            detail: 'لا توجد صور مرفوعة لهذه الحاوية بعد',
             life: 3500,
         });
 
@@ -508,11 +508,6 @@ function openContainerGallery() {
         return;
     }
 
-    containerGalleryVisible.value = true;
-}
-
-function openContainerLightboxAt(index) {
-    containerGalleryIndex.value = index;
     containerGalleryVisible.value = true;
 }
 
@@ -1088,6 +1083,19 @@ onBeforeUnmount(() => {
     padding: 1.5rem;
     text-align: center;
     color: var(--vs-text-muted);
+}
+
+.container-gallery-view-note {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin: 0 0 0.85rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 10px;
+    background: rgb(37 99 235 / 8%);
+    border: 1px solid rgb(37 99 235 / 20%);
+    color: #2563eb;
+    font-size: 0.82rem;
 }
 
 .container-gallery-grid {

@@ -43,65 +43,69 @@
         </div>
 
         <div v-else-if="detail" class="drawer-body">
-            <VehiclePhotosPanel
-                :vehicle="photosVehicle"
-                :admin-mode="isAdminPhotos"
-                :api-mode="mode"
-                @updated="onPhotosUpdated"
-            />
-
-            <section
-                v-for="section in detail.sections"
-                :key="section.key"
-                class="detail-section"
-            >
-                <h3 class="section-title">{{ section.title }}</h3>
-                <dl class="field-grid">
-                    <template v-for="field in section.fields" :key="`${section.key}-${field.key}`">
-                        <dt>{{ field.label }}</dt>
-                        <dd>{{ formatField(field) }}</dd>
-                    </template>
-                </dl>
+            <section class="drawer-photos-section">
+                <VehiclePhotosPanel
+                    :vehicle="photosVehicle"
+                    :admin-mode="isAdminPhotos"
+                    :api-mode="mode"
+                    @updated="onPhotosUpdated"
+                />
             </section>
 
-            <section v-if="detail.assignment?.dealer_name" class="detail-section">
-                <h3 class="section-title">Assignment</h3>
-                <dl class="field-grid">
-                    <dt>Dealer</dt>
-                    <dd>{{ detail.assignment.dealer_name }}</dd>
-                    <dt>Assigned</dt>
-                    <dd>{{ formatDate(detail.assignment.assigned_at) }}</dd>
-                </dl>
-            </section>
+            <div class="drawer-info">
+                <section
+                    v-for="section in detail.sections"
+                    :key="section.key"
+                    class="detail-section info-card"
+                >
+                    <h3 class="section-title">{{ section.title }}</h3>
+                    <dl class="field-grid">
+                        <template v-for="field in section.fields" :key="`${section.key}-${field.key}`">
+                            <dt>{{ field.label }}</dt>
+                            <dd>{{ formatField(field) }}</dd>
+                        </template>
+                    </dl>
+                </section>
 
-            <section v-if="mode !== 'dealer'" class="detail-section">
-                <h3 class="section-title">Invoices</h3>
-                <div v-if="detail.invoices?.length" class="record-list">
-                    <div v-for="(invoice, index) in detail.invoices" :key="invoice.id ?? index" class="record-item">
-                        <div class="record-title">{{ invoiceLabel(invoice) }}</div>
-                        <div v-if="invoiceSubtitle(invoice)" class="record-sub">{{ invoiceSubtitle(invoice) }}</div>
+                <section v-if="detail.assignment?.dealer_name" class="detail-section info-card">
+                    <h3 class="section-title">Assignment</h3>
+                    <dl class="field-grid">
+                        <dt>Dealer</dt>
+                        <dd>{{ detail.assignment.dealer_name }}</dd>
+                        <dt>Assigned</dt>
+                        <dd>{{ formatDate(detail.assignment.assigned_at) }}</dd>
+                    </dl>
+                </section>
+
+                <section v-if="mode !== 'dealer'" class="detail-section info-card">
+                    <h3 class="section-title">Invoices</h3>
+                    <div v-if="detail.invoices?.length" class="record-list">
+                        <div v-for="(invoice, index) in detail.invoices" :key="invoice.id ?? index" class="record-item">
+                            <div class="record-title">{{ invoiceLabel(invoice) }}</div>
+                            <div v-if="invoiceSubtitle(invoice)" class="record-sub">{{ invoiceSubtitle(invoice) }}</div>
+                        </div>
                     </div>
-                </div>
-                <p v-else class="empty-section">—</p>
-            </section>
+                    <p v-else class="empty-section">—</p>
+                </section>
 
-            <section class="detail-section">
-                <h3 class="section-title">Documents</h3>
-                <div v-if="detail.documents?.length" class="record-list">
-                    <a
-                        v-for="(doc, index) in detail.documents"
-                        :key="doc.id ?? doc.url ?? index"
-                        :href="doc.url || doc.link || '#'"
-                        class="record-item record-link"
-                        target="_blank"
-                        rel="noopener noreferrer"
-                    >
-                        <i class="pi pi-file" />
-                        <span>{{ documentLabel(doc) }}</span>
-                    </a>
-                </div>
-                <p v-else class="empty-section">—</p>
-            </section>
+                <section class="detail-section info-card">
+                    <h3 class="section-title">Documents</h3>
+                    <div v-if="detail.documents?.length" class="record-list">
+                        <a
+                            v-for="(doc, index) in detail.documents"
+                            :key="doc.id ?? doc.url ?? index"
+                            :href="doc.url || doc.link || '#'"
+                            class="record-item record-link"
+                            target="_blank"
+                            rel="noopener noreferrer"
+                        >
+                            <i class="pi pi-file" />
+                            <span>{{ documentLabel(doc) }}</span>
+                        </a>
+                    </div>
+                    <p v-else class="empty-section">—</p>
+                </section>
+            </div>
         </div>
     </Drawer>
 </template>
@@ -334,13 +338,30 @@ function documentLabel(doc) {
 .drawer-body {
     display: flex;
     flex-direction: column;
-    gap: 1.5rem;
+    gap: 1.25rem;
     padding-bottom: 1.25rem;
 }
 
+.drawer-photos-section {
+    margin: -0.25rem 0 0;
+}
+
+.drawer-info {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+}
+
+.info-card {
+    border: 1px solid var(--vs-border);
+    border-radius: 12px;
+    padding: 1rem 1.05rem;
+    background: var(--vs-surface);
+}
+
 .detail-section {
-    border-top: 1px solid var(--vs-border);
-    padding-top: 1.1rem;
+    border-top: none;
+    padding-top: 0;
 }
 
 .detail-section:first-of-type {
@@ -349,7 +370,7 @@ function documentLabel(doc) {
 }
 
 .section-title {
-    margin: 0 0 0.85rem;
+    margin: 0 0 0.75rem;
     font-size: 0.72rem;
     font-weight: 700;
     text-transform: uppercase;
@@ -511,6 +532,11 @@ function documentLabel(doc) {
 
 [data-theme='dark'] .p-drawer.vehicle-detail-drawer .drawer-title {
     color: var(--text-primary, var(--vs-zinc-50));
+}
+
+[data-theme='dark'] .p-drawer.vehicle-detail-drawer .info-card {
+    background: var(--vs-surface-elevated);
+    border-color: var(--vs-border);
 }
 
 [data-theme='dark'] .p-drawer.vehicle-detail-drawer .section-title {
