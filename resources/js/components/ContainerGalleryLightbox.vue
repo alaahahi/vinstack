@@ -137,12 +137,11 @@ onBeforeUnmount(() => {
 });
 </script>
 
-<style scoped>
+<style>
 .gallery-stage-bar {
     position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
+    top: 18px;
+    inset-inline-start: 18px;
     z-index: 11050;
     display: flex;
     flex-wrap: wrap;
@@ -245,5 +244,61 @@ onBeforeUnmount(() => {
 <style>
 body > .vel-modal {
     z-index: 11000 !important;
+}
+
+.vel-modal .vel-img {
+    max-width: min(92vw, 1200px);
+    max-height: min(82vh, 900px);
+    touch-action: pinch-zoom;
+}
+
+.vel-modal .btn__close {
+    z-index: 11120 !important;
+    position: fixed !important;
+    top: max(12px, env(safe-area-inset-top, 0px)) !important;
+    inset-inline-end: max(12px, env(safe-area-inset-end, 0px)) !important;
+    inset-inline-start: auto !important;
+    right: max(12px, env(safe-area-inset-end, 0px)) !important;
+    left: auto !important;
+    transform: none !important;
+    opacity: 1 !important;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 1px solid rgb(255 255 255 / 18%);
+    background: rgb(24 24 27 / 82%);
+    backdrop-filter: blur(8px);
+    pointer-events: auto;
+}
+
+.vel-modal.is-rtl .btn__close {
+    right: auto !important;
+    left: max(12px, env(safe-area-inset-start, 0px)) !important;
+    inset-inline-end: auto !important;
+    inset-inline-start: max(12px, env(safe-area-inset-start, 0px)) !important;
+}
+
+@media (max-width: 640px) {
+    .gallery-stage-bar {
+        top: auto;
+        bottom: max(24px, env(safe-area-inset-bottom, 0px));
+        left: 50%;
+        right: auto;
+        inset-inline: auto;
+        transform: translateX(-50%);
+        width: min(92vw, 24rem);
+    }
+
+    .gallery-nav-bar {
+        bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .vel-modal .vel-img {
+        max-width: 100vw !important;
+        max-height: calc(100dvh - 180px) !important;
+    }
 }
 </style>

@@ -1,7 +1,12 @@
 import JSZip from 'jszip';
 import api from '../api/client';
 import { useAuthStore } from '../stores/auth';
-import { vehicleGalleryImages, vehicleLabel } from './vehicleImages';
+import {
+    GALLERY_STAGES,
+    vehicleGalleryByStage,
+    vehicleGalleryImages,
+    vehicleLabel,
+} from './vehicleImages';
 
 function apiPrefix() {
     const auth = useAuthStore();
@@ -23,6 +28,50 @@ function safeZipBasename(vehicle) {
     const raw = vehicleLabel(vehicle) || vehicle?.vin || 'vehicle';
 
     return raw.replace(/[^\w\u0600-\u06FF\s-]+/g, '_').trim() || 'vehicle';
+}
+
+function stageZipBasename(vehicle, stageKey) {
+    const stageLabel = GALLERY_STAGES.find((stage) => stage.key === stageKey)?.label ?? stageKey;
+
+    return `${safeZipBasename(vehicle)}-${stageLabel}`.replace(/\s+/g, '-');
+}
+
+async function downloadUrlsAsZip(urls, vehicle, {
+    zipFilename,
+    folderName,
+    onProgress,
+    progressOffset = 0,
+    progressTotal = urls.length,
+} = {}) {
+    const zip = new JSZip();
+    const folder = zip.folder(folderName ?? safeZipBasename(vehicle)) ?? zip;
+    let saved = 0;
+
+    for (let i = 0; i < urls.length; i += 1) {
+        const url = urls[i];
+        onProgress?.(progressOffset + i + 1, progressTotal);
+
+        try {
+            const blob = await fetchVehicleImageBlob(url, vehicle?.id);
+            folder.file(filenameFromUrl(url, i), blob);
+            saved += 1;
+        } catch {
+            // skip failed image
+        }
+
+        if (i < urls.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 120));
+        }
+    }
+
+    if (saved === 0) {
+        throw new Error('fetch_failed');
+    }
+
+    const zipBlob = await zip.generateAsync({ type: 'blob' });
+    triggerBlobDownload(zipBlob, zipFilename);
+
+    return { ok: true, count: saved, total: urls.length };
 }
 
 function triggerBlobDownload(blob, filename) {
@@ -94,42 +143,74 @@ export async function downloadVehicleImage(url, vehicle, index = 0) {
     }
 }
 
-export async function downloadAllVehicleImages(vehicle, { onProgress } = {}) {
-    const urls = vehicleGalleryImages(vehicle);
+export async function downloadStageVehicleImages(vehicle, stageKey, { onProgress } = {}) {
+    const urls = vehicleGalleryByStage(vehicle)[stageKey] ?? [];
 
     if (! urls.length) {
         throw new Error('no_images');
     }
 
-    const zip = new JSZip();
-    const folder = zip.folder(safeZipBasename(vehicle)) ?? zip;
+    return downloadUrlsAsZip(urls, vehicle, {
+        zipFilename: `${stageZipBasename(vehicle, stageKey)}.zip`,
+        folderName: stageZipBasename(vehicle, stageKey),
+        onProgress,
+        progressOffset: 0,
+        progressTotal: urls.length,
+    });
+}
+
+/**
+ * Download every gallery stage as its own ZIP (Terminal / Pickup / Destination).
+ */
+export async function downloadAllVehicleImagesByStage(vehicle, { onProgress } = {}) {
+    const stages = vehicleGalleryByStage(vehicle);
+    const stagesWithImages = GALLERY_STAGES.filter(
+        (stage) => (stages[stage.key]?.length ?? 0) > 0,
+    );
+
+    if (! stagesWithImages.length) {
+        throw new Error('no_images');
+    }
+
+    const totalUrls = stagesWithImages.reduce(
+        (sum, stage) => sum + (stages[stage.key]?.length ?? 0),
+        0,
+    );
+
     let saved = 0;
+    let processed = 0;
+    const zipCount = stagesWithImages.length;
 
-    for (let i = 0; i < urls.length; i += 1) {
-        const url = urls[i];
-        onProgress?.(i + 1, urls.length);
+    for (let zipIndex = 0; zipIndex < stagesWithImages.length; zipIndex += 1) {
+        const stage = stagesWithImages[zipIndex];
+        const urls = stages[stage.key] ?? [];
 
-        try {
-            const blob = await fetchVehicleImageBlob(url, vehicle?.id);
-            folder.file(filenameFromUrl(url, i), blob);
-            saved += 1;
-        } catch {
-            // skip failed image
-        }
+        const result = await downloadUrlsAsZip(urls, vehicle, {
+            zipFilename: `${stageZipBasename(vehicle, stage.key)}.zip`,
+            folderName: stageZipBasename(vehicle, stage.key),
+            onProgress,
+            progressOffset: processed,
+            progressTotal: totalUrls,
+        });
 
-        if (i < urls.length - 1) {
-            await new Promise((resolve) => setTimeout(resolve, 120));
+        saved += result.count;
+        processed += urls.length;
+
+        if (zipIndex < stagesWithImages.length - 1) {
+            await new Promise((resolve) => setTimeout(resolve, 350));
         }
     }
 
-    if (saved === 0) {
-        throw new Error('fetch_failed');
-    }
+    return {
+        ok: true,
+        count: saved,
+        total: totalUrls,
+        zipCount,
+    };
+}
 
-    const zipBlob = await zip.generateAsync({ type: 'blob' });
-    triggerBlobDownload(zipBlob, `${safeZipBasename(vehicle)}-photos.zip`);
-
-    return { ok: true, count: saved, total: urls.length };
+export async function downloadAllVehicleImages(vehicle, options = {}) {
+    return downloadAllVehicleImagesByStage(vehicle, options);
 }
 
 function extensionFromMime(mime) {

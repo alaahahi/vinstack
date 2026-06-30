@@ -61,7 +61,16 @@
                 @click="onDownloadCurrent"
             >
                 <i class="pi" :class="busyCurrent ? 'pi-spin pi-spinner' : 'pi-download'" />
-                <span>تحميل</span>
+                <span class="gallery-action-label">صورة</span>
+            </button>
+            <button
+                type="button"
+                class="gallery-action-btn"
+                :disabled="!activeImages.length || busyStage"
+                @click="onDownloadStage"
+            >
+                <i class="pi" :class="busyStage ? 'pi-spin pi-spinner' : 'pi-file-export'" />
+                <span class="gallery-action-label">{{ busyStage ? stageProgressLabel : activeStageLabel }}</span>
             </button>
             <button
                 type="button"
@@ -69,8 +78,8 @@
                 :disabled="!allHdCount || busyAll"
                 @click="onDownloadAll"
             >
-                <i class="pi" :class="busyAll ? 'pi-spin pi-spinner' : 'pi-images'" />
-                <span>{{ busyAll ? bulkProgressLabel : 'تحميل الكل' }}</span>
+                <i class="pi" :class="busyAll ? 'pi-spin pi-spinner' : 'pi-box'" />
+                <span class="gallery-action-label">{{ busyAll ? bulkProgressLabel : 'كل الأنواع' }}</span>
             </button>
             <button
                 type="button"
@@ -81,60 +90,6 @@
                 <i class="pi" :class="busyShare ? 'pi-spin pi-spinner' : 'pi-share-alt'" />
                 <span>{{ busyShare ? shareProgressLabel : 'مشاركة الكل' }}</span>
             </button>
-            <!-- TODO: remove after gallery debug -->
-            <button
-                type="button"
-                class="gallery-action-btn gallery-action-btn--debug"
-                :disabled="galleryTestLoading"
-                @click="runGalleryTest"
-            >
-                <i class="pi" :class="galleryTestLoading ? 'pi-spin pi-spinner' : 'pi-bolt'" />
-                <span>TEST API</span>
-            </button>
-        </div>
-
-        <div v-if="visible && galleryTestResult" class="gallery-debug-panel" role="status">
-            <div class="gallery-debug-title">نتيجة API المعرض (مؤقت)</div>
-            <div class="gallery-debug-row">
-                <span>fresh:</span>
-                <strong>{{ galleryTestResult.gallery_fresh ? 'نعم' : 'لا' }}</strong>
-            </div>
-            <div v-if="galleryTestResult.gallery_error" class="gallery-debug-row gallery-debug-row--error">
-                <span>خطأ:</span>
-                <strong>{{ galleryTestResult.gallery_error }}</strong>
-            </div>
-            <div class="gallery-debug-row">
-                <span>API خام:</span>
-                <strong>
-                    T {{ galleryTestResult.api_raw.terminal }} /
-                    P {{ galleryTestResult.api_raw.pickup }} /
-                    D {{ galleryTestResult.api_raw.destination }}
-                    ({{ galleryTestResult.total_api_stages }})
-                </strong>
-            </div>
-            <div class="gallery-debug-row">
-                <span>images_by_stage:</span>
-                <strong>
-                    T {{ galleryTestResult.images_by_stage.terminal }} /
-                    P {{ galleryTestResult.images_by_stage.pickup }} /
-                    D {{ galleryTestResult.images_by_stage.destination }}
-                    ({{ galleryTestResult.total_merged }})
-                </strong>
-            </div>
-            <div class="gallery-debug-row">
-                <span>يعرض UI الآن:</span>
-                <strong>
-                    T {{ galleryTestResult.ui_display.terminal }} /
-                    P {{ galleryTestResult.ui_display.pickup }} /
-                    D {{ galleryTestResult.ui_display.destination }}
-                    ({{ galleryTestResult.ui_display.total }})
-                </strong>
-            </div>
-            <div class="gallery-debug-row">
-                <span>flat / urls:</span>
-                <strong>{{ galleryTestResult.flat_images }} / {{ galleryTestResult.top_level_urls }}</strong>
-            </div>
-            <button type="button" class="gallery-debug-close" @click="galleryTestResult = null">إخفاء</button>
         </div>
     </Teleport>
 </template>
@@ -144,7 +99,8 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import VueEasyLightbox from 'vue-easy-lightbox';
 import {
-    downloadAllVehicleImages,
+    downloadAllVehicleImagesByStage,
+    downloadStageVehicleImages,
     downloadVehicleImage,
     shareAllVehicleImages,
 } from '../utils/vehicleImageDownload';
@@ -155,12 +111,6 @@ import {
     vehicleLabel,
     vehicleUploadedImages,
 } from '../utils/vehicleImages';
-import {
-    fetchLiveVehicleGallery,
-    mergeGalleryIntoVehicle,
-    summarizeGalleryApiResponse,
-    vehicleUsesLiveGallery,
-} from '../utils/vehicleGalleryLive';
 import { isLocalUploadedUrl } from '../utils/vehicleImageUpload';
 
 const props = defineProps({
@@ -190,14 +140,14 @@ const toast = useToast();
 const activeStage = ref('terminal');
 const activeIndex = ref(0);
 const busyCurrent = ref(false);
+const busyStage = ref(false);
 const busyAll = ref(false);
 const busyShare = ref(false);
 const bulkProgress = ref({ current: 0, total: 0 });
+const stageProgress = ref({ current: 0, total: 0 });
 const shareProgress = ref({ current: 0, total: 0 });
 const navLock = ref(false);
 const preloadedUrls = new Set();
-const galleryTestLoading = ref(false);
-const galleryTestResult = ref(null);
 
 const stages = computed(() => vehicleGalleryByStage(props.vehicle));
 
@@ -228,6 +178,14 @@ const bulkProgressLabel = computed(() => {
     return `جاري التحميل ${bulkProgress.value.current}/${bulkProgress.value.total}`;
 });
 
+const stageProgressLabel = computed(() => {
+    if (! busyStage.value || stageProgress.value.total === 0) {
+        return 'جاري التحميل…';
+    }
+
+    return `جاري التحميل ${stageProgress.value.current}/${stageProgress.value.total}`;
+});
+
 const shareProgressLabel = computed(() => {
     if (! busyShare.value || shareProgress.value.total === 0) {
         return 'جاري التحضير…';
@@ -255,83 +213,6 @@ const lightboxImages = computed(() => {
 
 function firstStageWithImages() {
     return GALLERY_STAGES.find((tab) => (stages.value[tab.key]?.length ?? 0) > 0)?.key ?? 'terminal';
-}
-
-async function runGalleryTest() {
-    const vehicle = props.vehicle;
-    const vehicleId = vehicle?.id;
-
-    if (! vehicleId) {
-        toast.add({
-            severity: 'warn',
-            summary: 'TEST API',
-            detail: 'لا يوجد معرّف للسيارة',
-            life: 5000,
-        });
-
-        return;
-    }
-
-    if (! vehicleUsesLiveGallery(vehicle)) {
-        toast.add({
-            severity: 'info',
-            summary: 'TEST API',
-            detail: 'سيارة يدوية — API المعرض لا ينطبق (source ليس vinstack)',
-            life: 6000,
-        });
-
-        return;
-    }
-
-    galleryTestLoading.value = true;
-
-    try {
-        const payload = await fetchLiveVehicleGallery(vehicleId, props.apiMode);
-        const summary = summarizeGalleryApiResponse(payload);
-        const uiStages = vehicleGalleryByStage(mergeGalleryIntoVehicle(vehicle, payload));
-
-        galleryTestResult.value = {
-            ...summary,
-            ui_display: {
-                terminal: uiStages.terminal?.length ?? 0,
-                pickup: uiStages.pickup?.length ?? 0,
-                destination: uiStages.destination?.length ?? 0,
-                total: (uiStages.terminal?.length ?? 0)
-                    + (uiStages.pickup?.length ?? 0)
-                    + (uiStages.destination?.length ?? 0),
-            },
-        };
-
-        toast.add({
-            severity: 'info',
-            summary: 'TEST API',
-            detail: `API: ${summary.total_api_stages} صورة — UI: ${galleryTestResult.value.ui_display.total}`,
-            life: 8000,
-        });
-    } catch (e) {
-        const msg = e.response?.data?.message ?? e.message ?? 'فشل الطلب';
-
-        galleryTestResult.value = {
-            gallery_fresh: false,
-            gallery_error: msg,
-            api_raw: { terminal: 0, pickup: 0, destination: 0 },
-            images_by_stage: { terminal: 0, pickup: 0, destination: 0 },
-            flat_images: 0,
-            top_level_urls: 0,
-            total_api_stages: 0,
-            total_merged: 0,
-            ui_display: { terminal: 0, pickup: 0, destination: 0, total: 0 },
-        };
-
-        toast.add({
-            severity: 'error',
-            summary: 'TEST API',
-            detail: msg,
-            life: 8000,
-        });
-    } finally {
-        galleryTestLoading.value = false;
-    }
 }
 
 function applyStartUrl() {
@@ -465,6 +346,48 @@ async function onDownloadCurrent() {
     }
 }
 
+async function onDownloadStage() {
+    if (! activeImages.value.length || busyStage.value) {
+        return;
+    }
+
+    busyStage.value = true;
+    stageProgress.value = { current: 0, total: activeImages.value.length };
+
+    try {
+        const result = await downloadStageVehicleImages(props.vehicle, activeStage.value, {
+            onProgress: (current, total) => {
+                stageProgress.value = { current, total };
+            },
+        });
+
+        toast.add({
+            severity: 'success',
+            summary: `تم تحميل ${activeStageLabel.value}`,
+            detail: `${result.count} من ${result.total} صورة`,
+            life: 4000,
+        });
+    } catch (error) {
+        if (error?.message === 'no_images') {
+            toast.add({
+                severity: 'warn',
+                summary: 'لا توجد صور في هذه المرحلة',
+                life: 3000,
+            });
+        } else {
+            toast.add({
+                severity: 'error',
+                summary: 'تعذّر تحميل الصور',
+                detail: 'تحقق من الاتصال أو جرّب صورة واحدة',
+                life: 4000,
+            });
+        }
+    } finally {
+        busyStage.value = false;
+        stageProgress.value = { current: 0, total: 0 };
+    }
+}
+
 async function onDownloadAll() {
     if (! allHdCount.value || busyAll.value) {
         return;
@@ -474,7 +397,7 @@ async function onDownloadAll() {
     bulkProgress.value = { current: 0, total: allHdCount.value };
 
     try {
-        const result = await downloadAllVehicleImages(props.vehicle, {
+        const result = await downloadAllVehicleImagesByStage(props.vehicle, {
             onProgress: (current, total) => {
                 bulkProgress.value = { current, total };
             },
@@ -483,8 +406,8 @@ async function onDownloadAll() {
         toast.add({
             severity: 'success',
             summary: 'تم تحميل الأرشيف',
-            detail: `${result.count} من ${result.total} صورة`,
-            life: 4000,
+            detail: `${result.zipCount} ملف ZIP — ${result.count} من ${result.total} صورة`,
+            life: 5000,
         });
     } catch (error) {
         if (error?.message === 'no_images') {
@@ -718,12 +641,13 @@ onBeforeUnmount(() => {
 .gallery-actions-bar {
     position: fixed;
     top: 18px;
-    inset-inline-end: 18px;
+    inset-inline-end: 72px;
     z-index: 11050;
     display: flex;
     flex-wrap: wrap;
     gap: 0.45rem;
     pointer-events: auto;
+    max-width: min(92vw, 36rem);
 }
 
 .gallery-local-badge {
@@ -766,55 +690,8 @@ onBeforeUnmount(() => {
     cursor: not-allowed;
 }
 
-.gallery-action-btn--debug {
-    border-color: rgb(251 191 36 / 45%);
-    background: rgb(120 53 15 / 78%);
-    color: #fef3c7;
-}
-
-.gallery-debug-panel {
-    position: fixed;
-    top: 72px;
-    inset-inline-end: 18px;
-    z-index: 11060;
-    width: min(92vw, 320px);
-    padding: 0.75rem 0.85rem;
-    border-radius: 10px;
-    border: 1px solid rgb(251 191 36 / 35%);
-    background: rgb(24 24 27 / 92%);
-    color: #fafafa;
-    font-size: 0.78rem;
-    line-height: 1.45;
-    pointer-events: auto;
-    backdrop-filter: blur(8px);
-}
-
-.gallery-debug-title {
-    font-weight: 700;
-    margin-bottom: 0.45rem;
-    color: #fde68a;
-}
-
-.gallery-debug-row {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.5rem;
-    margin-bottom: 0.2rem;
-}
-
-.gallery-debug-row--error strong {
-    color: #fca5a5;
-}
-
-.gallery-debug-close {
-    margin-top: 0.5rem;
-    padding: 0.25rem 0.55rem;
-    border: 1px solid rgb(255 255 255 / 20%);
-    border-radius: 6px;
-    background: transparent;
-    color: #e4e4e7;
-    font-size: 0.72rem;
-    cursor: pointer;
+.gallery-action-label {
+    white-space: nowrap;
 }
 
 .gallery-stage-tab {
@@ -869,21 +746,80 @@ onBeforeUnmount(() => {
     z-index: 11000 !important;
 }
 
+.vel-modal .vel-img {
+    max-width: min(92vw, 1200px);
+    max-height: min(82vh, 900px);
+    touch-action: pinch-zoom;
+}
+
+.vel-modal .btn__close {
+    z-index: 11120 !important;
+    position: fixed !important;
+    top: max(12px, env(safe-area-inset-top, 0px)) !important;
+    inset-inline-end: max(12px, env(safe-area-inset-end, 0px)) !important;
+    inset-inline-start: auto !important;
+    right: max(12px, env(safe-area-inset-end, 0px)) !important;
+    left: auto !important;
+    transform: none !important;
+    opacity: 1 !important;
+    width: 44px;
+    height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    border-radius: 999px;
+    border: 1px solid rgb(255 255 255 / 18%);
+    background: rgb(24 24 27 / 82%);
+    backdrop-filter: blur(8px);
+    pointer-events: auto;
+}
+
+.vel-modal.is-rtl .btn__close {
+    right: auto !important;
+    left: max(12px, env(safe-area-inset-start, 0px)) !important;
+    inset-inline-end: auto !important;
+    inset-inline-start: max(12px, env(safe-area-inset-start, 0px)) !important;
+}
+
 @media (max-width: 640px) {
-    .gallery-actions-bar {
-        top: auto;
-        bottom: 88px;
-        inset-inline-end: 12px;
-        inset-inline-start: 12px;
+    .gallery-stage-bar {
+        top: max(58px, calc(env(safe-area-inset-top, 0px) + 52px));
+        inset-inline-start: 8px;
+        inset-inline-end: 8px;
         justify-content: center;
     }
 
+    .gallery-actions-bar {
+        top: auto;
+        bottom: max(12px, env(safe-area-inset-bottom, 0px));
+        inset-inline-end: 8px;
+        inset-inline-start: 8px;
+        justify-content: center;
+        max-width: none;
+    }
+
+    .gallery-action-btn {
+        min-height: 44px;
+        padding: 0.5rem 0.7rem;
+    }
+
+    .gallery-action-label,
     .gallery-action-btn span {
-        font-size: 0.75rem;
+        font-size: 0.72rem;
     }
 
     .gallery-nav-bar {
-        bottom: 140px;
+        bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+    }
+
+    .gallery-nav-btn {
+        width: 44px;
+        height: 44px;
+    }
+
+    .vel-modal .vel-img {
+        max-width: 100vw !important;
+        max-height: calc(100dvh - 210px) !important;
     }
 }
 </style>
