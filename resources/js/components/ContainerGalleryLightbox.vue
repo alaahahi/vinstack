@@ -178,8 +178,9 @@ onBeforeUnmount(() => {
 <style>
 .gallery-stage-bar {
     position: fixed;
-    top: 18px;
-    inset-inline-start: 18px;
+    top: max(60px, calc(env(safe-area-inset-top, 0px) + 52px));
+    inset-inline-start: 12px;
+    inset-inline-end: 12px;
     z-index: 11050;
     display: flex;
     flex-wrap: wrap;
@@ -187,6 +188,7 @@ onBeforeUnmount(() => {
     justify-content: center;
     gap: 0.5rem;
     pointer-events: none;
+    max-width: calc(100vw - 24px);
 }
 
 .gallery-stage-tab {
@@ -321,13 +323,9 @@ body > .vel-modal {
 
 @media (max-width: 640px) {
     .gallery-stage-bar {
-        top: max(58px, calc(env(safe-area-inset-top, 0px) + 52px));
-        bottom: auto;
-        left: 50%;
-        right: auto;
-        inset-inline: auto;
-        transform: translateX(-50%);
-        width: min(92vw, 24rem);
+        inset-inline-start: 8px;
+        inset-inline-end: 8px;
+        max-width: calc(100vw - 16px);
     }
 
     .gallery-nav-bar {

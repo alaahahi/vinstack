@@ -620,13 +620,16 @@ onBeforeUnmount(() => {
 <style>
 .gallery-stage-bar {
     position: fixed;
-    top: 18px;
-    inset-inline-start: 18px;
+    top: max(60px, calc(env(safe-area-inset-top, 0px) + 52px));
+    inset-inline-start: 12px;
+    inset-inline-end: 12px;
     z-index: 11050;
     display: flex;
     flex-wrap: wrap;
     gap: 0.45rem;
+    justify-content: center;
     pointer-events: auto;
+    max-width: calc(100vw - 24px);
 }
 
 .gallery-nav-bar {
@@ -675,14 +678,16 @@ onBeforeUnmount(() => {
 
 .gallery-actions-bar {
     position: fixed;
-    top: 18px;
-    inset-inline-end: 72px;
+    top: max(112px, calc(env(safe-area-inset-top, 0px) + 104px));
+    inset-inline-start: 12px;
+    inset-inline-end: 12px;
     z-index: 11050;
     display: flex;
     flex-wrap: wrap;
     gap: 0.45rem;
+    justify-content: center;
     pointer-events: auto;
-    max-width: min(92vw, 36rem);
+    max-width: calc(100vw - 24px);
 }
 
 .gallery-local-badge {
@@ -818,19 +823,15 @@ onBeforeUnmount(() => {
 
 @media (max-width: 640px) {
     .gallery-stage-bar {
-        top: max(58px, calc(env(safe-area-inset-top, 0px) + 52px));
         inset-inline-start: 8px;
         inset-inline-end: 8px;
-        justify-content: center;
+        max-width: calc(100vw - 16px);
     }
 
     .gallery-actions-bar {
-        top: max(108px, calc(env(safe-area-inset-top, 0px) + 100px));
-        bottom: auto;
-        inset-inline-end: 8px;
         inset-inline-start: 8px;
-        justify-content: center;
-        max-width: none;
+        inset-inline-end: 8px;
+        max-width: calc(100vw - 16px);
     }
 
     .gallery-action-btn {
@@ -867,7 +868,7 @@ onBeforeUnmount(() => {
 
     .vel-modal .vel-img {
         max-width: 100vw !important;
-        max-height: calc(100dvh - 220px) !important;
+        max-height: calc(100dvh - 240px) !important;
     }
 }
 </style>
