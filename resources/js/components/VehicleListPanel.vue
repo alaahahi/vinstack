@@ -40,6 +40,7 @@
                 @open-chat="$emit('open-chat', $event)"
                 @open-detail="$emit('open-detail', $event)"
                 @edit="$emit('edit', $event)"
+                @delete="$emit('delete', $event)"
                 @track-container="openContainerTracking"
             />
 
@@ -137,7 +138,7 @@ const props = defineProps({
     },
 });
 
-const emit = defineEmits(['assign', 'unassign', 'update-status', 'open-chat', 'open-detail', 'edit', 'page', 'empty-action', 'load-more']);
+const emit = defineEmits(['assign', 'unassign', 'update-status', 'open-chat', 'open-detail', 'edit', 'page', 'empty-action', 'load-more', 'delete']);
 
 const { t } = useI18n();
 

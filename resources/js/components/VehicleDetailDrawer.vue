@@ -105,6 +105,18 @@
                     </div>
                     <p v-else class="empty-section">—</p>
                 </section>
+
+                <section v-if="mode === 'admin' && canDelete" class="detail-section info-card detail-actions">
+                    <Button
+                        :label="t('vehicleDetail.deleteVehicle')"
+                        icon="pi pi-trash"
+                        severity="danger"
+                        outlined
+                        class="w-full"
+                        :loading="deleting"
+                        @click="confirmDelete"
+                    />
+                </section>
             </div>
         </div>
     </Drawer>
@@ -113,6 +125,8 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useConfirm } from 'primevue/useconfirm';
+import { useToast } from 'primevue/usetoast';
 import Drawer from 'primevue/drawer';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
@@ -121,6 +135,7 @@ import ProgressSpinner from 'primevue/progressspinner';
 import VehiclePhotosPanel from './VehiclePhotosPanel.vue';
 import VinCopyLabel from './VinCopyLabel.vue';
 import api from '../api/client';
+import { deleteVehicle } from '../api/vehicles';
 import { formatVehicleDate, vehicleStatusClass } from '../utils/vehicleMeta';
 
 const props = defineProps({
@@ -139,13 +154,16 @@ const props = defineProps({
     },
 });
 
-const emit = defineEmits(['update:visible']);
+const emit = defineEmits(['update:visible', 'deleted']);
 
 const { t } = useI18n();
+const confirm = useConfirm();
+const toast = useToast();
 
 const loading = ref(false);
 const error = ref(null);
 const detail = ref(null);
+const deleting = ref(false);
 
 const drawerVisible = computed({
     get: () => props.visible,
@@ -155,6 +173,14 @@ const drawerVisible = computed({
 const statusClass = computed(() => vehicleStatusClass(detail.value?.status));
 
 const isAdminPhotos = computed(() => props.mode === 'admin');
+
+const canDelete = computed(() => {
+    if (props.mode !== 'admin' || ! detail.value) {
+        return false;
+    }
+
+    return ! detail.value.assignment && detail.value.local_status !== 'assigned';
+});
 
 const photosVehicle = computed(() => {
     const data = detail.value ?? {};
@@ -276,6 +302,46 @@ function invoiceSubtitle(invoice) {
 
 function documentLabel(doc) {
     return doc.name || doc.title || doc.filename || doc.type || t('vehicleDetail.document');
+}
+
+function confirmDelete() {
+    if (! props.vehicleId || deleting.value) {
+        return;
+    }
+
+    confirm.require({
+        message: t('vehicles.deleteConfirm'),
+        header: t('vehicles.deleteTitle'),
+        icon: 'pi pi-exclamation-triangle',
+        rejectLabel: t('actions.cancel'),
+        acceptLabel: t('actions.delete'),
+        acceptClass: 'p-button-danger',
+        accept: () => performDelete(),
+    });
+}
+
+async function performDelete() {
+    deleting.value = true;
+
+    try {
+        const result = await deleteVehicle(props.vehicleId);
+        toast.add({
+            severity: 'success',
+            summary: result.message || t('vehicles.deleteSuccess'),
+            life: 3000,
+        });
+        emit('deleted');
+        close();
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || t('vehicles.deleteFailed'),
+            life: 4000,
+        });
+    } finally {
+        deleting.value = false;
+    }
 }
 </script>
 
@@ -486,6 +552,14 @@ function documentLabel(doc) {
 
 .local-tag {
     font-size: 0.72rem;
+}
+
+.detail-actions {
+    padding-top: 0.85rem;
+}
+
+.detail-actions .w-full {
+    width: 100%;
 }
 
 .mt-sm {

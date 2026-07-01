@@ -147,6 +147,16 @@
                 class="btn-assign"
                 @click="$emit('assign', vehicle)"
             />
+            <Button
+                v-if="!isAssigned"
+                icon="pi pi-trash"
+                :label="t('vehicles.deleteVehicle')"
+                size="small"
+                severity="danger"
+                outlined
+                :title="t('vehicles.deleteTitle')"
+                @click="$emit('delete', vehicle)"
+            />
         </div>
 
         <!-- Dealer: local status + action -->
@@ -213,7 +223,7 @@ const props = defineProps({
     },
 });
 
-defineEmits(['assign', 'update-status', 'open-chat', 'open-detail', 'edit', 'unassign', 'track-container']);
+defineEmits(['assign', 'update-status', 'open-chat', 'open-detail', 'edit', 'unassign', 'track-container', 'delete']);
 
 const { t } = useI18n();
 

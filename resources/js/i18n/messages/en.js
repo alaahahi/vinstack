@@ -23,6 +23,7 @@ export default {
         saveOptions: 'Save options',
         viewMyVehicles: 'View my vehicles',
         refreshList: 'Refresh list',
+        delete: 'Delete',
     },
     auth: {
         shell: {
@@ -131,6 +132,12 @@ export default {
         unassignConfirm: 'Unassign this vehicle from «{dealer}»?',
         unassignSuccess: 'Unassigned',
         unassignFailed: 'Unassign failed',
+        deleteVehicle: 'Delete vehicle',
+        deleteTitle: 'Delete vehicle',
+        deleteConfirm: 'The vehicle will be removed from the list (soft delete). It can be restored later from sync or by entering the same VIN.',
+        deleteSuccess: 'Vehicle deleted',
+        deleteFailed: 'Delete failed',
+        deleteBlocked: 'Cannot delete — vehicle is assigned to a dealer',
         loadFailed: 'Failed to load vehicles',
     },
     containers: {
@@ -223,6 +230,7 @@ export default {
         documents: 'Documents',
         invoice: 'Invoice',
         document: 'Document',
+        deleteVehicle: 'Delete vehicle',
     },
     vehicleMeta: {
         keysPresent: 'Present',

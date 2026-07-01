@@ -441,7 +441,7 @@
 
             <Button
 
-                v-if="isEdit"
+                v-if="isEdit && !isAssigned"
 
                 :label="t('manualVehicle.deleteVehicle')"
 
@@ -579,6 +579,8 @@ import {
 
 } from '../api/vehicles';
 
+import { vehicleIsAssigned } from '../utils/vehicleMeta';
+
 
 
 const props = defineProps({
@@ -637,6 +639,8 @@ let vinCheckToken = 0;
 
 
 const isEdit = computed(() => props.vehicle?.id != null);
+
+const isAssigned = computed(() => vehicleIsAssigned(props.vehicle));
 
 const editVehicleId = computed(() => props.vehicle?.id ?? null);
 
@@ -1525,15 +1529,15 @@ function confirmDelete() {
 
     confirm.require({
 
-        message: 'سيتم حذف السيارة من القائمة (حذف مؤقت). يمكن استعادتها لاحقاً من المزامنة أو بإدخال نفس رقم الشاصي.',
+        message: t('manualVehicle.deleteConfirmMessage'),
 
-        header: 'حذف السيارة',
+        header: t('manualVehicle.deleteHeader'),
 
         icon: 'pi pi-exclamation-triangle',
 
-        rejectLabel: 'إلغاء',
+        rejectLabel: t('actions.cancel'),
 
-        acceptLabel: 'حذف',
+        acceptLabel: t('actions.delete'),
 
         acceptClass: 'p-button-danger',
 
@@ -1559,7 +1563,7 @@ async function performDelete() {
 
             severity: 'success',
 
-            summary: result.message || 'تم حذف السيارة',
+            summary: result.message || t('manualVehicle.deleted'),
 
             life: 3000,
 
@@ -1573,9 +1577,9 @@ async function performDelete() {
 
             severity: 'error',
 
-            summary: 'خطأ',
+            summary: t('common.error'),
 
-            detail: e.response?.data?.message || 'فشل حذف السيارة',
+            detail: e.response?.data?.message || t('manualVehicle.deleteFailed'),
 
             life: 4000,
 

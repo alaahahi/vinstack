@@ -23,6 +23,7 @@ export default {
         saveOptions: 'پاشەکەوتکردنی هەڵبژاردەکان',
         viewMyVehicles: 'بینینی ئۆتۆمبێلەکانم',
         refreshList: 'نوێکردنەوەی لیست',
+        delete: 'سڕینەوە',
     },
     auth: {
         shell: {
@@ -131,6 +132,12 @@ export default {
         unassignConfirm: 'دەتەوێت دابەشکردنی ئەم ئۆتۆمبێلە لە «{dealer}» لاببەیت؟',
         unassignSuccess: 'دابەشکردن لابرا',
         unassignFailed: 'لابردنی دابەشکردن سەرکەوتوو نەبوو',
+        deleteVehicle: 'سڕینەوەی ئۆتۆمبێل',
+        deleteTitle: 'سڕینەوەی ئۆتۆمبێل',
+        deleteConfirm: 'ئۆتۆمبێل لە لیست دەسڕدرێتەوە (سڕینەوەی نەرم). دواتر دەتوانیت بیگەڕێنیتەوە.',
+        deleteSuccess: 'ئۆتۆمبێل سڕایەوە',
+        deleteFailed: 'سڕینەوە سەرکەوتوو نەبوو',
+        deleteBlocked: 'ناتوانرێت بسڕدرێتەوە — ئۆتۆمبێل دابەشکراوە بۆ بازرگان',
         loadFailed: 'نەتوانرا ئۆتۆمبێلەکان بهێنرێن',
     },
     containers: {
@@ -223,6 +230,7 @@ export default {
         documents: 'بەڵگەکان',
         invoice: 'پسوولە',
         document: 'بەڵگە',
+        deleteVehicle: 'سڕینەوەی ئۆتۆمبێل',
     },
     vehicleMeta: {
         keysPresent: 'هەیە',

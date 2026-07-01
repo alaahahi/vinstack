@@ -52,7 +52,7 @@ export async function updateManualVehicle(vehicleId, payload) {
 
 
 
-export async function deleteManualVehicle(vehicleId) {
+export async function deleteVehicle(vehicleId) {
 
     const { data } = await api.delete(`/admin/vehicles/${vehicleId}`);
 
@@ -61,6 +61,11 @@ export async function deleteManualVehicle(vehicleId) {
     return data;
 
 }
+
+
+
+/** @deprecated Use deleteVehicle */
+export const deleteManualVehicle = deleteVehicle;
 
 
 

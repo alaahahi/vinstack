@@ -70,6 +70,7 @@
             :empty-action-label="t('actions.refreshList')"
             @assign="openAssign"
             @unassign="confirmUnassign"
+            @delete="confirmDeleteVehicle"
             @edit="openEdit"
             @open-chat="openChat"
             @open-detail="openDetail"
@@ -81,6 +82,7 @@
             v-model:visible="detailVisible"
             :vehicle-id="detailVehicleId"
             mode="admin"
+            @deleted="onVehicleDeleted"
         />
 
         <VehicleChatDialog
@@ -146,6 +148,7 @@ import VehicleDetailDrawer from '../../components/VehicleDetailDrawer.vue';
 import VehicleChatDialog from '../../components/VehicleChatDialog.vue';
 import NujoomImportDialog from '../../components/NujoomImportDialog.vue';
 import api from '../../api/client';
+import { deleteVehicle } from '../../api/vehicles';
 
 const { t } = useI18n();
 const toast = useToast();
@@ -291,6 +294,45 @@ async function onManualDeleted() {
     closeManualForm();
     editingVehicle.value = null;
     await resetAndLoad();
+}
+
+async function onVehicleDeleted() {
+    detailVisible.value = false;
+    detailVehicleId.value = null;
+    await resetAndLoad();
+}
+
+function confirmDeleteVehicle(vehicle) {
+    confirm.require({
+        message: t('vehicles.deleteConfirm'),
+        header: t('vehicles.deleteTitle'),
+        icon: 'pi pi-exclamation-triangle',
+        rejectLabel: t('actions.cancel'),
+        acceptLabel: t('actions.delete'),
+        acceptClass: 'p-button-danger',
+        accept: () => performDeleteVehicle(vehicle),
+    });
+}
+
+async function performDeleteVehicle(vehicle) {
+    try {
+        const result = await deleteVehicle(vehicle.id);
+        toast.add({ severity: 'success', summary: result.message || t('vehicles.deleteSuccess'), life: 3000 });
+
+        if (detailVehicleId.value === vehicle.id) {
+            detailVisible.value = false;
+            detailVehicleId.value = null;
+        }
+
+        await resetAndLoad();
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || t('vehicles.deleteFailed'),
+            life: 4000,
+        });
+    }
 }
 
 function openAssign(vehicle) {

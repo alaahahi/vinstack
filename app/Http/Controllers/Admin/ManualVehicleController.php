@@ -57,10 +57,10 @@ class ManualVehicleController extends Controller
 
     public function destroy(Vehicle $vehicle): JsonResponse
     {
-        if ($vehicle->source !== VehicleSource::Manual) {
+        if ($vehicle->activeAssignment()->exists()) {
             return response()->json([
-                'message' => 'لا يمكن حذف سوى السيارات المُدخلة يدوياً.',
-            ], 403);
+                'message' => 'لا يمكن حذف السيارة لأنها مسندة لتاجر.',
+            ], 422);
         }
 
         $vehicle->delete();

@@ -23,6 +23,7 @@ export default {
         saveOptions: 'حفظ الخيارات',
         viewMyVehicles: 'عرض سياراتي',
         refreshList: 'تحديث القائمة',
+        delete: 'حذف',
     },
     auth: {
         shell: {
@@ -131,6 +132,12 @@ export default {
         unassignConfirm: 'هل تريد إلغاء إسناد هذه السيارة من «{dealer}»؟',
         unassignSuccess: 'تم إلغاء الإسناد',
         unassignFailed: 'فشل إلغاء الإسناد',
+        deleteVehicle: 'حذف السيارة',
+        deleteTitle: 'حذف السيارة',
+        deleteConfirm: 'سيتم حذف السيارة من القائمة (حذف مؤقت). يمكن استعادتها لاحقاً من المزامنة أو بإدخال نفس رقم الشاصي.',
+        deleteSuccess: 'تم حذف السيارة',
+        deleteFailed: 'فشل حذف السيارة',
+        deleteBlocked: 'لا يمكن الحذف — السيارة مسندة لتاجر',
         loadFailed: 'تعذّر جلب السيارات',
     },
     containers: {
@@ -223,6 +230,7 @@ export default {
         documents: 'المستندات',
         invoice: 'فاتورة',
         document: 'مستند',
+        deleteVehicle: 'حذف السيارة',
     },
     vehicleMeta: {
         keysPresent: 'موجودة',
