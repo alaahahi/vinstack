@@ -35,7 +35,7 @@
 
             </div>
 
-            <span v-if="container.source === 'vehicles'" class="source-hint">من بيانات السيارات</span>
+            <span v-if="container.source === 'vehicles'" class="source-hint">{{ t('containers.fromVehicles') }}</span>
 
         </div>
 
@@ -85,7 +85,7 @@
 
             <div class="date-row">
 
-                <span class="date-label">تحميل</span>
+                <span class="date-label">{{ t('containers.loading') }}</span>
 
                 <span class="date-value">{{ loadingDate || '—' }}</span>
 
@@ -110,12 +110,12 @@
                 class="vehicle-count-badge"
                 :class="{ 'vehicle-count-badge--empty': !vehicleCount }"
                 :disabled="!vehicleCount"
-                :title="vehicleCount ? 'عرض سيارات الحاوية' : 'لا توجد سيارات'"
+                :title="vehicleCount ? t('containers.showVehicles') : t('containers.noVehicles')"
                 @click="vehicleCount && $emit('show-cars', container)"
             >
                 <i class="pi pi-car" />
                 <span class="vehicle-count-num">{{ vehicleCount }}</span>
-                <span class="vehicle-count-label">سيارة</span>
+                <span class="vehicle-count-label">{{ t('containers.vehicle') }}</span>
             </button>
 
         </div>
@@ -160,7 +160,7 @@
 
             </a>
 
-            <span v-else class="muted">BOL —</span>
+            <span v-else class="muted">{{ t('containers.bolMissing') }}</span>
 
             <template v-if="showInvoice">
                 <div v-if="container.invoice_ref" class="invoice-ref">
@@ -171,7 +171,7 @@
 
                 </div>
 
-                <span v-else class="muted">فاتورة —</span>
+                <span v-else class="muted">{{ t('containers.invoiceMissing') }}</span>
             </template>
 
         </div>
@@ -196,8 +196,8 @@
                 text
                 rounded
                 class="zip-btn"
-                aria-label="رفع صور ZIP"
-                title="رفع صور ZIP"
+                :aria-label="t('containers.uploadZip')"
+                :title="t('containers.uploadZip')"
                 :loading="zipLoading"
                 @click="triggerZipUpload"
             />
@@ -226,6 +226,7 @@
 <script setup>
 
 import { computed, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import Button from 'primevue/button';
 import {
@@ -297,6 +298,7 @@ const props = defineProps({
 
 defineEmits(['track', 'show-cars']);
 
+const { t } = useI18n();
 const toast = useToast();
 const zipInputRef = ref(null);
 const zipLoading = ref(false);
@@ -315,7 +317,7 @@ const loadingDate = computed(() => formatContainerDate(props.container.loading_d
 
 const etaDate = computed(() => formatContainerDate(props.container.eta));
 
-const statusLabel = computed(() => containerListStatusLabel(props.container));
+const statusLabel = computed(() => containerListStatusLabel(props.container, t));
 
 const statusClass = computed(() => containerListStatusClass(props.container));
 
@@ -336,7 +338,7 @@ const canTrack = computed(() => {
 });
 
 const trackingTitle = computed(() =>
-    canTrack.value ? 'تتبع الشحنة' : 'تتبع الشحنة — بيانات المسار غير متوفرة',
+    canTrack.value ? t('containers.track') : t('containers.trackUnavailable'),
 );
 
 const vehicleCount = computed(() => props.container?.vehicles?.length ?? 0);
@@ -380,14 +382,16 @@ async function onZipSelected(event) {
 
         toast.add({
             severity: 'success',
-            summary: 'تم رفع الصور إلى Cloudinary',
-            detail: `${payload.meta?.count ?? payload.images?.length ?? 0} صورة — افتح قائمة السيارات لعرضها`,
+            summary: t('containers.zipUploadSuccess'),
+            detail: t('containers.zipUploadSuccessDetail', {
+                count: payload.meta?.count ?? payload.images?.length ?? 0,
+            }),
             life: 4000,
         });
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'تعذّر رفع الصور',
+            summary: t('containers.zipUploadFailed'),
             detail: formatCloudinaryUploadError(e),
             life: 5000,
         });

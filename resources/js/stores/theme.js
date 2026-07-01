@@ -24,7 +24,6 @@ export const useThemeStore = defineStore('theme', {
         isDark: (state) => state.theme === 'dark',
         themeLogo: (state) => (state.theme === 'dark' ? LOGO_NIGHT : LOGO_DAY),
         toggleIcon: (state) => (state.theme === 'dark' ? 'pi pi-sun' : 'pi pi-moon'),
-        toggleTooltip: (state) => (state.theme === 'dark' ? 'الوضع النهاري' : 'الوضع الليلي'),
     },
     actions: {
         init() {

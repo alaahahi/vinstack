@@ -37,7 +37,12 @@
     <script>
         (function () {
             var t = localStorage.getItem('theme');
+            var locale = localStorage.getItem('vinstack-locale') || 'ar';
+            var dir = locale === 'ar' || locale === 'ckb' ? 'rtl' : 'ltr';
             document.documentElement.setAttribute('data-theme', t === 'light' ? 'light' : 'dark');
+            document.documentElement.setAttribute('lang', locale);
+            document.documentElement.setAttribute('dir', dir);
+            document.documentElement.dataset.locale = locale;
         })();
     </script>
     @vite(['resources/css/app.css', 'resources/js/app.js'])

@@ -14,7 +14,7 @@
                 </div>
             </div>
 
-            <nav class="nav" aria-label="تنقل التاجر">
+            <nav class="nav" :aria-label="t('navigation.dealerNav')">
                 <RouterLink
                     v-for="item in navItems"
                     :key="item.name"
@@ -27,6 +27,7 @@
             </nav>
 
             <div class="header-actions">
+                <LocaleSwitcher />
                 <ThemeToggle />
                 <Button
                     icon="pi pi-user"
@@ -56,17 +57,20 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import Menu from 'primevue/menu';
 import { useConfirm } from 'primevue/useconfirm';
 import { useAuthStore } from '../stores/auth';
 import { useTheme } from '../composables/useTheme';
+import LocaleSwitcher from '../components/LocaleSwitcher.vue';
 import ThemeToggle from '../components/ThemeToggle.vue';
 import DealerFooter from '../components/DealerFooter.vue';
 import api from '../api/client';
 import { HEARTBEAT_MS } from '../constants/presence';
 
+const { t } = useI18n();
 const auth = useAuthStore();
 const { themeLogo } = useTheme();
 let heartbeatTimer = null;
@@ -76,17 +80,19 @@ const confirm = useConfirm();
 const profileMenu = ref(null);
 const profileMenuOpen = ref(false);
 
-const navItems = [
-    { name: 'dealer.vehicles', label: 'سياراتي', icon: 'pi pi-car' },
-    { name: 'dealer.containers', label: 'حاوياتي', icon: 'pi pi-box' },
-    { name: 'dealer.profile', label: 'الملف', icon: 'pi pi-user' },
-];
+const navItems = computed(() => [
+    { name: 'dealer.vehicles', label: t('navigation.myVehicles'), icon: 'pi pi-car' },
+    { name: 'dealer.containers', label: t('navigation.myContainers'), icon: 'pi pi-box' },
+    { name: 'dealer.profile', label: t('navigation.profile'), icon: 'pi pi-user' },
+]);
 
-const pageTitle = computed(() => route.meta.title || '');
+const pageTitle = computed(() => (
+    route.meta.titleKey ? t(route.meta.titleKey) : (route.meta.title || '')
+));
 
 const profileLabel = computed(() => {
     if (route.name === 'dealer.profile') {
-        return 'الملف';
+        return t('navigation.profile');
     }
 
     return '';
@@ -94,15 +100,15 @@ const profileLabel = computed(() => {
 
 const profileMenuItems = computed(() => [
     {
-        label: auth.user?.dealer?.company_name || 'حسابي',
+        label: auth.user?.dealer?.company_name || t('navigation.myAccount'),
         items: [
             {
-                label: 'الملف الشخصي',
+                label: t('navigation.adminProfile'),
                 icon: 'pi pi-user',
                 command: () => router.push({ name: 'dealer.profile' }),
             },
             {
-                label: 'تسجيل الخروج',
+                label: t('actions.logout'),
                 icon: 'pi pi-sign-out',
                 command: confirmLogout,
             },
@@ -117,11 +123,11 @@ function toggleProfileMenu(event) {
 
 function confirmLogout() {
     confirm.require({
-        message: 'هل تريد تسجيل الخروج من البوابة؟',
-        header: 'تسجيل الخروج',
+        message: t('dealer.logoutPrompt'),
+        header: t('actions.logout'),
         icon: 'pi pi-sign-out',
-        rejectLabel: 'إلغاء',
-        acceptLabel: 'خروج',
+        rejectLabel: t('actions.cancel'),
+        acceptLabel: t('actions.logout'),
         accept: () => {
             auth.logout();
             router.push({ name: 'login' });

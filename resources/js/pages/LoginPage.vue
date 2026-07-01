@@ -1,7 +1,7 @@
 <template>
     <AuthShell>
         <Card class="login-card">
-            <template #title>تسجيل الدخول</template>
+            <template #title>{{ t('auth.login.title') }}</template>
             <template #content>
                 <form @submit.prevent="submit">
                     <div class="login-tabs">
@@ -14,7 +14,7 @@
                                 :aria-selected="activeTab === 0"
                                 @click="activeTab = 0"
                             >
-                                البريد وكلمة المرور
+                                {{ t('auth.login.emailTab') }}
                             </button>
                             <button
                                 type="button"
@@ -24,12 +24,12 @@
                                 :aria-selected="activeTab === 1"
                                 @click="activeTab = 1"
                             >
-                                رقم الهاتف
+                                {{ t('auth.login.phoneTab') }}
                             </button>
                         </div>
                         <div v-show="activeTab === 0" class="login-tabpanel" role="tabpanel">
                             <div class="field">
-                                <label for="login-email">البريد الإلكتروني</label>
+                                <label for="login-email">{{ t('auth.login.emailLabel') }}</label>
                                 <InputText
                                     id="login-email"
                                     v-model="email"
@@ -42,7 +42,7 @@
                                 />
                             </div>
                             <div class="field">
-                                <label for="login-password">كلمة المرور</label>
+                                <label for="login-password">{{ t('auth.login.passwordLabel') }}</label>
                                 <Password
                                     id="login-password"
                                     v-model="password"
@@ -57,7 +57,7 @@
                         </div>
                         <div v-show="activeTab === 1" class="login-tabpanel" role="tabpanel">
                             <div class="field">
-                                <label for="login-phone">رقم الهاتف</label>
+                                <label for="login-phone">{{ t('auth.login.phoneLabel') }}</label>
                                 <InputText
                                     id="login-phone"
                                     v-model="phone"
@@ -70,7 +70,12 @@
                             </div>
                         </div>
                     </div>
-                    <Button type="submit" label="دخول" :loading="auth.loading" class="w-full login-submit" />
+                    <Button
+                        type="submit"
+                        :label="t('auth.login.submit')"
+                        :loading="auth.loading"
+                        class="w-full login-submit"
+                    />
                 </form>
             </template>
         </Card>
@@ -79,6 +84,7 @@
 
 <script setup>
 import { ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import Card from 'primevue/card';
@@ -88,6 +94,7 @@ import Button from 'primevue/button';
 import { useAuthStore } from '../stores/auth';
 import AuthShell from '../components/AuthShell.vue';
 
+const { t } = useI18n();
 const activeTab = ref(0);
 const phone = ref('');
 const email = ref('');
@@ -107,7 +114,7 @@ function loginErrorDetail(error) {
         }
     }
 
-    return error.response?.data?.message || 'فشل تسجيل الدخول';
+    return error.response?.data?.message || t('auth.login.errorFallback');
 }
 
 async function submit() {
@@ -139,7 +146,7 @@ async function submit() {
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
+            summary: t('auth.login.errorSummary'),
             detail: loginErrorDetail(e),
             life: 4000,
         });
@@ -155,7 +162,6 @@ async function submit() {
 
 .login-tablist {
     display: flex;
-    direction: rtl;
     gap: 0.25rem;
     padding: 0.2rem;
     border-radius: 0.65rem;

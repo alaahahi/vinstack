@@ -6,7 +6,7 @@
 
             <span class="dealer-footer__group">
 
-                <span class="dealer-footer__prefix">بواسطة </span>
+                <span class="dealer-footer__prefix">{{ t('footer.poweredBy') }}</span>
 
                 <a
 
@@ -30,7 +30,7 @@
 
                 <span class="dealer-footer__group dealer-footer__support">
 
-                    <span class="dealer-footer__support-label">التواصل مع الدعم الفني</span>
+                    <span class="dealer-footer__support-label">{{ t('footer.support') }}</span>
 
                     <i class="pi pi-headphones dealer-footer__support-icon" aria-hidden="true" />
 
@@ -61,9 +61,11 @@
 <script setup>
 
 import { onMounted } from 'vue';
+import { useI18n } from 'vue-i18n';
 
 import { usePublicSettings } from '../composables/usePublicSettings';
 
+const { t } = useI18n();
 
 
 const { supportPhone, hasSupportPhone, supportWhatsAppHref, loadPublicSettings } = usePublicSettings();

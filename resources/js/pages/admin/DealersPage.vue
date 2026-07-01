@@ -2,8 +2,8 @@
     <div class="admin-page">
         <AdminPageHeader>
             <template #actions>
-                <Button label="تاجر جديد" icon="pi pi-plus" class="btn-add" @click="showForm = true" />
-                <Button icon="pi pi-refresh" label="تحديث" outlined :loading="loading" @click="load()" />
+                <Button :label="t('dealers.newDealer')" icon="pi pi-plus" class="btn-add" @click="showForm = true" />
+                <Button icon="pi pi-refresh" :label="t('actions.refresh')" outlined :loading="loading" @click="load()" />
             </template>
         </AdminPageHeader>
 
@@ -14,9 +14,9 @@
 
             <div v-else-if="!dealers.length" class="admin-empty">
                 <i class="pi pi-building" />
-                <p class="admin-empty-title">لا يوجد تجار بعد</p>
-                <p class="admin-empty-hint">أنشئ أول حساب تاجر لبدء إسناد السيارات من قائمة السيارات.</p>
-                <Button label="تاجر جديد" icon="pi pi-plus" class="btn-add" @click="showForm = true" />
+                <p class="admin-empty-title">{{ t('dealers.emptyTitle') }}</p>
+                <p class="admin-empty-hint">{{ t('dealers.emptyHint') }}</p>
+                <Button :label="t('dealers.newDealer')" icon="pi pi-plus" class="btn-add" @click="showForm = true" />
             </div>
 
             <ul v-else class="dealer-list" role="list">
@@ -48,7 +48,7 @@
                     </div>
                     <Button
                         icon="pi pi-copy"
-                        label="نسخ بيانات الدخول"
+                        :label="t('dealers.copyLogin')"
                         severity="secondary"
                         outlined
                         size="small"
@@ -58,7 +58,7 @@
                     <Button
                         v-if="dealer.two_factor_enabled"
                         icon="pi pi-key"
-                        label="عرض رموز الاسترداد"
+                        :label="t('dealers.viewRecoveryCodes')"
                         severity="secondary"
                         outlined
                         size="small"
@@ -68,7 +68,7 @@
                     />
                     <Button
                         icon="pi pi-pencil"
-                        label="تعديل"
+                        :label="t('actions.edit')"
                         severity="secondary"
                         outlined
                         size="small"
@@ -76,15 +76,15 @@
                     />
                     <Button
                         icon="pi pi-trash"
-                        label="حذف"
+                        :label="t('dealers.delete')"
                         severity="danger"
                         outlined
                         size="small"
                         :disabled="dealer.vehicles_count > 0"
                         :title="
                             dealer.vehicles_count > 0
-                                ? 'لا يمكن الحذف — التاجر مرتبط بسيارات'
-                                : 'حذف التاجر'
+                                ? t('dealers.deleteBlocked')
+                                : t('dealers.deleteTitle')
                         "
                         :loading="deletingDealerId === dealer.id"
                         @click="confirmDeleteDealer(dealer)"
@@ -93,63 +93,63 @@
             </ul>
         </section>
 
-        <Dialog v-model:visible="showForm" header="إنشاء تاجر" modal style="width: min(480px, 100vw)">
+        <Dialog v-model:visible="showForm" :header="t('dealers.createHeader')" modal style="width: min(480px, 100vw)">
             <div class="form-grid">
                 <div class="field">
-                    <label class="vs-form-label">الاسم</label>
+                    <label class="vs-form-label">{{ t('dealers.name') }}</label>
                     <InputText v-model="form.name" class="w-full" />
                 </div>
                 <div class="field">
-                    <label class="vs-form-label">البريد</label>
+                    <label class="vs-form-label">{{ t('dealers.email') }}</label>
                     <InputText v-model="form.email" type="email" class="w-full" />
                 </div>
                 <div class="field">
-                    <label class="vs-form-label">كلمة المرور</label>
+                    <label class="vs-form-label">{{ t('dealers.password') }}</label>
                     <Password v-model="form.password" toggle-mask input-class="w-full" class="w-full" />
                 </div>
                 <div class="field">
-                    <label class="vs-form-label">اسم الشركة / معرض</label>
+                    <label class="vs-form-label">{{ t('dealers.company') }}</label>
                     <InputText v-model="form.company_name" class="w-full" />
                 </div>
                 <div class="field">
-                    <label class="vs-form-label">الهاتف</label>
+                    <label class="vs-form-label">{{ t('dealers.phone') }}</label>
                     <InputText v-model="form.phone" class="w-full" />
                 </div>
             </div>
             <template #footer>
-                <Button label="إلغاء" text @click="showForm = false" />
-                <Button label="حفظ" class="btn-cta" :loading="saving" @click="save" />
+                <Button :label="t('actions.cancel')" text @click="showForm = false" />
+                <Button :label="t('actions.save')" class="btn-cta" :loading="saving" @click="save" />
             </template>
         </Dialog>
 
         <Dialog
             v-model:visible="showEdit"
-            header="تعديل بيانات التاجر"
+            :header="t('dealers.editHeader')"
             modal
             style="width: min(480px, 100vw)"
         >
             <div class="form-grid">
                 <div class="field">
-                    <label class="vs-form-label">الاسم</label>
+                    <label class="vs-form-label">{{ t('dealers.name') }}</label>
                     <InputText v-model="editForm.name" class="w-full" />
                 </div>
                 <div class="field">
-                    <label class="vs-form-label">اسم الشركة / معرض</label>
+                    <label class="vs-form-label">{{ t('dealers.company') }}</label>
                     <InputText v-model="editForm.company_name" class="w-full" />
                 </div>
                 <div class="field">
-                    <label class="vs-form-label">الهاتف</label>
+                    <label class="vs-form-label">{{ t('dealers.phone') }}</label>
                     <InputText v-model="editForm.phone" class="w-full" />
                 </div>
                 <div class="field">
-                    <label class="vs-form-label">كلمة مرور جديدة (اختياري)</label>
+                    <label class="vs-form-label">{{ t('dealers.newPasswordOptional') }}</label>
                     <Password v-model="editForm.password" toggle-mask input-class="w-full" class="w-full" />
-                    <small class="field-hint">اتركها فارغة للإبقاء على كلمة المرور الحالية. عيّن كلمة جديدة لتحديث النسخ.</small>
+                    <small class="field-hint">{{ t('dealers.passwordHint') }}</small>
                 </div>
             </div>
             <template #footer>
-                <Button label="إلغاء" text @click="showEdit = false" />
-                <Button label="حفظ التعديلات" class="btn-cta" :loading="editing" @click="saveEdit" />
+                <Button :label="t('actions.cancel')" text @click="showEdit = false" />
+                <Button :label="t('dealers.saveChanges')" class="btn-cta" :loading="editing" @click="saveEdit" />
             </template>
         </Dialog>
 
@@ -158,13 +158,14 @@
             :codes="recoveryCodes"
             :subtitle="recoverySubtitle"
             read-only
-            header="رموز الاسترداد المحفوظة"
+            :header="t('dealers.recoveryHeader')"
         />
     </div>
 </template>
 
 <script setup>
 import { onMounted, onUnmounted, reactive, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import InputText from 'primevue/inputtext';
@@ -179,6 +180,7 @@ import { ADMIN_POLL_MS } from '../../constants/presence';
 import { formatDealerLoginCopy } from '../../utils/dealerLoginCopy';
 import { formatLastSeenLabel, isDealerOnline } from '../../utils/lastSeen';
 
+const { t } = useI18n();
 const toast = useToast();
 const confirm = useConfirm();
 const dealers = ref([]);
@@ -213,7 +215,7 @@ const editForm = reactive({
 });
 
 function presenceLabel(dealer) {
-    return isDealerOnline(dealer) ? 'متصل' : formatLastSeenLabel(dealer);
+    return isDealerOnline(dealer) ? t('dealers.online') : formatLastSeenLabel(dealer);
 }
 
 async function load({ silent = false } = {}) {
@@ -258,8 +260,8 @@ async function copyLoginInfo(dealer, passwordOverride) {
     if (!email && !phone) {
         toast.add({
             severity: 'warn',
-            summary: 'لا توجد بيانات',
-            detail: 'لا يوجد هاتف أو بريد لنسخ بيانات الدخول.',
+            summary: t('dealers.noData'),
+            detail: t('dealers.noLoginData'),
             life: 4000,
         });
 
@@ -274,15 +276,15 @@ async function copyLoginInfo(dealer, passwordOverride) {
         await navigator.clipboard.writeText(text);
         toast.add({
             severity: 'success',
-            summary: 'تم النسخ',
-            detail: 'تم نسخ بيانات الدخول إلى الحافظة.',
+            summary: t('dealers.copied'),
+            detail: t('dealers.copiedDetail'),
             life: 3000,
         });
     } catch {
         toast.add({
             severity: 'warn',
-            summary: 'تعذّر النسخ',
-            detail: 'انسخ البيانات يدوياً من بطاقة التاجر.',
+            summary: t('dealers.copyFailed'),
+            detail: t('dealers.copyFailedDetail'),
             life: 4000,
         });
     } finally {
@@ -294,8 +296,8 @@ async function viewRecoveryCodes(dealer) {
     if (!dealer.has_recovery_codes_archive) {
         toast.add({
             severity: 'warn',
-            summary: 'لا توجد رموز محفوظة',
-            detail: 'لا توجد رموز محفوظة — يجب إعادة إنشائها من التاجر.',
+            summary: t('dealers.noRecoveryCodes'),
+            detail: t('dealers.noRecoveryCodesDetail'),
             life: 4500,
         });
 
@@ -308,16 +310,16 @@ async function viewRecoveryCodes(dealer) {
         const { data } = await api.get(`/admin/dealers/${dealer.id}/recovery-codes`);
         recoveryCodes.value = data.recovery_codes ?? [];
         recoverySubtitle.value = data.archived_at
-            ? `آخر حفظ: ${formatArchivedAt(data.archived_at)}`
+            ? t('dealers.lastSaved', { date: formatArchivedAt(data.archived_at) })
             : '';
         recoveryDialogVisible.value = recoveryCodes.value.length > 0;
     } catch (e) {
         toast.add({
             severity: 'warn',
-            summary: 'لا توجد رموز محفوظة',
+            summary: t('dealers.noRecoveryCodes'),
             detail:
                 e.response?.data?.message ||
-                'لا توجد رموز محفوظة — يجب إعادة إنشائها من التاجر.',
+                t('dealers.noRecoveryCodesDetail'),
             life: 4500,
         });
     } finally {
@@ -344,7 +346,7 @@ async function save() {
     try {
         const { data } = await api.post('/admin/dealers', { ...form });
         showForm.value = false;
-        toast.add({ severity: 'success', summary: 'تم إنشاء التاجر', life: 3000 });
+        toast.add({ severity: 'success', summary: t('dealers.created'), life: 3000 });
         Object.assign(form, {
             name: '',
             email: '',
@@ -369,8 +371,8 @@ async function save() {
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
-            detail: e.response?.data?.message || 'فشل الحفظ',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || t('dealers.saveFailed'),
             life: 4000,
         });
     } finally {
@@ -384,11 +386,11 @@ function confirmDeleteDealer(dealer) {
     }
 
     confirm.require({
-        message: `هل تريد حذف التاجر «${dealer.company_name}»؟ لا يمكن التراجع عن هذه العملية.`,
-        header: 'حذف تاجر',
+        message: t('dealers.deleteConfirm', { name: dealer.company_name }),
+        header: t('dealers.deleteHeader'),
         icon: 'pi pi-trash',
-        rejectLabel: 'إلغاء',
-        acceptLabel: 'حذف',
+        rejectLabel: t('actions.cancel'),
+        acceptLabel: t('dealers.delete'),
         acceptClass: 'p-button-danger',
         accept: () => deleteDealer(dealer),
     });
@@ -401,16 +403,16 @@ async function deleteDealer(dealer) {
         const { data } = await api.delete(`/admin/dealers/${dealer.id}`);
         toast.add({
             severity: 'success',
-            summary: 'تم الحذف',
-            detail: data.message || 'تم حذف التاجر',
+            summary: t('dealers.deleted'),
+            detail: data.message || t('dealers.deleted'),
             life: 3000,
         });
         await load({ silent: true });
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
-            detail: e.response?.data?.message || 'فشل حذف التاجر',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || t('dealers.deleteFailed'),
             life: 4000,
         });
     } finally {
@@ -440,8 +442,8 @@ async function saveEdit() {
         showEdit.value = false;
         toast.add({
             severity: 'success',
-            summary: 'تم التحديث',
-            detail: data.message || 'تم تحديث بيانات التاجر',
+            summary: t('dealers.updated'),
+            detail: data.message || t('dealers.updated'),
             life: 3000,
         });
         await load({ silent: true });
@@ -451,8 +453,8 @@ async function saveEdit() {
 
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
-            detail: firstError || e.response?.data?.message || 'فشل تحديث التاجر',
+            summary: t('common.error'),
+            detail: firstError || e.response?.data?.message || t('dealers.updateFailed'),
             life: 4000,
         });
     } finally {

@@ -2,11 +2,11 @@
 
     <div class="admin-page">
 
-        <AdminPageHeader :count="total" count-label="حاوية">
+        <AdminPageHeader :count="total" :count-label="t('containers.countLabel')">
 
             <template #actions>
 
-                <Button icon="pi pi-refresh" label="تحديث" outlined :loading="loading" @click="resetAndLoad" />
+                <Button icon="pi pi-refresh" :label="t('actions.refresh')" outlined :loading="loading" @click="resetAndLoad" />
 
             </template>
 
@@ -20,7 +20,7 @@
 
                         v-model="chassisSearch"
 
-                        placeholder="بحث برقم الشاصي..."
+                        :placeholder="t('containers.searchChassis')"
 
                         @keyup.enter="resetAndLoad"
 
@@ -105,7 +105,7 @@
 <script setup>
 
 import { onMounted, ref } from 'vue';
-
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 
 import IconField from 'primevue/iconfield';
@@ -130,6 +130,7 @@ import api from '../../api/client';
 
 
 
+const { t } = useI18n();
 const toast = useToast();
 
 const items = ref([]);

@@ -11,7 +11,7 @@
             <div v-if="detail" class="drawer-header">
                 <div class="drawer-header-top">
                     <h2 class="drawer-title">{{ detail.title || '—' }}</h2>
-                    <Button icon="pi pi-times" text rounded severity="secondary" aria-label="Close" @click="close" />
+                    <Button icon="pi pi-times" text rounded severity="secondary" :aria-label="t('vehicleDetail.close')" @click="close" />
                 </div>
                 <div class="drawer-header-meta">
                     <span v-if="detail.status" class="status-pill" :class="statusClass">
@@ -23,7 +23,7 @@
                 <VinCopyLabel :vin="detail.vin" class="drawer-vin" />
                 <div v-if="!detail.vinstack_fresh && !['manual', 'nujoom_al_jazeera'].includes(detail.source)" class="stale-note">
                     <i class="pi pi-info-circle" />
-                    Showing cached data — Vinstack live fetch unavailable.
+                    {{ t('vehicleDetail.staleNote') }}
                 </div>
             </div>
             <div v-else class="drawer-header drawer-header--loading">
@@ -39,7 +39,7 @@
         <div v-else-if="error" class="drawer-error">
             <i class="pi pi-exclamation-circle" />
             <span>{{ error }}</span>
-            <Button label="Retry" size="small" outlined @click="load" />
+            <Button :label="t('vehicleDetail.retry')" size="small" outlined @click="load" />
         </div>
 
         <div v-else-if="detail" class="drawer-body">
@@ -68,17 +68,17 @@
                 </section>
 
                 <section v-if="detail.assignment?.dealer_name" class="detail-section info-card">
-                    <h3 class="section-title">Assignment</h3>
+                    <h3 class="section-title">{{ t('vehicleDetail.assignment') }}</h3>
                     <dl class="field-grid">
-                        <dt>Dealer</dt>
+                        <dt>{{ t('vehicleDetail.dealer') }}</dt>
                         <dd>{{ detail.assignment.dealer_name }}</dd>
-                        <dt>Assigned</dt>
+                        <dt>{{ t('vehicleDetail.assigned') }}</dt>
                         <dd>{{ formatDate(detail.assignment.assigned_at) }}</dd>
                     </dl>
                 </section>
 
                 <section v-if="mode !== 'dealer'" class="detail-section info-card">
-                    <h3 class="section-title">Invoices</h3>
+                    <h3 class="section-title">{{ t('vehicleDetail.invoices') }}</h3>
                     <div v-if="detail.invoices?.length" class="record-list">
                         <div v-for="(invoice, index) in detail.invoices" :key="invoice.id ?? index" class="record-item">
                             <div class="record-title">{{ invoiceLabel(invoice) }}</div>
@@ -89,7 +89,7 @@
                 </section>
 
                 <section class="detail-section info-card">
-                    <h3 class="section-title">Documents</h3>
+                    <h3 class="section-title">{{ t('vehicleDetail.documents') }}</h3>
                     <div v-if="detail.documents?.length" class="record-list">
                         <a
                             v-for="(doc, index) in detail.documents"
@@ -112,6 +112,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Drawer from 'primevue/drawer';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
@@ -139,6 +140,8 @@ const props = defineProps({
 });
 
 const emit = defineEmits(['update:visible']);
+
+const { t } = useI18n();
 
 const loading = ref(false);
 const error = ref(null);
@@ -217,7 +220,7 @@ async function load() {
         const { data } = await api.get(detailsPath.value);
         detail.value = data.data;
     } catch (e) {
-        error.value = e.response?.data?.message || 'Failed to load vehicle details.';
+        error.value = e.response?.data?.message || t('vehicleDetail.loadFailed');
         detail.value = null;
     } finally {
         loading.value = false;
@@ -262,7 +265,7 @@ function formatField(field) {
 }
 
 function invoiceLabel(invoice) {
-    return invoice.number || invoice.invoice_number || invoice.id || 'Invoice';
+    return invoice.number || invoice.invoice_number || invoice.id || t('vehicleDetail.invoice');
 }
 
 function invoiceSubtitle(invoice) {
@@ -272,7 +275,7 @@ function invoiceSubtitle(invoice) {
 }
 
 function documentLabel(doc) {
-    return doc.name || doc.title || doc.filename || doc.type || 'Document';
+    return doc.name || doc.title || doc.filename || doc.type || t('vehicleDetail.document');
 }
 </script>
 

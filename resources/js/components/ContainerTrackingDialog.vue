@@ -28,7 +28,7 @@
             <div ref="headerRef" class="tracking-header">
                 <div class="tracking-header-top">
                     <div>
-                        <div class="tracking-kicker">تتبع الحاوية</div>
+                        <div class="tracking-kicker">{{ t('containers.tracking.title') }}</div>
                         <h2 :id="dialogTitleId" class="tracking-title">
                             <template v-if="!loading">{{ headerContainer }}</template>
                             <Skeleton v-else width="12rem" height="1.35rem" />
@@ -40,7 +40,7 @@
                         text
                         rounded
                         severity="secondary"
-                        aria-label="إغلاق"
+                        :aria-label="t('containers.tracking.close')"
                         :disabled="loading"
                         @click="close"
                     />
@@ -83,7 +83,7 @@
                 </p>
                 <p v-if="lowGeocodeConfidence" class="disclaimer-note disclaimer-note--estimate" role="note">
                     <i class="pi pi-map-marker" aria-hidden="true" />
-                    موقع تقديري — قد يختلف الموقع الفعلي على الخريطة.
+                    {{ t('containers.tracking.estimatedLocation') }}
                 </p>
             </div>
         </template>
@@ -100,15 +100,15 @@
                 <Skeleton width="100%" height="3.5rem" class="mt-sm" />
                 <Skeleton width="100%" height="3.5rem" class="mt-sm" />
             </aside>
-            <span class="sr-only">جاري تحميل التتبع…</span>
+            <span class="sr-only">{{ t('containers.tracking.loading') }}</span>
         </div>
 
         <div v-else-if="error" class="tracking-error" role="alert">
             <div class="tracking-error-card">
                 <i class="pi pi-exclamation-circle" aria-hidden="true" />
-                <p class="tracking-error-title">تعذّر تحميل التتبع</p>
+                <p class="tracking-error-title">{{ t('containers.tracking.loadFailed') }}</p>
                 <p class="tracking-error-msg">{{ error }}</p>
-                <Button label="إعادة المحاولة" size="small" icon="pi pi-refresh" @click="load" />
+                <Button :label="t('containers.tracking.retry')" size="small" icon="pi pi-refresh" @click="load" />
             </div>
         </div>
 
@@ -158,7 +158,7 @@
                         :z-index-offset="1000"
                     />
                 </l-map>
-                <div v-if="mapReady" class="map-legend" dir="rtl">
+                <div v-if="mapReady" class="map-legend" :dir="direction">
                     <div
                         v-for="item in legendItems"
                         :key="item.key"
@@ -177,34 +177,34 @@
                     aria-busy="true"
                 >
                     <ProgressSpinner style="width: 28px; height: 28px" strokeWidth="4" />
-                    <span>جاري تحميل الخريطة…</span>
+                    <span>{{ t('containers.tracking.loadMap') }}</span>
                 </div>
                 <div v-else-if="!mapReady" class="map-empty">
                     <div class="map-empty-illus" aria-hidden="true">
                         <i class="pi pi-map" />
                     </div>
-                    <p class="map-empty-title">لا تتوفر إحداثيات كافية لعرض المسار</p>
+                    <p class="map-empty-title">{{ t('containers.tracking.mapEmptyTitle') }}</p>
                     <p v-if="hasPartialRoute" class="map-empty-hint">
-                        يمكنك متابعة المسار والأحداث من اللوحة الجانبية — المنشأ والوجهة معروفان دون موقع على الخريطة.
+                        {{ t('containers.tracking.mapEmptyHintPartial') }}
                     </p>
                     <p v-else class="map-empty-hint">
-                        عند توفر بيانات الموقع من المصدر ستظهر الخريطة تلقائياً.
+                        {{ t('containers.tracking.mapEmptyHintDefault') }}
                     </p>
                 </div>
                 <ul v-if="mapReady" class="sr-only map-a11y-summary">
-                    <li v-if="originLabel !== '—'">منشأ: {{ originLabel }}</li>
-                    <li v-for="(wp, i) in waypointLabels" :key="`a11y-wp-${i}`">محطة: {{ wp }}</li>
-                    <li v-if="destinationLabel !== '—'">وجهة: {{ destinationLabel }}</li>
+                    <li v-if="originLabel !== '—'">{{ t('containers.tracking.a11yOrigin', { label: originLabel }) }}</li>
+                    <li v-for="(wp, i) in waypointLabels" :key="`a11y-wp-${i}`">{{ t('containers.tracking.a11yWaypoint', { label: wp }) }}</li>
+                    <li v-if="destinationLabel !== '—'">{{ t('containers.tracking.a11yDestination', { label: destinationLabel }) }}</li>
                 </ul>
             </div>
 
-            <aside class="tracking-sidebar">
+            <aside class="tracking-sidebar" :dir="direction">
                 <div
                     v-if="tracking.eta"
                     class="eta-card"
                     :class="etaUrgencyClass"
                 >
-                    <div class="eta-label">الوصول المتوقع</div>
+                    <div class="eta-label">{{ t('containers.tracking.expectedArrival') }}</div>
                     <div class="eta-value">{{ formatDate(tracking.eta) }}</div>
                     <div v-if="etaDaysLabel" class="eta-countdown">{{ etaDaysLabel }}</div>
                 </div>
@@ -213,7 +213,7 @@
                     <div class="route-end">
                         <span class="route-dot route-dot--origin" aria-hidden="true" />
                         <div>
-                            <div class="route-end-label">المنشأ</div>
+                            <div class="route-end-label">{{ t('containers.tracking.origin') }}</div>
                             <div class="route-end-name" :title="originLabel">{{ originLabel }}</div>
                         </div>
                     </div>
@@ -223,14 +223,14 @@
                     <div class="route-end">
                         <span class="route-dot route-dot--dest" aria-hidden="true" />
                         <div>
-                            <div class="route-end-label">الوجهة</div>
+                            <div class="route-end-label">{{ t('containers.tracking.destination') }}</div>
                             <div class="route-end-name" :title="destinationLabel">{{ destinationLabel }}</div>
                         </div>
                     </div>
                 </div>
 
                 <section class="events-section">
-                    <h3 class="events-title">أحداث الشحنة</h3>
+                    <h3 class="events-title">{{ t('containers.tracking.shipmentEvents') }}</h3>
                     <div v-if="tracking.events?.length" class="events-timeline">
                         <div
                             v-for="(event, index) in tracking.events"
@@ -265,11 +265,11 @@
                             </div>
                         </div>
                     </div>
-                    <p v-else class="events-empty">لا توجد أحداث مسجّلة بعد.</p>
+                    <p v-else class="events-empty">{{ t('containers.tracking.eventsEmpty') }}</p>
                 </section>
 
                 <p v-if="tracking.source" class="source-tag">
-                    المصدر: {{ sourceLabel }}
+                    {{ t('containers.tracking.source') }} {{ sourceLabel }}
                 </p>
             </aside>
         </div>
@@ -278,6 +278,7 @@
 
 <script setup>
 import { computed, nextTick, onUnmounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
 import Skeleton from 'primevue/skeleton';
@@ -287,6 +288,10 @@ import 'leaflet/dist/leaflet.css';
 import api from '../api/client';
 import { containerRefs, formatContainerDate } from '../utils/containerMeta';
 import { createTrackingMarkerIcon } from '../utils/containerMapIcons';
+import { useLocale } from '../composables/useLocale';
+
+const { t } = useI18n();
+const { direction } = useLocale();
 
 const markerIcons = {
     origin: createTrackingMarkerIcon('origin'),
@@ -295,12 +300,12 @@ const markerIcons = {
     current: createTrackingMarkerIcon('current'),
 };
 
-const legendItems = [
-    { key: 'origin', label: 'المنشأ', class: 'legend-swatch--origin', icon: 'pi pi-arrow-up' },
-    { key: 'waypoint', label: 'محطة ترانزيت', class: 'legend-swatch--waypoint', icon: 'pi pi-send' },
-    { key: 'destination', label: 'الوجهة', class: 'legend-swatch--destination', icon: 'pi pi-circle' },
-    { key: 'current', label: 'الموقع الحالي', class: 'legend-swatch--current legend-swatch--current-car' },
-];
+const legendItems = computed(() => [
+    { key: 'origin', label: t('containers.tracking.origin'), class: 'legend-swatch--origin', icon: 'pi pi-arrow-up' },
+    { key: 'waypoint', label: t('containers.tracking.waypoint'), class: 'legend-swatch--waypoint', icon: 'pi pi-send' },
+    { key: 'destination', label: t('containers.tracking.destination'), class: 'legend-swatch--destination', icon: 'pi pi-circle' },
+    { key: 'current', label: t('containers.tracking.currentLocation'), class: 'legend-swatch--current legend-swatch--current-car' },
+]);
 
 const props = defineProps({
     visible: {
@@ -444,11 +449,11 @@ const sourceLabel = computed(() => {
     const source = tracking.value?.source;
 
     if (source === 'vinstack') {
-        return 'Vinstack';
+        return t('containers.tracking.sourceVinstack');
     }
 
     if (source === 'derived') {
-        return 'مسار تقديري (بيانات الحاوية)';
+        return t('containers.tracking.sourceDerived');
     }
 
     return source || '—';
@@ -481,26 +486,26 @@ const etaDaysLabel = computed(() => {
     }
 
     if (days < 0) {
-        return `متأخر ${Math.abs(days)} ${arabicDayWord(Math.abs(days))}`;
+        return t('containers.tracking.etaOverdue', { count: Math.abs(days) });
     }
 
     if (days === 0) {
-        return 'الوصول المتوقع اليوم';
+        return t('containers.tracking.etaToday');
     }
 
     if (days === 1) {
-        return 'متبقي يوم واحد';
+        return t('containers.tracking.etaOneDay');
     }
 
     if (days === 2) {
-        return 'متبقي يومان';
+        return t('containers.tracking.etaTwoDays');
     }
 
     if (days <= 10) {
-        return `متبقي ${days} ${arabicDayWord(days)}`;
+        return t('containers.tracking.etaDaysLeft', { count: days });
     }
 
-    return `متبقي ${days} يوماً`;
+    return t('containers.tracking.etaDaysLeft', { count: days });
 });
 
 const etaUrgencyClass = computed(() => {
@@ -556,7 +561,7 @@ async function load() {
     const number = props.container?.container_number?.trim();
 
     if (!number) {
-        error.value = 'رقم الحاوية غير متوفر. تحقق من بيانات الصف وحاول مرة أخرى.';
+        error.value = t('containers.tracking.containerMissing');
 
         return;
     }
@@ -579,7 +584,7 @@ async function load() {
         const serverMsg = e.response?.data?.message;
 
         error.value = serverMsg
-            || 'تعذّر الاتصال بخدمة التتبع. تحقق من الشبكة أو حاول لاحقاً.';
+            || t('containers.tracking.connectionFailed');
     } finally {
         loading.value = false;
     }
@@ -637,44 +642,26 @@ function formatRelativeDate(value) {
     const diff = Math.round((target.getTime() - today.getTime()) / 86400000);
 
     if (diff === 0) {
-        return 'اليوم';
+        return t('containers.tracking.relativeToday');
     }
 
     if (diff === 1) {
-        return 'غداً';
+        return t('containers.tracking.relativeTomorrow');
     }
 
     if (diff === -1) {
-        return 'أمس';
+        return t('containers.tracking.relativeYesterday');
     }
 
     if (diff > 1 && diff <= 14) {
-        return `بعد ${diff} ${arabicDayWord(diff)}`;
+        return t('containers.tracking.relativeInDays', { count: diff });
     }
 
     if (diff < -1 && diff >= -14) {
-        const n = Math.abs(diff);
-
-        return `منذ ${n} ${arabicDayWord(n)}`;
+        return t('containers.tracking.relativeDaysAgo', { count: Math.abs(diff) });
     }
 
     return '';
-}
-
-function arabicDayWord(n) {
-    if (n === 1) {
-        return 'يوم';
-    }
-
-    if (n === 2) {
-        return 'يومين';
-    }
-
-    if (n >= 3 && n <= 10) {
-        return 'أيام';
-    }
-
-    return 'يوماً';
 }
 
 function truncateText(text, max) {
@@ -1211,7 +1198,6 @@ onUnmounted(removeFocusTrap);
     overflow-x: hidden;
     background: var(--vs-surface-elevated);
     min-height: 0;
-    direction: rtl;
 }
 
 .eta-card {

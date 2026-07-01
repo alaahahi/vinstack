@@ -1,30 +1,8 @@
-<template>
-    <div v-if="dealers.length" class="dealer-badges" role="group" :aria-label="ariaLabel">
-        <button
-            v-if="showAll"
-            type="button"
-            class="dealer-badge"
-            :class="{ 'dealer-badge--active': selectedId == null }"
-            @click="$emit('select', null)"
-        >
-            {{ allLabel }}
-            <span v-if="totalCount != null" class="dealer-badge__count">{{ totalCount }}</span>
-        </button>
-        <button
-            v-for="dealer in dealers"
-            :key="dealer.id"
-            type="button"
-            class="dealer-badge"
-            :class="{ 'dealer-badge--active': selectedId === dealer.id }"
-            @click="$emit('select', dealer.id)"
-        >
-            {{ dealer.company_name }}
-            <span class="dealer-badge__count">{{ dealer[countKey] ?? 0 }}</span>
-        </button>
-    </div>
-</template>
-
 <script setup>
+import { useI18n } from 'vue-i18n';
+
+const { t } = useI18n();
+
 defineProps({
     dealers: {
         type: Array,
@@ -44,7 +22,7 @@ defineProps({
     },
     allLabel: {
         type: String,
-        default: 'الكل',
+        default: '',
     },
     totalCount: {
         type: Number,
@@ -52,12 +30,38 @@ defineProps({
     },
     ariaLabel: {
         type: String,
-        default: 'تصفية حسب التاجر',
+        default: '',
     },
 });
 
 defineEmits(['select']);
 </script>
+
+<template>
+    <div v-if="dealers.length" class="dealer-badges" role="group" :aria-label="ariaLabel || t('dealerFilters.filterByDealer')">
+        <button
+            v-if="showAll"
+            type="button"
+            class="dealer-badge"
+            :class="{ 'dealer-badge--active': selectedId == null }"
+            @click="$emit('select', null)"
+        >
+            {{ allLabel || t('dealerFilters.all') }}
+            <span v-if="totalCount != null" class="dealer-badge__count">{{ totalCount }}</span>
+        </button>
+        <button
+            v-for="dealer in dealers"
+            :key="dealer.id"
+            type="button"
+            class="dealer-badge"
+            :class="{ 'dealer-badge--active': selectedId === dealer.id }"
+            @click="$emit('select', dealer.id)"
+        >
+            {{ dealer.company_name }}
+            <span class="dealer-badge__count">{{ dealer[countKey] ?? 0 }}</span>
+        </button>
+    </div>
+</template>
 
 <style scoped>
 .dealer-badges {

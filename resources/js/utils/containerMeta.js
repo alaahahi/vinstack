@@ -81,22 +81,16 @@ export function containerEtaRaw(container) {
     return scalarString(container?.eta ?? container?.estimated_arrival);
 }
 
-export function containerListStatusLabel(container) {
+export function containerListStatusLabel(container, t = null) {
     const key = containerListStatusKey(container);
+    const labels = {
+        released: t?.('containers.status.released') ?? 'Released',
+        arrived: t?.('containers.status.arrived') ?? 'Arrived',
+        loading: t?.('containers.status.loading') ?? 'Loading',
+        in_transit: t?.('containers.status.inTransit') ?? 'In transit',
+    };
 
-    if (key === 'released') {
-        return 'تم الإفراج';
-    }
-
-    if (key === 'arrived') {
-        return 'وصل';
-    }
-
-    if (key === 'loading') {
-        return 'تحميل';
-    }
-
-    return 'في الطريق';
+    return labels[key] ?? labels.in_transit;
 }
 
 export function containerListStatusClass(container) {

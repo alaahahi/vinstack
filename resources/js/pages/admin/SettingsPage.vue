@@ -3,7 +3,7 @@
         <AdminPageHeader>
             <template #actions>
                 <Button
-                    label="مزامنة الآن"
+                    :label="t('settings.syncNow')"
                     icon="pi pi-sync"
                     severity="secondary"
                     outlined
@@ -20,8 +20,8 @@
                 <header class="settings-card__head">
                     <i class="pi pi-link" />
                     <div>
-                        <h2 class="vs-card-title">اتصال API</h2>
-                        <p class="vs-card-subtitle">عنوان Vinstack والتوكن للمزامنة</p>
+                        <h2 class="vs-card-title">{{ t('settings.sections.apiConnection') }}</h2>
+                        <p class="vs-card-subtitle">{{ t('settings.sections.apiConnectionSub') }}</p>
                     </div>
                 </header>
 
@@ -53,13 +53,13 @@
                 <header class="settings-card__head">
                     <i class="pi pi-images" />
                     <div>
-                        <h2 class="vs-card-title">API صور المعرض</h2>
-                        <p class="vs-card-subtitle">منفصل عن المزامنة — عند فتح الصور</p>
+                        <h2 class="vs-card-title">{{ t('settings.sections.galleryApi') }}</h2>
+                        <p class="vs-card-subtitle">{{ t('settings.sections.galleryApiSub') }}</p>
                     </div>
                     <Tag
                         v-if="settings.gallery_token_expired"
                         severity="danger"
-                        value="منتهي"
+                        :value="t('settings.expired')"
                         class="gallery-expired-tag"
                     />
                 </header>
@@ -67,10 +67,10 @@
                 <div class="settings-card__body">
                     <div class="gallery-status-row">
                         <span class="gallery-status-chip" :class="galleryUrlReady ? 'gallery-status-chip--ok' : 'gallery-status-chip--warn'">
-                            {{ galleryUrlReady ? 'رابط ✓' : 'رابط ✗' }}
+                            {{ galleryUrlReady ? t('settings.urlOk') : t('settings.urlMissing') }}
                         </span>
                         <span class="gallery-status-chip" :class="galleryTokenReady ? 'gallery-status-chip--ok' : 'gallery-status-chip--warn'">
-                            {{ galleryTokenReady ? 'توكن ✓' : 'توكن ✗' }}
+                            {{ galleryTokenReady ? t('settings.tokenOk') : t('settings.tokenMissing') }}
                         </span>
                     </div>
 
@@ -101,7 +101,7 @@
                     </p>
 
                     <Button
-                        label="اختبار"
+                        :label="t('actions.test')"
                         icon="pi pi-bolt"
                         size="small"
                         outlined
@@ -127,13 +127,13 @@
                 <header class="settings-card__head">
                     <i class="pi pi-cloud-upload" />
                     <div>
-                        <h2 class="vs-card-title">Cloudinary — صور الحاويات</h2>
-                        <p class="vs-card-subtitle">رفع صور ZIP إلى Cloudinary بدلاً من تخزينها على السيرفر</p>
+                        <h2 class="vs-card-title">{{ t('settings.sections.cloudinary') }}</h2>
+                        <p class="vs-card-subtitle">{{ t('settings.sections.cloudinarySub') }}</p>
                     </div>
                     <Tag
                         v-if="settings.cloudinary_configured"
                         severity="success"
-                        value="جاهز"
+                        :value="t('settings.ready')"
                         class="gallery-expired-tag"
                     />
                 </header>
@@ -219,14 +219,14 @@
                 <header class="settings-card__head">
                     <i class="pi pi-headphones" />
                     <div>
-                        <h2 class="vs-card-title">الدعم الفني</h2>
-                        <p class="vs-card-subtitle">يظهر في تذييل صفحات التجار وتسجيل الدخول</p>
+                        <h2 class="vs-card-title">{{ t('settings.sections.support') }}</h2>
+                        <p class="vs-card-subtitle">{{ t('settings.sections.supportSub') }}</p>
                     </div>
                 </header>
 
                 <div class="settings-card__body">
                     <div class="field">
-                        <label for="support-phone" class="vs-form-label">رقم دعم فني</label>
+                        <label for="support-phone" class="vs-form-label">{{ t('settings.supportPhone') }}</label>
                         <InputText
                             id="support-phone"
                             v-model="form.support_phone"
@@ -242,20 +242,20 @@
                 <header class="settings-card__head">
                     <i class="pi pi-sync" />
                     <div>
-                        <h2 class="vs-card-title">المزامنة</h2>
-                        <p class="vs-card-subtitle">التحديث التلقائي من Vinstack</p>
+                        <h2 class="vs-card-title">{{ t('settings.sections.sync') }}</h2>
+                        <p class="vs-card-subtitle">{{ t('settings.sections.syncSub') }}</p>
                     </div>
                 </header>
 
                 <div class="settings-card__body">
                     <div class="field field--row">
                         <Checkbox v-model="form.sync_enabled" binary input-id="sync" />
-                        <label for="sync" class="vs-form-label">تفعيل المزامنة التلقائية</label>
+                        <label for="sync" class="vs-form-label">{{ t('settings.autoSync') }}</label>
                     </div>
                     <div v-if="settings.last_sync_at" class="vs-sync-status">
                         <i class="pi pi-clock" />
                         <span>
-                            آخر مزامنة:
+                            {{ t('settings.lastSync') }}
                             <strong>
                                 <span class="sync-datetime" dir="ltr">{{ formatDateTime(settings.last_sync_at) }}</span>
                             </strong>
@@ -263,12 +263,12 @@
                     </div>
                     <div v-else class="vs-sync-status vs-sync-status--muted">
                         <i class="pi pi-info-circle" />
-                        <span>لم تُنفَّذ مزامنة بعد</span>
+                        <span>{{ t('settings.noSyncYet') }}</span>
                     </div>
                     <div v-if="settings.last_auto_sync_at" class="vs-sync-status">
                         <i class="pi pi-calendar-clock" />
                         <span>
-                            آخر مزامنة تلقائية:
+                            {{ t('settings.lastAutoSync') }}
                             <strong>
                                 <span class="sync-datetime" dir="ltr">{{ formatDateTime(settings.last_auto_sync_at) }}</span>
                             </strong>
@@ -276,7 +276,7 @@
                     </div>
                     <div v-else class="vs-sync-status vs-sync-status--muted">
                         <i class="pi pi-info-circle" />
-                        <span>آخر مزامنة تلقائية: لم تُنفَّذ بعد</span>
+                        <span>{{ t('settings.noAutoSyncYet') }}</span>
                     </div>
                     <p class="sync-cron-help">
                         لتشغيل المزامنة التلقائية على السيرفر، فعِّل «تفعيل المزامنة التلقائية» واحفظ الإعدادات، ثم أضِف مهمة
@@ -302,7 +302,7 @@
 
                 <div class="settings-group__actions">
                     <Button
-                        label="حفظ الإعدادات"
+                        :label="t('settings.saveSettings')"
                         icon="pi pi-check"
                         class="btn-add"
                         :loading="saving"
@@ -315,8 +315,8 @@
                 <header class="settings-card__head">
                     <i class="pi pi-list" />
                     <div>
-                        <h2 class="vs-card-title">خيارات نموذج السيارة</h2>
-                        <p class="vs-card-subtitle">قوائم الشحن والمزادات للإدخال اليدوي</p>
+                        <h2 class="vs-card-title">{{ t('settings.sections.vehicleOptions') }}</h2>
+                        <p class="vs-card-subtitle">{{ t('settings.sections.vehicleOptionsSub') }}</p>
                     </div>
                 </header>
 
@@ -326,7 +326,7 @@
 
                 <div class="settings-card__footer">
                     <Button
-                        label="حفظ الخيارات"
+                        :label="t('settings.saveOptions')"
                         icon="pi pi-save"
                         class="btn-add"
                         :loading="savingOptions"
@@ -339,11 +339,11 @@
                 <header class="settings-card__head">
                     <i class="pi pi-database" />
                     <div>
-                        <h2 class="vs-card-title">قاعدة البيانات</h2>
+                        <h2 class="vs-card-title">{{ t('settings.sections.database') }}</h2>
                         <p class="vs-card-subtitle">
-                            حالة المايغريشن
+                            {{ t('settings.dbSubtitle') }}
                             <template v-if="migrationSummary">
-                                — منفّذ: {{ migrationSummary.ran }} · معلّق: {{ migrationSummary.pending }}
+                                — {{ t('settings.dbRan', { count: migrationSummary.ran }) }} · {{ t('settings.dbPending', { count: migrationSummary.pending }) }}
                             </template>
                         </p>
                     </div>
@@ -352,15 +352,15 @@
                 <div class="settings-card__body">
                     <div v-if="migrationsLoading" class="system-loading">
                         <ProgressSpinner style="width: 32px; height: 32px" />
-                        <span>جاري تحميل المايغريشن...</span>
+                        <span>{{ t('settings.loadingMigrations') }}</span>
                     </div>
                     <div v-else class="migrations-table-wrap">
                         <table class="migrations-table">
                             <thead>
                                 <tr>
-                                    <th>الملف</th>
-                                    <th>الحالة</th>
-                                    <th>الدفعة</th>
+                                    <th>{{ t('settings.colFile') }}</th>
+                                    <th>{{ t('settings.colStatus') }}</th>
+                                    <th>{{ t('settings.colBatch') }}</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -375,7 +375,7 @@
                                                     : 'migration-status--pending'
                                             "
                                         >
-                                            {{ row.status === 'ran' ? 'منفّذ' : 'معلّق' }}
+                                            {{ row.status === 'ran' ? t('settings.migrationRan') : t('settings.migrationPending') }}
                                         </span>
                                     </td>
                                     <td>{{ row.batch ?? '—' }}</td>
@@ -386,7 +386,7 @@
 
                     <div class="system-actions">
                         <Button
-                            label="تشغيل المايغريشن"
+                            :label="t('settings.runMigrations')"
                             icon="pi pi-play"
                             class="btn-add"
                             :loading="migrating"
@@ -394,7 +394,7 @@
                             @click="confirmMigrate"
                         />
                         <Button
-                            label="تحديث القائمة"
+                            :label="t('actions.refresh')"
                             icon="pi pi-refresh"
                             outlined
                             :loading="migrationsLoading"
@@ -405,28 +405,28 @@
                     <pre v-if="migrateOutput" class="system-console">{{ migrateOutput }}</pre>
 
                     <div class="backup-section">
-                        <h3 class="backup-section__title">نسخ احتياطي</h3>
+                        <h3 class="backup-section__title">{{ t('settings.backups') }}</h3>
                         <p class="vs-card-subtitle backup-section__hint">
-                            نسخ SQL لقاعدة البيانات
+                            {{ t('settings.backupsHint') }}
                             <span v-if="dbDriver" dir="ltr">({{ dbDriver }})</span>
                         </p>
 
                         <div v-if="backupsLoading" class="system-loading">
                             <ProgressSpinner style="width: 32px; height: 32px" />
-                            <span>جاري تحميل النسخ الاحتياطية...</span>
+                            <span>{{ t('settings.loadingBackups') }}</span>
                         </div>
 
                         <template v-else>
                             <div class="system-actions">
                                 <Button
-                                    label="إنشاء نسخة SQL"
+                                    :label="t('settings.createSqlBackup')"
                                     icon="pi pi-database"
                                     class="btn-add"
                                     :loading="creatingBackup"
                                     @click="createBackup"
                                 />
                                 <Button
-                                    label="تحديث القائمة"
+                                    :label="t('actions.refresh')"
                                     icon="pi pi-refresh"
                                     outlined
                                     :loading="backupsLoading"
@@ -522,10 +522,10 @@
                 <header class="settings-card__head">
                     <i class="pi pi-exclamation-triangle" />
                     <div>
-                        <h2 class="vs-card-title">سجل الأخطاء</h2>
+                        <h2 class="vs-card-title">{{ t('settings.sections.errorLog') }}</h2>
                         <p class="vs-card-subtitle">
-                            آخر أسطر من storage/logs/laravel.log
-                            <template v-if="logLines"> ({{ logLines }} سطر)</template>
+                            {{ t('settings.sections.errorLogSub') }}
+                            <template v-if="logLines"> {{ t('settings.logLines', { count: logLines }) }}</template>
                         </p>
                     </div>
                 </header>
@@ -533,14 +533,14 @@
                 <div class="settings-card__body">
                     <div class="system-actions">
                         <Button
-                            label="تحديث السجل"
+                            :label="t('settings.refreshLog')"
                             icon="pi pi-refresh"
                             outlined
                             :loading="logsLoading"
                             @click="loadLogs"
                         />
                         <Button
-                            label="مسح السجل"
+                            :label="t('settings.clearLog')"
                             icon="pi pi-trash"
                             severity="danger"
                             outlined
@@ -552,7 +552,7 @@
 
                     <div v-if="logsLoading" class="system-loading">
                         <ProgressSpinner style="width: 32px; height: 32px" />
-                        <span>جاري تحميل السجل...</span>
+                        <span>{{ t('settings.loadingLog') }}</span>
                     </div>
                     <pre v-else class="system-log-viewer">{{ logContent || logMessage }}</pre>
                 </div>
@@ -561,7 +561,7 @@
 
         <Dialog
             v-model:visible="clearLogsConfirmVisible"
-            header="مسح سجل الأخطاء"
+            :header="t('settings.clearLogHeader')"
             modal
             :style="{ width: 'min(420px, 95vw)' }"
         >
@@ -632,6 +632,7 @@
 
 <script setup>
 import { computed, onMounted, reactive, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import InputText from 'primevue/inputtext';
@@ -647,6 +648,7 @@ import { restoreVehicle } from '../../api/vehicles';
 import api from '../../api/client';
 import { formatDateTime } from '../../utils/formatDateTime';
 
+const { t } = useI18n();
 const toast = useToast();
 const confirm = useConfirm();
 const settings = ref({ has_token: false, last_sync_at: null, last_auto_sync_at: null });
@@ -668,7 +670,7 @@ const logsLoading = ref(false);
 const clearingLogs = ref(false);
 const clearLogsConfirmVisible = ref(false);
 const logContent = ref('');
-const logMessage = ref('اضغط «تحديث السجل» لعرض آخر الأخطاء.');
+const logMessage = ref('');
 const logLines = ref(0);
 const backups = ref([]);
 const dbDriver = ref('');
@@ -761,11 +763,11 @@ async function saveVehicleOptions() {
 
     try {
         await api.put('/admin/settings/vehicle-options', vehicleOptions.value);
-        toast.add({ severity: 'success', summary: 'تم حفظ خيارات النموذج', life: 3000 });
+        toast.add({ severity: 'success', summary: t('settings.optionsSaved'), life: 3000 });
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
+            summary: t('common.error'),
             detail: e.response?.data?.message || 'فشل حفظ الخيارات',
             life: 4000,
         });
@@ -851,12 +853,12 @@ async function save() {
         }
 
         await api.put('/admin/vinstack/settings', payload);
-        toast.add({ severity: 'success', summary: 'تم الحفظ', life: 3000 });
+        toast.add({ severity: 'success', summary: t('settings.saved'), life: 3000 });
         await load();
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
+            summary: t('common.error'),
             detail: e.response?.data?.message || 'فشل الحفظ',
             life: 4000,
         });
@@ -884,7 +886,7 @@ async function syncNow() {
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
+            summary: t('common.error'),
             detail: e.response?.data?.message || 'فشلت المزامنة',
             life: 4000,
         });
@@ -910,7 +912,7 @@ async function restoreFromSync(vehicleId) {
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
+            summary: t('common.error'),
             detail: e.response?.data?.message || 'فشلت الاستعادة',
             life: 4000,
         });
@@ -929,7 +931,7 @@ async function loadMigrations() {
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
+            summary: t('common.error'),
             detail: e.response?.data?.message || 'فشل تحميل المايغريشن',
             life: 4000,
         });
@@ -967,7 +969,7 @@ async function runMigrate() {
         migrateConfirmVisible.value = false;
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
+            summary: t('common.error'),
             detail: e.response?.data?.message || 'فشل تشغيل المايغريشن',
             life: 4000,
         });
@@ -988,7 +990,7 @@ async function loadLogs() {
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
+            summary: t('common.error'),
             detail: e.response?.data?.message || 'فشل تحميل السجل',
             life: 4000,
         });
@@ -1019,7 +1021,7 @@ async function clearLogs() {
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
+            summary: t('common.error'),
             detail: e.response?.data?.message || 'فشل مسح السجل',
             life: 4000,
         });
@@ -1038,7 +1040,7 @@ async function loadBackups() {
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
+            summary: t('common.error'),
             detail: e.response?.data?.message || 'فشل تحميل النسخ الاحتياطية',
             life: 4000,
         });
@@ -1061,7 +1063,7 @@ async function createBackup() {
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
+            summary: t('common.error'),
             detail: e.response?.data?.message || 'فشل إنشاء النسخة الاحتياطية',
             life: 5000,
         });
@@ -1090,7 +1092,7 @@ async function downloadBackup(filename) {
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
+            summary: t('common.error'),
             detail: e.response?.data?.message || 'فشل تنزيل النسخة',
             life: 4000,
         });
@@ -1130,7 +1132,7 @@ async function deleteBackup(filename) {
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
+            summary: t('common.error'),
             detail: e.response?.data?.message || 'فشل حذف النسخة الاحتياطية',
             life: 4000,
         });
@@ -1186,7 +1188,7 @@ async function restoreFromList(filename) {
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
+            summary: t('common.error'),
             detail: e.response?.data?.message || 'فشل استرجاع النسخة',
             life: 5000,
         });
@@ -1224,7 +1226,7 @@ async function restoreFromUpload() {
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
+            summary: t('common.error'),
             detail: e.response?.data?.message || 'فشل استرجاع الملف',
             life: 5000,
         });
@@ -1234,6 +1236,7 @@ async function restoreFromUpload() {
 }
 
 onMounted(async () => {
+    logMessage.value = t('settings.logPrompt');
     await load();
     await Promise.all([loadMigrations(), loadLogs(), loadBackups()]);
 });

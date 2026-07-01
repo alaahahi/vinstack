@@ -3,7 +3,7 @@
         <div v-if="subtitle || count != null || $slots.lead" class="admin-page-header__lead">
             <div v-if="count != null" class="admin-page-header__count-row">
                 <span class="admin-page-header__count-badge">
-                    {{ count }} {{ countLabel }}
+                    {{ count }} {{ resolvedCountLabel }}
                 </span>
             </div>
             <p v-if="subtitle" class="admin-page-header__subtitle">{{ subtitle }}</p>
@@ -19,11 +19,18 @@
 </template>
 
 <script setup>
-defineProps({
+import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
+
+const props = defineProps({
     subtitle: { type: String, default: '' },
     count: { type: Number, default: null },
-    countLabel: { type: String, default: 'سيارة' },
+    countLabel: { type: String, default: '' },
 });
+
+const { t } = useI18n();
+
+const resolvedCountLabel = computed(() => props.countLabel || t('vehicles.countLabel'));
 </script>
 
 <style scoped>

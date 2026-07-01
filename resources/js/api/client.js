@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { DEFAULT_LOCALE, LOCALE_STORAGE_KEY, normalizeLocale } from '../constants/locales';
 
 const api = axios.create({
     baseURL: '/api',
@@ -14,6 +15,10 @@ api.interceptors.request.use((config) => {
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
     }
+
+    config.headers['Accept-Language'] = normalizeLocale(
+        localStorage.getItem(LOCALE_STORAGE_KEY) || document.documentElement.lang?.split('-')[0] || DEFAULT_LOCALE,
+    );
 
     if (config.data instanceof FormData) {
         // Axios 1.x keeps default application/json on AxiosHeaders; delete alone

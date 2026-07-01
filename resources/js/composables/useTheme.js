@@ -3,14 +3,13 @@ import { useThemeStore } from '../stores/theme';
 
 export function useTheme() {
     const themeStore = useThemeStore();
-    const { theme, isDark, themeLogo, toggleIcon, toggleTooltip } = storeToRefs(themeStore);
+    const { theme, isDark, themeLogo, toggleIcon } = storeToRefs(themeStore);
 
     return {
         theme,
         isDark,
         themeLogo,
         toggleIcon,
-        toggleTooltip,
         setTheme: themeStore.setTheme.bind(themeStore),
         toggle: themeStore.toggle.bind(themeStore),
     };

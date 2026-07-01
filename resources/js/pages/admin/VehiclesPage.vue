@@ -1,16 +1,16 @@
 <template>
     <div class="admin-page">
-        <AdminPageHeader :count="total" count-label="سيارة">
+        <AdminPageHeader :count="total">
             <template #actions>
                 <Button
-                    label="استيراد من نجوم الجزيرة"
+                    :label="t('vehicles.importNujoom')"
                     icon="pi pi-file-import"
                     severity="secondary"
                     outlined
                     @click="nujoomImportVisible = true"
                 />
                 <Button
-                    label="إضافة سيارة يدوياً"
+                    :label="t('vehicles.addManual')"
                     icon="pi pi-plus"
                     class="btn-add"
                     @click="openCreateManual"
@@ -21,7 +21,7 @@
                     <InputIcon class="pi pi-search" />
                     <InputText
                         v-model="search"
-                        placeholder="بحث برقم الشاصي أو الموديل..."
+                        :placeholder="t('vehicles.searchPlaceholder')"
                         @keyup.enter="resetAndLoad"
                     />
                 </IconField>
@@ -30,7 +30,7 @@
                     :options="statusOptions"
                     option-label="label"
                     option-value="value"
-                    placeholder="الحالة"
+                    :placeholder="t('vehicles.statusFilter')"
                     show-clear
                     @change="resetAndLoad"
                 />
@@ -39,11 +39,11 @@
                     :options="sourceOptions"
                     option-label="label"
                     option-value="value"
-                    placeholder="المصدر"
+                    :placeholder="t('vehicles.sourceFilter')"
                     show-clear
                     @change="resetAndLoad"
                 />
-                <Button icon="pi pi-refresh" label="تحديث" outlined :loading="loading" @click="resetAndLoad" />
+                <Button icon="pi pi-refresh" :label="t('actions.refresh')" outlined :loading="loading" @click="resetAndLoad" />
                 <DealerFilterBadges
                     :dealers="dealerSummary"
                     :selected-id="dealerFilter"
@@ -65,9 +65,9 @@
             infinite-scroll
             :has-more="hasMore"
             :tracking-available="trackingAvailable"
-            empty-text="لا توجد سيارات"
-            empty-hint="ستظهر السيارات بعد المزامنة من Vinstack أو الإضافة اليدوية."
-            empty-action-label="تحديث القائمة"
+            :empty-text="t('vehicles.empty')"
+            :empty-hint="t('vehicles.emptyHint')"
+            :empty-action-label="t('actions.refreshList')"
             @assign="openAssign"
             @unassign="confirmUnassign"
             @edit="openEdit"
@@ -109,18 +109,18 @@
 
         <NujoomImportDialog v-model:visible="nujoomImportVisible" @applied="resetAndLoad" />
 
-        <Dialog v-model:visible="assignVisible" header="إسناد سيارة" modal style="width: min(420px, 100vw)">
+        <Dialog v-model:visible="assignVisible" :header="t('vehicles.assignDialog')" modal style="width: min(420px, 100vw)">
             <Select
                 v-model="selectedDealerId"
                 :options="dealers"
                 option-label="company_name"
                 option-value="id"
-                placeholder="اختر التاجر"
+                :placeholder="t('vehicles.selectDealer')"
                 class="w-full"
             />
             <template #footer>
-                <Button label="إلغاء" text @click="assignVisible = false" />
-                <Button label="تأكيد" class="btn-assign" :loading="assigning" @click="confirmAssign" />
+                <Button :label="t('actions.cancel')" text @click="assignVisible = false" />
+                <Button :label="t('actions.confirm')" class="btn-assign" :loading="assigning" @click="confirmAssign" />
             </template>
         </Dialog>
     </div>
@@ -128,6 +128,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 import IconField from 'primevue/iconfield';
@@ -146,6 +147,7 @@ import VehicleChatDialog from '../../components/VehicleChatDialog.vue';
 import NujoomImportDialog from '../../components/NujoomImportDialog.vue';
 import api from '../../api/client';
 
+const { t } = useI18n();
 const toast = useToast();
 const confirm = useConfirm();
 const vehicles = ref([]);
@@ -166,7 +168,7 @@ const trackingAvailable = ref(false);
 const manualFormVisible = ref(false);
 const editingVehicle = ref(null);
 const manualFormHeader = computed(() =>
-    editingVehicle.value ? 'تعديل سيارة يدوية' : 'إضافة سيارة يدوياً',
+    editingVehicle.value ? t('vehicles.editManualHeader') : t('vehicles.addManualHeader'),
 );
 const nujoomImportVisible = ref(false);
 const assignVisible = ref(false);
@@ -176,16 +178,16 @@ const chatVisible = ref(false);
 const chatVehicle = ref(null);
 const selectedVehicle = ref(null);
 const selectedDealerId = ref(null);
-const statusOptions = [
-    { label: 'متاحة', value: 'available' },
-    { label: 'مسندة', value: 'assigned' },
-    { label: 'محجوزة', value: 'reserved' },
-];
-const sourceOptions = [
-    { label: 'مستوردة', value: 'vinstack' },
-    { label: 'يدوية', value: 'manual' },
-    { label: 'نجوم الجزيرة', value: 'nujoom_al_jazeera' },
-];
+const statusOptions = computed(() => [
+    { label: t('vehicles.status.available'), value: 'available' },
+    { label: t('vehicles.status.assigned'), value: 'assigned' },
+    { label: t('vehicles.status.reserved'), value: 'reserved' },
+]);
+const sourceOptions = computed(() => [
+    { label: t('vehicles.source.vinstack'), value: 'vinstack' },
+    { label: t('vehicles.source.manual'), value: 'manual' },
+    { label: t('vehicles.source.nujoom'), value: 'nujoom_al_jazeera' },
+]);
 
 const assigning = ref(false);
 
@@ -327,13 +329,13 @@ async function confirmAssign() {
             dealer_id: selectedDealerId.value,
         });
         assignVisible.value = false;
-        toast.add({ severity: 'success', summary: 'تم الإسناد', life: 3000 });
+        toast.add({ severity: 'success', summary: t('vehicles.assignedSuccess'), life: 3000 });
         await resetAndLoad();
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
-            detail: e.response?.data?.message || 'فشل الإسناد',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || t('vehicles.assignFailed'),
             life: 4000,
         });
     } finally {
@@ -342,14 +344,14 @@ async function confirmAssign() {
 }
 
 function confirmUnassign(vehicle) {
-    const dealerName = vehicle.active_assignment?.dealer?.company_name ?? 'التاجر';
+    const dealerName = vehicle.active_assignment?.dealer?.company_name ?? t('common.dealer');
 
     confirm.require({
-        message: `هل تريد إلغاء إسناد هذه السيارة من «${dealerName}»؟`,
-        header: 'إلغاء الإسناد',
+        message: t('vehicles.unassignConfirm', { dealer: dealerName }),
+        header: t('vehicles.unassignHeader'),
         icon: 'pi pi-times-circle',
-        rejectLabel: 'إلغاء',
-        acceptLabel: 'تأكيد',
+        rejectLabel: t('actions.cancel'),
+        acceptLabel: t('actions.confirm'),
         acceptClass: 'p-button-danger',
         accept: () => unassignVehicle(vehicle),
     });
@@ -358,13 +360,13 @@ function confirmUnassign(vehicle) {
 async function unassignVehicle(vehicle) {
     try {
         await api.delete(`/admin/vehicles/${vehicle.id}/unassign`);
-        toast.add({ severity: 'success', summary: 'تم إلغاء الإسناد', life: 3000 });
+        toast.add({ severity: 'success', summary: t('vehicles.unassignSuccess'), life: 3000 });
         await resetAndLoad();
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
-            detail: e.response?.data?.message || 'فشل إلغاء الإسناد',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || t('vehicles.unassignFailed'),
             life: 4000,
         });
     }

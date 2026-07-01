@@ -302,6 +302,7 @@
 
 <script setup>
 import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 import Dialog from 'primevue/dialog';
@@ -365,6 +366,7 @@ const props = defineProps({
 
 const emit = defineEmits(['update:visible']);
 
+const { t } = useI18n();
 const toast = useToast();
 const confirm = useConfirm();
 
@@ -398,7 +400,7 @@ const headerContainer = computed(() =>
 );
 
 const statusLabel = computed(() =>
-    containerListStatusLabel(headerMeta.value ?? props.container ?? {}),
+    containerListStatusLabel(headerMeta.value ?? props.container ?? {}, t),
 );
 
 const statusClass = computed(() =>

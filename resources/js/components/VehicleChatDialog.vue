@@ -10,7 +10,7 @@
         @hide="onClose"
     >
         <div v-if="vehicle" class="vehicle-chat">
-            <div class="vehicle-chat__header" dir="rtl">
+            <div class="vehicle-chat__header" :dir="textDir">
                 <div class="vehicle-chat__title">{{ vehicleTitle(vehicle) }}</div>
                 <VinCopyLabel :vin="vehicle.vin" block />
             </div>
@@ -19,8 +19,8 @@
                 <div v-if="loading" class="vehicle-chat__loading">
                     <ProgressSpinner style="width: 28px; height: 28px" stroke-width="4" />
                 </div>
-                <div v-else-if="!messages.length" class="vehicle-chat__empty" dir="rtl">
-                    ابدأ المحادثة بإرسال رسالة أو صورة.
+                <div v-else-if="!messages.length" class="vehicle-chat__empty" :dir="textDir">
+                    {{ t('chat.empty') }}
                 </div>
                 <div
                     v-for="message in messages"
@@ -39,7 +39,7 @@
                     <div class="vehicle-chat__bubble-wrap">
                         <div
                             class="vehicle-chat__bubble"
-                            dir="rtl"
+                            :dir="textDir"
                             :class="message.author_role === 'dealer' ? 'vehicle-chat__bubble--dealer' : 'vehicle-chat__bubble--admin'"
                         >
                             <div v-if="!message.is_mine" class="vehicle-chat__sender">{{ message.author_name }}</div>
@@ -51,7 +51,7 @@
                                 rel="noopener noreferrer"
                                 class="vehicle-chat__image-link"
                             >
-                                <img :src="message.attachment_url" alt="مرفق" class="vehicle-chat__image" loading="lazy" />
+                                <img :src="message.attachment_url" :alt="t('chat.attachment')" class="vehicle-chat__image" loading="lazy" />
                             </a>
                         </div>
                         <div
@@ -73,7 +73,7 @@
                 </div>
             </div>
 
-            <div class="vehicle-chat__composer" dir="rtl">
+            <div class="vehicle-chat__composer" :dir="textDir">
                 <input
                     ref="fileInput"
                     type="file"
@@ -82,7 +82,7 @@
                     @change="onFileChange"
                 />
                 <div v-if="pendingPreview" class="vehicle-chat__pending">
-                    <img :src="pendingPreview" alt="معاينة" class="vehicle-chat__pending-img" />
+                    <img :src="pendingPreview" :alt="t('chat.preview')" class="vehicle-chat__pending-img" />
                     <Button icon="pi pi-times" text rounded severity="secondary" @click="clearPendingFile" />
                 </div>
                 <div class="vehicle-chat__composer-box">
@@ -92,7 +92,7 @@
                         text
                         rounded
                         class="vehicle-chat__attach"
-                        aria-label="إرفاق صورة"
+                        :aria-label="t('chat.attachImage')"
                         :disabled="sending"
                         @click="pickFile"
                     />
@@ -101,7 +101,7 @@
                         rows="2"
                         auto-resize
                         class="vehicle-chat__input"
-                        placeholder="اكتب رسالتك..."
+                        :placeholder="t('chat.placeholder')"
                         :disabled="sending"
                         @keydown.enter.exact.prevent="sendMessage"
                     />
@@ -110,7 +110,7 @@
                         class="btn-cta vehicle-chat__send"
                         :loading="sending"
                         :disabled="!canSend"
-                        aria-label="إرسال"
+                        :aria-label="t('chat.send')"
                         @click="sendMessage"
                     />
                 </div>
@@ -121,6 +121,7 @@
 
 <script setup>
 import { computed, nextTick, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Dialog from 'primevue/dialog';
 import Button from 'primevue/button';
 import Textarea from 'primevue/textarea';
@@ -130,6 +131,10 @@ import VinCopyLabel from './VinCopyLabel.vue';
 import api from '../api/client';
 import { vehicleTitle } from '../utils/vehicleMeta';
 import { formatDateTime } from '../utils/formatDateTime';
+import { useLocaleStore } from '../stores/locale';
+
+const { t } = useI18n();
+const localeStore = useLocaleStore();
 
 const props = defineProps({
     visible: {
@@ -166,7 +171,9 @@ const visibleProxy = computed({
 
 const apiPrefix = computed(() => (props.mode === 'dealer' ? '/dealer' : '/admin'));
 
-const dialogTitle = computed(() => (props.mode === 'dealer' ? 'محادثة السيارة' : 'محادثة مع التاجر'));
+const textDir = computed(() => (localeStore.isRtl ? 'rtl' : 'ltr'));
+
+const dialogTitle = computed(() => (props.mode === 'dealer' ? t('chat.titleDealer') : t('chat.titleAdmin')));
 
 const canSend = computed(() => {
     if (sending.value) {
@@ -201,8 +208,8 @@ async function loadMessages() {
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
-            detail: e.response?.data?.message || 'تعذّر تحميل المحادثة',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || t('chat.loadFailed'),
             life: 4000,
         });
     } finally {
@@ -285,8 +292,8 @@ async function sendMessage() {
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
-            detail: e.response?.data?.message || e.response?.data?.errors?.body?.[0] || 'فشل إرسال الرسالة',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || e.response?.data?.errors?.body?.[0] || t('chat.sendFailed'),
             life: 4000,
         });
     } finally {
@@ -410,11 +417,11 @@ watch(
 }
 
 .vehicle-chat__row--mine .vehicle-chat__bubble {
-    border-bottom-right-radius: 0.3rem;
+    border-end-end-radius: 0.3rem;
 }
 
 .vehicle-chat__row--theirs .vehicle-chat__bubble {
-    border-bottom-left-radius: 0.3rem;
+    border-end-start-radius: 0.3rem;
 }
 
 .vehicle-chat__bubble--dealer {
@@ -473,11 +480,11 @@ watch(
 }
 
 .vehicle-chat__time--mine {
-    text-align: right;
+    text-align: end;
 }
 
 .vehicle-chat__time--theirs {
-    text-align: left;
+    text-align: start;
 }
 
 .vehicle-chat__composer {

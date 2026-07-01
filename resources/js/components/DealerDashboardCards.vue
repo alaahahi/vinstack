@@ -2,7 +2,7 @@
     <section class="dealer-dashboard">
         <div class="welcome-card">
             <div>
-                <p class="welcome-label">مرحباً</p>
+                <p class="welcome-label">{{ t('dealerDashboard.welcome') }}</p>
                 <h2 class="welcome-title">{{ companyName }}</h2>
                 <p v-if="auth.user?.name" class="welcome-sub">{{ auth.user.name }}</p>
             </div>
@@ -12,12 +12,12 @@
         <div class="stats-grid">
             <RouterLink :to="{ name: 'dealer.vehicles' }" class="stat-card">
                 <span class="stat-value">{{ stats.vehicles_count ?? '—' }}</span>
-                <span class="stat-label">عدد سياراتي</span>
+                <span class="stat-label">{{ t('dealerDashboard.myVehicles') }}</span>
                 <i class="pi pi-car stat-icon" />
             </RouterLink>
             <RouterLink :to="{ name: 'dealer.containers' }" class="stat-card stat-card--containers">
                 <span class="stat-value">{{ stats.containers_count ?? '—' }}</span>
-                <span class="stat-label">حاويات نشطة</span>
+                <span class="stat-label">{{ t('dealerDashboard.activeContainers') }}</span>
                 <i class="pi pi-box stat-icon" />
             </RouterLink>
         </div>
@@ -26,15 +26,17 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { RouterLink } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
 import api from '../api/client';
 
+const { t } = useI18n();
 const auth = useAuthStore();
 const stats = ref({ vehicles_count: null, containers_count: null });
 
 const companyName = computed(
-    () => auth.user?.dealer?.company_name || 'بوابة التاجر',
+    () => auth.user?.dealer?.company_name || t('dealerDashboard.portalFallback'),
 );
 
 onMounted(async () => {

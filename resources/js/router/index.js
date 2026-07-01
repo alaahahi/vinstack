@@ -34,8 +34,8 @@ const routes = [
                 name: 'admin.vehicles',
                 component: () => import('../pages/admin/VehiclesPage.vue'),
                 meta: {
-                    title: 'السيارات',
-                    subtitle: 'إدارة المخزون والإسناد للتجار',
+                    titleKey: 'pages.admin.vehicles.title',
+                    subtitleKey: 'pages.admin.vehicles.subtitle',
                 },
             },
             {
@@ -43,8 +43,8 @@ const routes = [
                 name: 'admin.dealers',
                 component: () => import('../pages/admin/DealersPage.vue'),
                 meta: {
-                    title: 'التجار',
-                    subtitle: 'إنشاء حسابات تجار وعرض الشركات المسجّلة',
+                    titleKey: 'pages.admin.dealers.title',
+                    subtitleKey: 'pages.admin.dealers.subtitle',
                 },
             },
             {
@@ -52,8 +52,8 @@ const routes = [
                 name: 'admin.containers',
                 component: () => import('../pages/admin/ContainersPage.vue'),
                 meta: {
-                    title: 'الحاويات',
-                    subtitle: 'بيانات Vinstack — CNTR / BKG / SEAL والمسار',
+                    titleKey: 'pages.admin.containers.title',
+                    subtitleKey: 'pages.admin.containers.subtitle',
                 },
             },
             {
@@ -66,15 +66,18 @@ const routes = [
                 name: 'admin.settings',
                 component: () => import('../pages/admin/SettingsPage.vue'),
                 meta: {
-                    title: 'إعدادات Vinstack',
-                    subtitle: 'اتصال API والمزامنة وقاعدة البيانات وسجل الأخطاء',
+                    titleKey: 'pages.admin.settings.title',
+                    subtitleKey: 'pages.admin.settings.subtitle',
                 },
             },
             {
                 path: 'profile',
                 name: 'admin.profile',
                 component: () => import('../pages/admin/AdminProfilePage.vue'),
-                meta: { title: 'الملف الشخصي', subtitle: 'تحديث بيانات حساب المدير' },
+                meta: {
+                    titleKey: 'pages.admin.profile.title',
+                    subtitleKey: 'pages.admin.profile.subtitle',
+                },
             },
         ],
     },
@@ -91,19 +94,19 @@ const routes = [
                 path: 'vehicles',
                 name: 'dealer.vehicles',
                 component: () => import('../pages/dealer/VehiclesPage.vue'),
-                meta: { title: 'سياراتي' },
+                meta: { titleKey: 'pages.dealer.vehicles.title' },
             },
             {
                 path: 'containers',
                 name: 'dealer.containers',
                 component: () => import('../pages/dealer/ContainersPage.vue'),
-                meta: { title: 'حاوياتي' },
+                meta: { titleKey: 'pages.dealer.containers.title' },
             },
             {
                 path: 'profile',
                 name: 'dealer.profile',
                 component: () => import('../pages/dealer/DealerProfilePage.vue'),
-                meta: { title: 'الملف الشخصي' },
+                meta: { titleKey: 'pages.dealer.profile.title' },
             },
             {
                 path: 'invoices',

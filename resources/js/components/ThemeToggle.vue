@@ -25,16 +25,17 @@
 
 
 <script setup>
-
+import { computed } from 'vue';
 import Button from 'primevue/button';
-
+import { useI18n } from 'vue-i18n';
 import { useTheme } from '../composables/useTheme';
 
-
-
+const { t } = useI18n();
 const theme = useTheme();
-
-const { toggleIcon, toggleTooltip } = theme;
+const { isDark, toggleIcon } = theme;
+const toggleTooltip = computed(() => (
+    isDark.value ? t('theme.switchToLight') : t('theme.switchToDark')
+));
 
 </script>
 

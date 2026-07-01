@@ -9,12 +9,9 @@
                 </div>
 
                 <h1 class="login-company">KAML KAMAL</h1>
-                <p class="login-tagline">
-                    Fast. Safe. <span class="login-tagline__accent">Reliable.</span>
-                </p>
+                <p class="login-tagline">{{ t('common.brandTagline') }}</p>
                 <p class="login-promo">
-                    تتبّع سياراتك وحاوياتك بثقة — منصة موحّدة للتجار والوكلاء
-                    <span class="login-promo__en">Track vehicles &amp; containers with confidence.</span>
+                    {{ t('auth.shell.promo') }}
                 </p>
 
                 <div class="login-route" aria-hidden="true">
@@ -29,7 +26,7 @@
                             <i class="pi pi-truck" />
                         </span>
                     </div>
-                    <p class="login-route__caption">من المستودع إلى وجهتك</p>
+                    <p class="login-route__caption">{{ t('auth.shell.routeCaption') }}</p>
                 </div>
             </div>
         </aside>
@@ -42,9 +39,10 @@
                     </div>
                     <div class="login-mobile-brand__text">
                         <span class="login-mobile-brand__name">KAML KAMAL</span>
-                        <span class="login-mobile-brand__tag">Fast. Safe. Reliable.</span>
+                        <span class="login-mobile-brand__tag">{{ t('common.brandTagline') }}</span>
                     </div>
                 </div>
+                <LocaleSwitcher />
                 <ThemeToggle class="login-theme-toggle" />
             </header>
 
@@ -58,10 +56,13 @@
 </template>
 
 <script setup>
+import { useI18n } from 'vue-i18n';
 import { useTheme } from '../composables/useTheme';
+import LocaleSwitcher from './LocaleSwitcher.vue';
 import ThemeToggle from './ThemeToggle.vue';
 import DealerFooter from './DealerFooter.vue';
 
+const { t } = useI18n();
 const { themeLogo } = useTheme();
 </script>
 
@@ -225,23 +226,11 @@ const { themeLogo } = useTheme();
         color: var(--login-brand-muted);
     }
 
-    .login-tagline__accent {
-        color: var(--login-accent);
-    }
-
     .login-promo {
         margin: 1.1rem 0 0;
         font-size: 0.92rem;
         line-height: 1.55;
         color: var(--login-brand-muted);
-    }
-
-    .login-promo__en {
-        display: block;
-        margin-top: 0.45rem;
-        font-size: 0.78rem;
-        opacity: 0.75;
-        letter-spacing: 0.02em;
     }
 
     .login-route {

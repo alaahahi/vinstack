@@ -5,7 +5,7 @@
         :class="{ 'manual-vehicle-form--blocked': vinBlocked || vinTrashed }"
     >
 
-        <nav class="step-nav" aria-label="خطوات الإدخال">
+        <nav class="step-nav" :aria-label="t('manualVehicle.stepsAria')">
 
             <button
 
@@ -43,15 +43,9 @@
 
         <div v-show="step === 0" class="step-panel">
 
-            <p class="vs-card-subtitle">
-
-                أدخل رقم الشاصي (17 حرفاً) ثم اضغط فك الشاصي لجلب البيانات من NHTSA.
-
-            </p>
-
+            <p class="vs-card-subtitle">{{ t('manualVehicle.vinLead') }}</p>
             <div class="field">
-
-                <label for="manual-vin" class="vs-form-label">رقم الشاصي (VIN)</label>
+                <label for="manual-vin" class="vs-form-label">{{ t('manualVehicle.vinLabel') }}</label>
 
                 <div class="vin-row">
 
@@ -67,7 +61,7 @@
 
                         dir="ltr"
 
-                        placeholder="مثال: 4T1DAACK5SU031835"
+                        :placeholder="t('manualVehicle.vinPlaceholder')"
 
                         :invalid="!!vinError || vinBlocked"
 
@@ -91,7 +85,7 @@
 
                         }"
 
-                        label="فك الشاصي"
+                        :label="t('manualVehicle.decode')"
 
                         :icon="vinDuplicateVisible ? 'pi pi-exclamation-triangle' : 'pi pi-barcode'"
 
@@ -105,7 +99,7 @@
 
                 </div>
 
-                <small v-if="checkingVin" class="field-hint">جاري التحقق من رقم الشاصي…</small>
+                <small v-if="checkingVin" class="field-hint">{{ t('manualVehicle.checkingVin') }}</small>
 
                 <small v-else-if="vinError" class="field-error">{{ vinError }}</small>
 
@@ -127,7 +121,7 @@
 
                         type="button"
 
-                        label="استعادة السيارة"
+                        :label="t('manualVehicle.restore')"
 
                         icon="pi pi-replay"
 
@@ -149,7 +143,7 @@
 
                 <Message v-else-if="decodeSuccess" severity="success" :closable="false" class="mt-sm">
 
-                    تم فك الشاصي — راجع الخطوة التالية.
+                    {{ t('manualVehicle.decodeSuccess') }}
 
                 </Message>
 
@@ -449,7 +443,7 @@
 
                 v-if="isEdit"
 
-                label="حذف السيارة"
+                :label="t('manualVehicle.deleteVehicle')"
 
                 severity="danger"
 
@@ -467,7 +461,7 @@
 
                 v-if="isEdit"
 
-                label="إلغاء"
+                :label="t('actions.cancel')"
 
                 severity="secondary"
 
@@ -483,7 +477,7 @@
 
                 v-if="step > 0"
 
-                label="السابق"
+                :label="t('manualVehicle.previous')"
 
                 icon="pi pi-arrow-right"
 
@@ -505,7 +499,7 @@
 
                 v-if="step < 3"
 
-                label="التالي"
+                :label="t('manualVehicle.next')"
 
                 icon="pi pi-arrow-left"
 
@@ -523,7 +517,7 @@
 
                 v-else
 
-                :label="isEdit ? 'حفظ التعديلات' : 'حفظ السيارة'"
+                :label="isEdit ? t('manualVehicle.saveEdits') : t('manualVehicle.saveVehicle')"
 
                 icon="pi pi-check"
 
@@ -548,7 +542,7 @@
 <script setup>
 
 import { computed, onMounted, reactive, ref, watch } from 'vue';
-
+import { useI18n } from 'vue-i18n';
 import { useConfirm } from 'primevue/useconfirm';
 
 import { useToast } from 'primevue/usetoast';
@@ -603,8 +597,7 @@ const props = defineProps({
 
 const emit = defineEmits(['saved', 'cancel', 'deleted']);
 
-
-
+const { t } = useI18n();
 const toast = useToast();
 
 const confirm = useConfirm();
@@ -631,7 +624,7 @@ const vinTrashed = ref(false);
 
 const trashedVehicleId = ref(null);
 
-const vinDuplicateMessage = ref('رقم الشاصي مسجّل مسبقاً في النظام — لا يمكن إضافة نفس المركبة مرتين.');
+const vinDuplicateMessage = ref('');
 
 const decodeWarning = ref('');
 
@@ -649,7 +642,12 @@ const editVehicleId = computed(() => props.vehicle?.id ?? null);
 
 
 
-const stepLabels = ['الشاصي', 'المواصفات', 'الشحن', 'المراجعة'];
+const stepLabels = computed(() => [
+    t('manualVehicle.steps.vin'),
+    t('manualVehicle.steps.specs'),
+    t('manualVehicle.steps.shipping'),
+    t('manualVehicle.steps.review'),
+]);
 
 
 
@@ -959,7 +957,7 @@ async function runVinCheck() {
 
             vinDuplicateMessage.value =
 
-                'رقم الشاصي مسجّل مسبقاً في النظام — لا يمكن إضافة نفس المركبة مرتين.';
+                t('manualVehicle.vinDuplicate');
 
             decodeSuccess.value = false;
 

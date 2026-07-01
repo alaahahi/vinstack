@@ -111,7 +111,7 @@ export function vehicleBookingRef(vehicle) {
 
 const KEYS_ABSENT = new Set(['no keys', 'missing', 'no key', 'no', 'false']);
 
-export function vehicleKeysInfo(vehicle) {
+export function vehicleKeysInfo(vehicle, t = null) {
     const raw = vehicle?.raw_data?.keys;
 
     if (raw === null || raw === undefined) {
@@ -119,11 +119,11 @@ export function vehicleKeysInfo(vehicle) {
     }
 
     if (raw === false) {
-        return { label: 'No Keys', present: false };
+        return { label: t?.('vehicleMeta.keysAbsent') ?? 'No Keys', present: false };
     }
 
     if (raw === true) {
-        return { label: 'Present', present: true };
+        return { label: t?.('vehicleMeta.keysPresent') ?? 'Present', present: true };
     }
 
     const keys = String(raw).trim();
@@ -135,20 +135,20 @@ export function vehicleKeysInfo(vehicle) {
     const lower = keys.toLowerCase();
 
     if (lower === 'present') {
-        return { label: 'Present', present: true };
+        return { label: t?.('vehicleMeta.keysPresent') ?? 'Present', present: true };
     }
 
     if (KEYS_ABSENT.has(lower)) {
-        return { label: 'No Keys', present: false };
+        return { label: t?.('vehicleMeta.keysAbsent') ?? 'No Keys', present: false };
     }
 
     return { label: keys, present: true };
 }
 
-export function vehicleTitleStatus(vehicle) {
+export function vehicleTitleStatus(vehicle, t = null) {
     const status = vehicle?.raw_data?.title_status?.trim();
 
-    return status || 'Pending';
+    return status || (t?.('vehicleMeta.titlePending') ?? 'Pending');
 }
 
 export function vehiclePurchaseDate(vehicle) {
@@ -159,27 +159,38 @@ export function vehicleArrivedDate(vehicle) {
     return formatVehicleDate(vehicle?.raw_data?.arrived_terminal_date);
 }
 
-const SOURCE_LABELS = {
-    manual: 'يدوية',
-    vinstack: 'مستوردة',
-    nujoom_al_jazeera: 'نجوم الجزيرة',
+const SOURCE_KEYS = {
+    manual: 'vehicles.source.manual',
+    vinstack: 'vehicles.source.vinstack',
+    nujoom_al_jazeera: 'vehicles.source.nujoom',
 };
+
+const SOURCE_FALLBACK = {
+    manual: 'Manual',
+    vinstack: 'Imported',
+    nujoom_al_jazeera: 'Nujoom Al Jazeera',
+};
+
+export function vehicleSourceLabel(vehicle, t = null) {
+    if (vehicle?.source_label) {
+        return vehicle.source_label;
+    }
+
+    const source = vehicle?.source ?? 'vinstack';
+    const key = SOURCE_KEYS[source];
+
+    if (t && key) {
+        return t(key);
+    }
+
+    return SOURCE_FALLBACK[source] ?? SOURCE_FALLBACK.vinstack;
+}
 
 const SOURCE_PILL_CLASSES = {
     manual: 'source-pill--manual',
     vinstack: 'source-pill--vinstack',
     nujoom_al_jazeera: 'source-pill--nujoom',
 };
-
-export function vehicleSourceLabel(vehicle) {
-    if (vehicle?.source_label) {
-        return vehicle.source_label;
-    }
-
-    const source = vehicle?.source ?? 'vinstack';
-
-    return SOURCE_LABELS[source] ?? SOURCE_LABELS.vinstack;
-}
 
 export function vehicleSourcePillClass(vehicle) {
     const source = vehicle?.source ?? 'vinstack';
@@ -195,7 +206,7 @@ export function vehicleAssignmentBadgeClass(vehicle) {
     return vehicleIsAssigned(vehicle) ? 'assignment-pill--assigned' : 'assignment-pill--unassigned';
 }
 
-export function vehicleEnteredBy(vehicle) {
+export function vehicleEnteredBy(vehicle, t = null) {
     const dealer = vehicle?.active_assignment?.dealer?.company_name;
 
     if (dealer) {
@@ -203,10 +214,10 @@ export function vehicleEnteredBy(vehicle) {
     }
 
     if (vehicle?.source === 'nujoom_al_jazeera') {
-        return vehicleSourceLabel(vehicle);
+        return vehicleSourceLabel(vehicle, t);
     }
 
-    return 'Admin';
+    return t?.('vehicleMeta.enteredByAdmin') ?? 'Admin';
 }
 
 /** @deprecated */
@@ -227,19 +238,34 @@ export function vehicleShippingMethod(vehicle) {
 }
 
 /** @deprecated */
-export function vehicleReferences(vehicle) {
+export function vehicleReferences(vehicle, t = null) {
     const items = [];
     const lot = vehicleLot(vehicle);
     const auction = vehicleAuction(vehicle);
     const container = vehicleContainerRef(vehicle);
     const booking = vehicleBookingRef(vehicle);
     const purchase = vehiclePurchaseDate(vehicle);
+    const refs = t
+        ? {
+            lot: t('vehicleMeta.refs.lot'),
+            auction: t('vehicleMeta.refs.auction'),
+            container: t('vehicleMeta.refs.container'),
+            booking: t('vehicleMeta.refs.booking'),
+            purchase: t('vehicleMeta.refs.purchase'),
+        }
+        : {
+            lot: 'Lot',
+            auction: 'Auction',
+            container: 'Container',
+            booking: 'Booking',
+            purchase: 'Purchase',
+        };
 
-    if (lot) items.push({ label: 'Lot', value: lot });
-    if (auction) items.push({ label: 'Auction', value: auction });
-    if (container) items.push({ label: 'Container', value: container });
-    if (booking) items.push({ label: 'Booking', value: booking });
-    if (purchase) items.push({ label: 'Purchase', value: purchase });
+    if (lot) items.push({ label: refs.lot, value: lot });
+    if (auction) items.push({ label: refs.auction, value: auction });
+    if (container) items.push({ label: refs.container, value: container });
+    if (booking) items.push({ label: refs.booking, value: booking });
+    if (purchase) items.push({ label: refs.purchase, value: purchase });
 
     return items;
 }

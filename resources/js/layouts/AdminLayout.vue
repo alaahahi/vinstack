@@ -7,7 +7,7 @@
             @click="sidebarOpen = false"
         />
 
-        <aside class="admin-sidebar" aria-label="قائمة الإدارة">
+        <aside class="admin-sidebar" :aria-label="t('navigation.adminSidebar')">
             <div class="admin-sidebar__brand">
                 <div class="brand-logo-frame">
                     <img
@@ -18,8 +18,8 @@
                 </div>
                 <div class="admin-sidebar__titles">
                     <span class="admin-sidebar__name">KAML KAMAL</span>
-                    <span class="admin-sidebar__tagline">Fast. Safe. Reliable.</span>
-                    <span class="admin-sidebar__role">لوحة الإدارة</span>
+                    <span class="admin-sidebar__tagline">{{ t('common.brandTagline') }}</span>
+                    <span class="admin-sidebar__role">{{ t('admin.panel') }}</span>
                 </div>
             </div>
 
@@ -36,7 +36,8 @@
                         <i :class="item.icon" />
                         <span>{{ item.label }}</span>
                     </RouterLink>
-                    <div v-if="group.label === 'النظام'" class="admin-nav__theme">
+                    <div v-if="group.key === 'system'" class="admin-nav__theme">
+                        <LocaleSwitcher />
                         <ThemeToggle />
                     </div>
                 </div>
@@ -49,7 +50,7 @@
                     @click="sidebarOpen = false"
                 >
                     <i class="pi pi-user" />
-                    <span>الملف الشخصي</span>
+                    <span>{{ t('navigation.adminProfile') }}</span>
                 </RouterLink>
                 <span v-if="auth.user?.name" class="admin-sidebar__user">{{ auth.user.name }}</span>
             </div>
@@ -63,7 +64,7 @@
                     text
                     rounded
                     class="admin-topbar__menu"
-                    aria-label="فتح القائمة"
+                    :aria-label="t('admin.openMenu')"
                     @click="sidebarOpen = true"
                 />
 
@@ -77,7 +78,7 @@
                     <slot name="topbar-actions" />
                     <Button
                         icon="pi pi-user"
-                        :label="auth.user?.name || 'الحساب'"
+                        :label="auth.user?.name || t('navigation.account')"
                         severity="secondary"
                         text
                         class="admin-topbar__profile"
@@ -98,6 +99,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import Menu from 'primevue/menu';
@@ -105,8 +107,10 @@ import { useConfirm } from 'primevue/useconfirm';
 import { useAuthStore } from '../stores/auth';
 import { useTheme } from '../composables/useTheme';
 import ThemeToggle from '../components/ThemeToggle.vue';
+import LocaleSwitcher from '../components/LocaleSwitcher.vue';
 import AdminNotificationsBell from '../components/AdminNotificationsBell.vue';
 
+const { t } = useI18n();
 const auth = useAuthStore();
 const { themeLogo } = useTheme();
 const router = useRouter();
@@ -116,42 +120,49 @@ const profileMenu = ref(null);
 const profileMenuOpen = ref(false);
 const sidebarOpen = ref(false);
 
-const navGroups = [
+const navGroups = computed(() => [
     {
-        label: 'العمليات',
+        key: 'operations',
+        label: t('navigation.operations'),
         items: [
-            { name: 'admin.vehicles', label: 'السيارات', icon: 'pi pi-car' },
-            { name: 'admin.containers', label: 'الحاويات', icon: 'pi pi-box' },
+            { name: 'admin.vehicles', label: t('navigation.vehicles'), icon: 'pi pi-car' },
+            { name: 'admin.containers', label: t('navigation.containers'), icon: 'pi pi-box' },
         ],
     },
     {
-        label: 'الأعمال',
+        key: 'business',
+        label: t('navigation.business'),
         items: [
-            { name: 'admin.dealers', label: 'التجار', icon: 'pi pi-building' },
+            { name: 'admin.dealers', label: t('pages.admin.dealers.title'), icon: 'pi pi-building' },
         ],
     },
     {
-        label: 'النظام',
+        key: 'system',
+        label: t('navigation.system'),
         items: [
-            { name: 'admin.settings', label: 'إعدادات Vinstack', icon: 'pi pi-cog' },
+            { name: 'admin.settings', label: t('admin.settings'), icon: 'pi pi-cog' },
         ],
     },
-];
+]);
 
-const pageTitle = computed(() => route.meta.title || 'الإدارة');
-const pageSubtitle = computed(() => route.meta.subtitle || '');
+const pageTitle = computed(() => (
+    route.meta.titleKey ? t(route.meta.titleKey) : (route.meta.title || t('admin.defaultTitle'))
+));
+const pageSubtitle = computed(() => (
+    route.meta.subtitleKey ? t(route.meta.subtitleKey) : (route.meta.subtitle || '')
+));
 
 const profileMenuItems = computed(() => [
     {
-        label: auth.user?.email || 'مدير النظام',
+        label: auth.user?.email || t('admin.systemAdmin'),
         items: [
             {
-                label: 'الملف الشخصي',
+                label: t('navigation.adminProfile'),
                 icon: 'pi pi-id-card',
                 command: () => router.push({ name: 'admin.profile' }),
             },
             {
-                label: 'تسجيل الخروج',
+                label: t('actions.logout'),
                 icon: 'pi pi-sign-out',
                 command: confirmLogout,
             },
@@ -166,11 +177,11 @@ function toggleProfileMenu(event) {
 
 function confirmLogout() {
     confirm.require({
-        message: 'هل تريد تسجيل الخروج من لوحة الإدارة؟',
-        header: 'تسجيل الخروج',
+        message: t('admin.logoutPrompt'),
+        header: t('actions.logout'),
         icon: 'pi pi-sign-out',
-        rejectLabel: 'إلغاء',
-        acceptLabel: 'خروج',
+        rejectLabel: t('actions.cancel'),
+        acceptLabel: t('actions.logout'),
         accept: () => {
             auth.logout();
             router.push({ name: 'login' });
@@ -354,6 +365,7 @@ watch(
     display: flex;
     align-items: center;
     justify-content: center;
+    gap: 0.5rem;
     width: 100%;
     box-sizing: border-box;
     padding: 0.35rem 0.65rem;

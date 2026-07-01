@@ -13,12 +13,12 @@
                     <i
                         v-if="mode === 'admin' && hasLocalUploads"
                         class="pi pi-images local-upload-hint"
-                        title="يوجد صور مرفوعة محلياً للتاجر"
-                        aria-label="صور مرفوعة محلياً"
+                        :title="t('vehicles.localUploads')"
+                        :aria-label="t('vehicles.localUploadsAria')"
                     />
                 </div>
                 <VinCopyLabel :vin="vehicle.vin" class="vehicle-vin-line" />
-                <div class="entered-by">Entered by {{ enteredBy }}</div>
+                <div class="entered-by">{{ t('vehicles.enteredBy', { name: enteredBy }) }}</div>
             </div>
         </div>
 
@@ -60,8 +60,8 @@
                     :disabled="!canTrackContainer"
                     class="track-btn"
                     :class="{ 'track-btn--ready': canTrackContainer }"
-                    aria-label="تتبع الحاوية"
-                    title="تتبع الحاوية"
+                    :aria-label="t('vehicles.trackContainer')"
+                    :title="t('vehicles.trackContainer')"
                     @click.stop="$emit('track-container', vehicle)"
                 />
             </div>
@@ -88,11 +88,11 @@
         <!-- Dates -->
         <div class="cell cell-dates">
             <div class="date-row">
-                <span class="date-label">Purchase</span>
+                <span class="date-label">{{ t('vehicles.purchase') }}</span>
                 <span class="date-value">{{ purchaseDate || '—' }}</span>
             </div>
             <div class="date-row">
-                <span class="date-label">Arrived terminal</span>
+                <span class="date-label">{{ t('vehicles.arrivedTerminal') }}</span>
                 <span class="date-value">{{ arrivedDate || '—' }}</span>
             </div>
         </div>
@@ -112,8 +112,8 @@
                 <button
                     type="button"
                     class="dealer-tag__remove"
-                    title="إلغاء الإسناد"
-                    aria-label="إلغاء إسناد التاجر"
+                    :title="t('vehicles.unassignTitle')"
+                    :aria-label="t('vehicles.unassignDealer')"
                     @click.stop="$emit('unassign', vehicle)"
                 >
                     <i class="pi pi-times" />
@@ -126,23 +126,23 @@
                     :class="{ 'chat-btn--unread': hasUnreadMessages }"
                     text
                     rounded
-                    :title="hasUnreadMessages ? 'رسائل جديدة — محادثة التاجر' : 'محادثة التاجر'"
+                    :title="hasUnreadMessages ? t('vehicles.chatAdminUnread') : t('vehicles.chatAdmin')"
                     @click="$emit('open-chat', vehicle)"
                 />
             </span>
             <Button
                 v-if="isManual"
                 icon="pi pi-pencil"
-                label="تعديل"
+                :label="t('vehicles.editManual')"
                 size="small"
                 severity="secondary"
                 outlined
-                title="تعديل سيارة يدوية"
+                :title="t('vehicles.editManualTitle')"
                 @click="$emit('edit', vehicle)"
             />
             <Button
                 v-if="!isAssigned"
-                label="إسناد"
+                :label="t('vehicles.assign')"
                 size="small"
                 class="btn-assign"
                 @click="$emit('assign', vehicle)"
@@ -159,7 +159,7 @@
                     :class="{ 'chat-btn--unread': hasUnreadMessages }"
                     text
                     rounded
-                    :title="hasUnreadMessages ? 'رسائل جديدة — محادثة السيارة' : 'محادثة السيارة'"
+                    :title="hasUnreadMessages ? t('vehicles.chatDealerUnread') : t('vehicles.chatDealer')"
                     @click="$emit('open-chat', vehicle)"
                 />
             </span>
@@ -169,6 +169,7 @@
 
 <script setup>
 import { computed } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
 import VehicleImageGallery from './VehicleImageGallery.vue';
@@ -214,10 +215,12 @@ const props = defineProps({
 
 defineEmits(['assign', 'update-status', 'open-chat', 'open-detail', 'edit', 'unassign', 'track-container']);
 
+const { t } = useI18n();
+
 const isManual = computed(() => props.vehicle?.source === 'manual');
 const isAssigned = computed(() => vehicleIsAssigned(props.vehicle));
 const hasUnreadMessages = computed(() => Number(props.vehicle?.unread_messages_count || 0) > 0);
-const sourceLabel = computed(() => vehicleSourceLabel(props.vehicle));
+const sourceLabel = computed(() => vehicleSourceLabel(props.vehicle, t));
 const sourcePillClass = computed(() => vehicleSourcePillClass(props.vehicle));
 
 const title = computed(() => vehicleTitle(props.vehicle));
@@ -239,11 +242,11 @@ const canTrackContainer = computed(() => {
     return props.trackingAvailable;
 });
 const booking = computed(() => vehicleBookingRef(props.vehicle));
-const keysInfo = computed(() => vehicleKeysInfo(props.vehicle));
-const titleStatus = computed(() => vehicleTitleStatus(props.vehicle));
+const keysInfo = computed(() => vehicleKeysInfo(props.vehicle, t));
+const titleStatus = computed(() => vehicleTitleStatus(props.vehicle, t));
 const purchaseDate = computed(() => vehiclePurchaseDate(props.vehicle));
 const arrivedDate = computed(() => vehicleArrivedDate(props.vehicle));
-const enteredBy = computed(() => vehicleEnteredBy(props.vehicle));
+const enteredBy = computed(() => vehicleEnteredBy(props.vehicle, t));
 const dealerName = computed(() => props.vehicle.active_assignment?.dealer?.company_name ?? null);
 const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.vehicle));
 </script>
@@ -615,7 +618,8 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     align-items: center;
     gap: 0.25rem;
     max-width: 100%;
-    padding: 0.15rem 0.35rem 0.15rem 0.55rem;
+    padding-block: 0.15rem;
+    padding-inline: 0.55rem 0.35rem;
     border-radius: 999px;
     border: 1px solid var(--vs-border);
     background: var(--vs-surface-hover);

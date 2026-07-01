@@ -1,15 +1,13 @@
 <template>
     <Dialog
         v-model:visible="visibleModel"
-        header="استيراد من نجوم الجزيرة"
+        :header="t('nujoomImport.title')"
         modal
         :style="{ width: 'min(920px, 96vw)' }"
         @hide="reset"
     >
         <div v-if="! preview" class="import-upload">
-            <p class="import-lead">
-                ارفع ملف Excel من نجوم الجزيرة (All-Cars.xlsx). سيتم مطابقة السيارات برقم الشاصي: تحديث الموجود وإضافة الجديد بعد التأكيد.
-            </p>
+            <p class="import-lead">{{ t('nujoomImport.lead') }}</p>
             <input
                 ref="fileInput"
                 type="file"
@@ -25,14 +23,14 @@
 
         <div v-else class="import-preview">
             <div class="import-counts">
-                <span class="count-badge count-badge--add">جديد: {{ preview.counts.to_add }}</span>
-                <span class="count-badge count-badge--update">تحديث: {{ preview.counts.to_update }}</span>
-                <span class="count-badge count-badge--container">حاويات جديدة: {{ preview.counts.containers_new }}</span>
-                <span v-if="preview.counts.errors" class="count-badge count-badge--error">أخطاء: {{ preview.counts.errors }}</span>
+                <span class="count-badge count-badge--add">{{ t('nujoomImport.counts.new', { count: preview.counts.to_add }) }}</span>
+                <span class="count-badge count-badge--update">{{ t('nujoomImport.counts.update', { count: preview.counts.to_update }) }}</span>
+                <span class="count-badge count-badge--container">{{ t('nujoomImport.counts.containers', { count: preview.counts.containers_new }) }}</span>
+                <span v-if="preview.counts.errors" class="count-badge count-badge--error">{{ t('nujoomImport.counts.errors', { count: preview.counts.errors }) }}</span>
             </div>
 
             <div class="apply-mode">
-                <h4>طريقة التطبيق</h4>
+                <h4>{{ t('nujoomImport.applyModeTitle') }}</h4>
                 <div class="apply-mode-options">
                     <label
                         v-for="option in applyModeOptions"
@@ -54,59 +52,59 @@
             </div>
 
             <div v-if="preview.errors?.length" class="preview-section">
-                <h4>أخطاء</h4>
+                <h4>{{ t('nujoomImport.errors') }}</h4>
                 <ul class="error-list">
                     <li v-for="(err, idx) in preview.errors" :key="`err-${idx}`">
-                        صف {{ err.row }}: {{ err.message }}
+                        {{ t('nujoomImport.errorRow', { row: err.row, message: err.message }) }}
                     </li>
                 </ul>
             </div>
 
             <div v-if="preview.containers_new?.length" class="preview-section">
-                <h4>حاويات جديدة</h4>
+                <h4>{{ t('nujoomImport.newContainers') }}</h4>
                 <DataTable :value="preview.containers_new" size="small" striped-rows>
-                    <Column field="container_number" header="رقم الحاوية" />
-                    <Column field="booking_number" header="الحجز" />
-                    <Column field="loading_point" header="ميناء التحميل" />
-                    <Column field="destination" header="الوجهة" />
-                    <Column field="vehicle_count" header="عدد السيارات" />
+                    <Column field="container_number" :header="t('nujoomImport.colContainer')" />
+                    <Column field="booking_number" :header="t('nujoomImport.colBooking')" />
+                    <Column field="loading_point" :header="t('nujoomImport.colLoading')" />
+                    <Column field="destination" :header="t('nujoomImport.colDestination')" />
+                    <Column field="vehicle_count" :header="t('nujoomImport.colVehicleCount')" />
                 </DataTable>
             </div>
 
             <div v-if="preview.to_add?.length" class="preview-section">
-                <h4>سيارات جديدة ({{ preview.to_add.length }})</h4>
+                <h4>{{ t('nujoomImport.newVehicles', { count: preview.to_add.length }) }}</h4>
                 <DataTable :value="preview.to_add" size="small" striped-rows scrollable scroll-height="200px">
-                    <Column field="vin" header="الشاصي" />
-                    <Column header="المركبة">
+                    <Column field="vin" :header="t('nujoomImport.colVin')" />
+                    <Column :header="t('nujoomImport.colVehicle')">
                         <template #body="{ data }">
                             {{ [data.year, data.make, data.model].filter(Boolean).join(' ') }}
                         </template>
                     </Column>
-                    <Column field="destination" header="الوجهة" />
-                    <Column field="container_number" header="الحاوية" />
+                    <Column field="destination" :header="t('nujoomImport.colDestination')" />
+                    <Column field="container_number" :header="t('nujoomImport.colContainer')" />
                 </DataTable>
             </div>
 
             <div v-if="preview.to_update?.length" class="preview-section">
-                <h4>سيارات للتحديث ({{ preview.to_update.length }})</h4>
+                <h4>{{ t('nujoomImport.updateVehicles', { count: preview.to_update.length }) }}</h4>
                 <DataTable :value="preview.to_update" size="small" striped-rows scrollable scroll-height="200px">
-                    <Column field="vin" header="الشاصي" />
-                    <Column header="المركبة">
+                    <Column field="vin" :header="t('nujoomImport.colVin')" />
+                    <Column :header="t('nujoomImport.colVehicle')">
                         <template #body="{ data }">
                             {{ [data.year, data.make, data.model].filter(Boolean).join(' ') }}
                         </template>
                     </Column>
-                    <Column field="existing_source" header="المصدر الحالي" />
-                    <Column field="destination" header="الوجهة" />
+                    <Column field="existing_source" :header="t('nujoomImport.colCurrentSource')" />
+                    <Column field="destination" :header="t('nujoomImport.colDestination')" />
                 </DataTable>
             </div>
         </div>
 
         <template #footer>
-            <Button label="إلغاء" text :disabled="previewing || applying" @click="close" />
+            <Button :label="t('actions.cancel')" text :disabled="previewing || applying" @click="close" />
             <Button
                 v-if="! preview"
-                label="معاينة"
+                :label="t('nujoomImport.preview')"
                 icon="pi pi-eye"
                 :loading="previewing"
                 :disabled="! selectedFile"
@@ -127,6 +125,7 @@
 
 <script setup>
 import { computed, ref, watch } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
 import Button from 'primevue/button';
@@ -135,6 +134,7 @@ import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
 import api from '../api/client';
 
+const { t } = useI18n();
 const props = defineProps({
     visible: {
         type: Boolean,
@@ -159,23 +159,23 @@ const previewing = ref(false);
 const applying = ref(false);
 const applyMode = ref('all');
 
-const applyModeOptions = [
+const applyModeOptions = computed(() => [
     {
         value: 'all',
-        label: 'تطبيق الكل',
-        hint: 'إضافة الجديد وتحديث الموجود',
+        label: t('nujoomImport.modes.all'),
+        hint: t('nujoomImport.modes.allHint'),
     },
     {
         value: 'updates_only',
-        label: 'تحديث السيارات فقط',
-        hint: 'تخطي السيارات الجديدة — تحديث الشاصيات الموجودة فقط',
+        label: t('nujoomImport.modes.updatesOnly'),
+        hint: t('nujoomImport.modes.updatesOnlyHint'),
     },
     {
         value: 'add_only',
-        label: 'إضافة الجديد فقط',
-        hint: 'تخطي التحديثات — إضافة السيارات الجديدة فقط',
+        label: t('nujoomImport.modes.addOnly'),
+        hint: t('nujoomImport.modes.addOnlyHint'),
     },
-];
+]);
 
 const canApply = computed(() => {
     if (! preview.value) {
@@ -197,14 +197,14 @@ const canApply = computed(() => {
 
 const applyButtonLabel = computed(() => {
     if (applyMode.value === 'updates_only') {
-        return 'تحديث السيارات فقط';
+        return t('nujoomImport.modes.updatesOnly');
     }
 
     if (applyMode.value === 'add_only') {
-        return 'إضافة الجديد فقط';
+        return t('nujoomImport.modes.addOnly');
     }
 
-    return 'تطبيق الاستيراد';
+    return t('nujoomImport.applyImport');
 });
 
 watch(() => props.visible, (open) => {
@@ -250,12 +250,12 @@ async function runPreview() {
         });
 
         preview.value = data.data;
-        toast.add({ severity: 'info', summary: 'تمت المعاينة', life: 2500 });
+        toast.add({ severity: 'info', summary: t('nujoomImport.previewDone'), life: 2500 });
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
-            detail: e.response?.data?.message || 'تعذّرت معاينة الملف',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || t('nujoomImport.previewFailed'),
             life: 4000,
         });
     } finally {
@@ -269,19 +269,26 @@ function confirmApply() {
     let message;
 
     if (applyMode.value === 'updates_only') {
-        message = `تأكيد تحديث ${counts.to_update ?? 0} سيارة موجودة فقط (بدون إضافة جديد)؟`;
+        message = t('nujoomImport.confirmUpdatesOnly', { count: counts.to_update ?? 0 });
     } else if (applyMode.value === 'add_only') {
-        message = `تأكيد إضافة ${counts.to_add ?? 0} سيارة جديدة و${counts.containers_new ?? 0} حاوية (بدون تحديث)؟`;
+        message = t('nujoomImport.confirmAddOnly', {
+            count: counts.to_add ?? 0,
+            containers: counts.containers_new ?? 0,
+        });
     } else {
-        message = `تأكيد الاستيراد: ${counts.to_add ?? 0} جديد، ${counts.to_update ?? 0} تحديث، ${counts.containers_new ?? 0} حاوية جديدة؟`;
+        message = t('nujoomImport.confirmAll', {
+            add: counts.to_add ?? 0,
+            update: counts.to_update ?? 0,
+            containers: counts.containers_new ?? 0,
+        });
     }
 
     confirm.require({
         message,
-        header: 'تأكيد الاستيراد',
+        header: t('nujoomImport.confirmHeader'),
         icon: 'pi pi-upload',
-        rejectLabel: 'إلغاء',
-        acceptLabel: 'تطبيق',
+        rejectLabel: t('actions.cancel'),
+        acceptLabel: t('nujoomImport.confirmApply'),
         accept: () => runApply(),
     });
 }
@@ -302,7 +309,7 @@ async function runApply() {
 
         toast.add({
             severity: 'success',
-            summary: 'تم الاستيراد',
+            summary: t('nujoomImport.importDone'),
             detail: data.message,
             life: 5000,
         });
@@ -312,8 +319,8 @@ async function runApply() {
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
-            detail: e.response?.data?.message || 'فشل تطبيق الاستيراد',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || t('nujoomImport.importFailed'),
             life: 4000,
         });
     } finally {

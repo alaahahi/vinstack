@@ -3,12 +3,12 @@
         <DealerDashboardCards />
 
         <div class="toolbar">
-            <h2 class="section-title">قائمة السيارات</h2>
+            <h2 class="section-title">{{ t('vehicles.listTitle') }}</h2>
             <IconField class="search-field">
                 <InputIcon class="pi pi-search" />
-                <InputText v-model="search" placeholder="بحث برقم الشاصي أو الموديل..." @keyup.enter="load" />
+                <InputText v-model="search" :placeholder="t('vehicles.searchPlaceholder')" @keyup.enter="load" />
             </IconField>
-            <Button icon="pi pi-refresh" label="تحديث" outlined :loading="loading" @click="load" />
+            <Button icon="pi pi-refresh" :label="t('actions.refresh')" outlined :loading="loading" @click="load" />
         </div>
 
         <VehicleListPanel
@@ -19,8 +19,8 @@
             :per-page="perPage"
             mode="dealer"
             :tracking-available="trackingAvailable"
-            empty-hint="عند إسناد سيارات من الإدارة ستظهر هنا تلقائياً."
-            empty-action-label="تحديث القائمة"
+            :empty-hint="t('vehicles.emptyDealerHint')"
+            :empty-action-label="t('actions.refreshList')"
             @open-chat="openChat"
             @open-detail="openDetail"
             @page="onPage"
@@ -45,6 +45,7 @@
 
 <script setup>
 import { onMounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import IconField from 'primevue/iconfield';
 import InputIcon from 'primevue/inputicon';
@@ -56,6 +57,7 @@ import VehicleDetailDrawer from '../../components/VehicleDetailDrawer.vue';
 import VehicleChatDialog from '../../components/VehicleChatDialog.vue';
 import api from '../../api/client';
 
+const { t } = useI18n();
 const toast = useToast();
 const vehicles = ref([]);
 const loading = ref(false);
@@ -87,8 +89,8 @@ async function load() {
     } catch (e) {
         toast.add({
             severity: 'error',
-            summary: 'خطأ',
-            detail: e.response?.data?.message || 'تعذّر جلب السيارات',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || t('vehicles.loadFailed'),
             life: 4000,
         });
     } finally {

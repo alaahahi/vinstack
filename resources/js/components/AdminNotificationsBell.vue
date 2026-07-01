@@ -6,7 +6,7 @@
             text
             rounded
             class="admin-notifications__trigger"
-            aria-label="الإشعارات"
+            :aria-label="t('notifications.aria')"
             :badge="badgeLabel"
             badge-severity="danger"
             @click="openList"
@@ -14,7 +14,7 @@
 
         <Dialog
             v-model:visible="listVisible"
-            header="رسائل التجار"
+            :header="t('notifications.title')"
             modal
             :style="{ width: 'min(520px, 100vw)' }"
             @hide="fetchUnreadCount"
@@ -23,7 +23,7 @@
                 <ProgressSpinner style="width: 28px; height: 28px" stroke-width="4" />
             </div>
             <div v-else-if="!items.length" class="admin-notifications__empty">
-                لا توجد رسائل جديدة.
+                {{ t('notifications.empty') }}
             </div>
             <ul v-else class="admin-notifications__list">
                 <li
@@ -33,10 +33,10 @@
                 >
                     <button type="button" class="admin-notifications__item-btn" @click="openChat(item)">
                         <span class="admin-notifications__item-top">
-                            <strong>{{ item.vehicle?.title || 'سيارة' }}</strong>
+                            <strong>{{ item.vehicle?.title || t('notifications.vehicleFallback') }}</strong>
                             <span class="admin-notifications__count">{{ item.unread_count }}</span>
                         </span>
-                        <span class="admin-notifications__dealer">{{ item.dealer_name || 'تاجر' }}</span>
+                        <span class="admin-notifications__dealer">{{ item.dealer_name || t('notifications.dealerFallback') }}</span>
                         <span class="admin-notifications__preview">{{ preview(item.preview) }}</span>
                         <span class="admin-notifications__time" dir="ltr">{{ formatDateTime(item.created_at) }}</span>
                     </button>
@@ -56,6 +56,7 @@
 
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { useI18n } from 'vue-i18n';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import ProgressSpinner from 'primevue/progressspinner';
@@ -63,6 +64,7 @@ import VehicleChatDialog from './VehicleChatDialog.vue';
 import api from '../api/client';
 import { formatDateTime } from '../utils/formatDateTime';
 
+const { t } = useI18n();
 const items = ref([]);
 const unreadCount = ref(0);
 const loadingList = ref(false);
