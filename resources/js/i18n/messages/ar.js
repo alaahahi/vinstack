@@ -115,6 +115,7 @@ export default {
         chatAdminUnread: 'رسائل جديدة — محادثة التاجر',
         chatDealer: 'محادثة السيارة',
         chatDealerUnread: 'رسائل جديدة — محادثة السيارة',
+        unreadMessagesTitle: '{count} رسائل غير مقروءة',
         importNujoom: 'استيراد من نجوم الجزيرة',
         addManual: 'إضافة سيارة يدوياً',
         editManualHeader: 'تعديل سيارة يدوية',

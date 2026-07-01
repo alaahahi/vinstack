@@ -115,6 +115,7 @@ export default {
         chatAdminUnread: 'New messages — dealer chat',
         chatDealer: 'Vehicle chat',
         chatDealerUnread: 'New messages — vehicle chat',
+        unreadMessagesTitle: '{count} unread messages',
         importNujoom: 'Import from Nujoom Al Jazeera',
         addManual: 'Add vehicle manually',
         editManualHeader: 'Edit manual vehicle',

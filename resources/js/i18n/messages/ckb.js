@@ -115,6 +115,7 @@ export default {
         chatAdminUnread: 'پەیامی نوێ — گفتوگۆی بازرگان',
         chatDealer: 'گفتوگۆی ئۆتۆمبێل',
         chatDealerUnread: 'پەیامی نوێ — گفتوگۆی ئۆتۆمبێل',
+        unreadMessagesTitle: '{count} پەیامی نەخوێندراو',
         importNujoom: 'هاوردەکردن لە نجوم الجزیرە',
         addManual: 'زیادکردنی ئۆتۆمبێل بە دەست',
         editManualHeader: 'دەستکاری ئۆتۆمبێلی دەستی',

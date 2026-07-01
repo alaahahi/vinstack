@@ -2,12 +2,21 @@
     <div class="vehicle-row">
         <!-- Vehicle -->
         <div class="cell cell-vehicle">
-            <VehicleImageGallery :vehicle="vehicle" variant="row" />
+            <div class="vehicle-thumb-wrap">
+                <VehicleImageGallery :vehicle="vehicle" variant="row" />
+                <span
+                    v-if="hasUnreadMessages"
+                    class="message-unread-badge"
+                    :title="unreadMessagesTitle"
+                    :aria-label="unreadMessagesTitle"
+                >{{ unreadMessagesLabel }}</span>
+            </div>
             <div class="vehicle-info">
                 <div class="title-line">
                     <button type="button" class="title title-link" @click="$emit('open-detail', vehicle)">
                         {{ title || '—' }}
                     </button>
+                    <span v-if="hasUnreadMessages" class="message-pill">{{ unreadMessagesLabel }}</span>
                     <span v-if="fuel" class="fuel-badge" :class="fuelClass">{{ fuel }}</span>
                     <span class="source-pill" :class="sourcePillClass">{{ sourceLabel }}</span>
                     <i
@@ -126,9 +135,11 @@
                     :class="{ 'chat-btn--unread': hasUnreadMessages }"
                     text
                     rounded
-                    :title="hasUnreadMessages ? t('vehicles.chatAdminUnread') : t('vehicles.chatAdmin')"
+                    :title="unreadMessagesTitle"
+                    :aria-label="unreadMessagesTitle"
                     @click="$emit('open-chat', vehicle)"
                 />
+                <span v-if="hasUnreadMessages" class="chat-count-badge" aria-hidden="true">{{ unreadMessagesLabel }}</span>
             </span>
             <Button
                 v-if="isManual"
@@ -169,9 +180,11 @@
                     :class="{ 'chat-btn--unread': hasUnreadMessages }"
                     text
                     rounded
-                    :title="hasUnreadMessages ? t('vehicles.chatDealerUnread') : t('vehicles.chatDealer')"
+                    :title="unreadMessagesTitle"
+                    :aria-label="unreadMessagesTitle"
                     @click="$emit('open-chat', vehicle)"
                 />
+                <span v-if="hasUnreadMessages" class="chat-count-badge" aria-hidden="true">{{ unreadMessagesLabel }}</span>
             </span>
         </div>
     </div>
@@ -229,7 +242,23 @@ const { t } = useI18n();
 
 const isManual = computed(() => props.vehicle?.source === 'manual');
 const isAssigned = computed(() => vehicleIsAssigned(props.vehicle));
-const hasUnreadMessages = computed(() => Number(props.vehicle?.unread_messages_count || 0) > 0);
+const hasUnreadMessages = computed(() => unreadMessagesCount.value > 0);
+
+const unreadMessagesCount = computed(() => Number(props.vehicle?.unread_messages_count || 0));
+
+const unreadMessagesLabel = computed(() => {
+    const count = unreadMessagesCount.value;
+
+    return count > 99 ? '99+' : String(count);
+});
+
+const unreadMessagesTitle = computed(() => {
+    if (! hasUnreadMessages.value) {
+        return props.mode === 'admin' ? t('vehicles.chatAdmin') : t('vehicles.chatDealer');
+    }
+
+    return t('vehicles.unreadMessagesTitle', { count: unreadMessagesCount.value });
+});
 const sourceLabel = computed(() => vehicleSourceLabel(props.vehicle, t));
 const sourcePillClass = computed(() => vehicleSourcePillClass(props.vehicle));
 
@@ -673,7 +702,71 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
 }
 
 .chat-btn-wrap {
+    position: relative;
     display: inline-flex;
+}
+
+.vehicle-thumb-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.message-unread-badge {
+    position: absolute;
+    top: 4px;
+    inset-inline-start: 4px;
+    z-index: 3;
+    min-width: 20px;
+    height: 20px;
+    padding: 0 5px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 20px;
+    text-align: center;
+    pointer-events: none;
+    box-shadow: 0 1px 4px rgb(0 0 0 / 0.35);
+}
+
+.message-pill {
+    display: inline-flex;
+    align-items: center;
+    justify-content: center;
+    min-width: 1.25rem;
+    height: 1.25rem;
+    padding: 0 0.4rem;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1;
+}
+
+.chat-count-badge {
+    position: absolute;
+    top: -2px;
+    inset-inline-end: -2px;
+    z-index: 2;
+    min-width: 18px;
+    height: 18px;
+    padding: 0 4px;
+    border-radius: 999px;
+    background: #ef4444;
+    color: #fff;
+    font-size: 10px;
+    font-weight: 700;
+    line-height: 18px;
+    text-align: center;
+    pointer-events: none;
+    border: 2px solid var(--surface-card, #fff);
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.25);
+}
+
+[data-theme='dark'] .chat-count-badge {
+    border-color: var(--surface-card, #18181b);
 }
 
 .chat-btn-wrap :deep(.chat-btn--unread) {
