@@ -31,6 +31,54 @@ class VehicleGalleryMerger
     }
 
     /**
+     * Resolve merged gallery stages for display, honoring admin-persisted order when present.
+     *
+     * @return array{terminal: list<string>, pickup: list<string>, destination: list<string>}
+     */
+    public static function resolveDisplayStages(array $raw, Vehicle $vehicle): array
+    {
+        $persistedStages = Arr::get($raw, 'images_by_stage');
+
+        if (is_array($persistedStages) && self::persistedStagesHaveUrls($persistedStages)) {
+            $vinstackStages = self::normalizePersistedStages($persistedStages);
+        } else {
+            $vinstackStages = self::resolveVinstackStages($raw, $vehicle);
+        }
+
+        return self::merge($vinstackStages, $vehicle);
+    }
+
+    /**
+     * @param  list<string>  $ordered
+     * @param  list<string>  $current
+     */
+    public static function urlsMatchSameSet(array $ordered, array $current): bool
+    {
+        if (count($ordered) !== count($current)) {
+            return false;
+        }
+
+        $normalize = fn (mixed $url): string => self::normalizeGalleryUrl((string) $url);
+
+        $orderedNorm = array_map($normalize, $ordered);
+        $currentNorm = array_map($normalize, $current);
+
+        sort($orderedNorm);
+        sort($currentNorm);
+
+        return $orderedNorm === $currentNorm;
+    }
+
+    public static function normalizeGalleryUrl(string $url): string
+    {
+        if (preg_match('#^(?:https?://[^/]+)?(/storage/.*)$#i', $url, $matches)) {
+            return $matches[1];
+        }
+
+        return $url;
+    }
+
+    /**
      * @param  array{terminal: list<string>, pickup: list<string>, destination: list<string>}  $vinstackStages
      * @return array{terminal: list<string>, pickup: list<string>, destination: list<string>}
      */

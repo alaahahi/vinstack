@@ -88,8 +88,8 @@ class VinstackGalleryService
             }
         }
 
-        $vinstackStages = VehicleGalleryMerger::resolveVinstackStages($source, $vehicle);
-        $imagesByStage = VehicleGalleryMerger::merge($vinstackStages, $vehicle);
+        $vinstackStages = VehicleGalleryMerger::resolveDisplayStages($source, $vehicle);
+        $imagesByStage = $vinstackStages;
         $images = VehicleGalleryMerger::flatten($imagesByStage, $vehicle, $source);
 
         $thumbnail = Arr::get($source, 'thumbnail_url');

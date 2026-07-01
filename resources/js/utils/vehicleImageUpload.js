@@ -21,6 +21,15 @@ export async function deleteVehicleImage(vehicleId, imageId) {
     return data;
 }
 
+export async function reorderVehicleGallery(vehicleId, stage, urls) {
+    const { data } = await api.put(`/admin/vehicles/${vehicleId}/gallery/order`, {
+        stage,
+        urls,
+    });
+
+    return data;
+}
+
 export function uploadedImagesByStage(uploadedImages = []) {
     const map = {
         terminal: [],

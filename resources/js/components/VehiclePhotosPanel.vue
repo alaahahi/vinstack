@@ -109,12 +109,22 @@
 
                 <div v-if="stageUrls(stage.key).length" class="stage-thumbs">
                     <div
-                        v-for="url in stageUrls(stage.key)"
+                        v-for="(url, index) in stageUrls(stage.key)"
                         :key="url"
                         class="thumb-card"
-                        :class="{ 'thumb-card--uploaded': isUploadedUrl(url) }"
+                        :class="{
+                            'thumb-card--uploaded': isUploadedUrl(url),
+                            'thumb-card--dragging': isThumbDragging(stage.key, index),
+                            'thumb-card--drag-over': isThumbDragOver(stage.key, index),
+                        }"
+                        draggable="true"
+                        @dragstart="onThumbDragStart(stage.key, index, $event)"
+                        @dragover.prevent="onThumbDragOver(stage.key, index, $event)"
+                        @dragleave="onThumbDragLeave(stage.key, index, $event)"
+                        @drop.prevent="onThumbDrop(stage.key, index, $event)"
+                        @dragend="onThumbDragEnd"
                     >
-                        <button type="button" class="thumb-btn" @click="openZoom(url)">
+                        <button type="button" class="thumb-btn" draggable="false" @click="openZoom(url)">
                             <img :src="url" :alt="label" loading="lazy" decoding="async" />
                         </button>
                         <span v-if="isUploadedUrl(url)" class="source-tag source-tag--local">مرفوعة من الإدارة</span>
@@ -126,6 +136,7 @@
                             rounded
                             size="small"
                             class="thumb-delete"
+                            draggable="false"
                             :loading="deletingId === uploadedImageId(url)"
                             aria-label="حذف الصورة"
                             @click="confirmRemoveUploaded(url)"
@@ -191,6 +202,7 @@ import {
     isDeletableUploadedUrl,
     isLocalUploadedUrl,
     localImageIdForUrl,
+    reorderVehicleGallery,
     uploadVehicleImages,
 } from '../utils/vehicleImageUpload';
 import {
@@ -228,6 +240,8 @@ const emit = defineEmits(['updated']);
 const toast = useToast();
 const confirm = useConfirm();
 
+const THUMB_DRAG_MIME = 'application/x-vinstack-thumb';
+
 const zoomVisible = ref(false);
 const zoomStartUrl = ref(null);
 const uploadingStage = ref(null);
@@ -242,6 +256,10 @@ const galleryFresh = ref(false);
 const galleryTokenExpired = ref(false);
 const galleryError = ref(null);
 const galleryNewImagesCount = ref(0);
+const orderOverrides = ref({});
+const dragThumb = ref(null);
+const dragOverThumb = ref(null);
+const reorderingStage = ref(null);
 
 const GALLERY_ERROR_MESSAGES = {
     gallery_token_missing: 'توكن المعرض غير مضبوط — أضف Gallery Token في الإعدادات أو استخدم توكن المزامنة.',
@@ -282,6 +300,7 @@ async function loadLiveGallery() {
     try {
         const payload = await fetchLiveVehicleGallery(vehicleId, props.apiMode);
         displayVehicle.value = mergeGalleryIntoVehicle(props.vehicle, payload);
+        clearOrderOverrides();
         galleryFresh.value = Boolean(payload.gallery_fresh);
         galleryTokenExpired.value = Boolean(payload.gallery_token_expired);
         galleryError.value = payload.gallery_error ?? null;
@@ -325,7 +344,15 @@ function setZipInput(stageKey, el) {
 }
 
 function stageUrls(stageKey) {
+    if (Array.isArray(orderOverrides.value[stageKey])) {
+        return orderOverrides.value[stageKey];
+    }
+
     return stages.value[stageKey] ?? [];
+}
+
+function clearOrderOverrides() {
+    orderOverrides.value = {};
 }
 
 function stageCounts(stageKey) {
@@ -378,6 +405,10 @@ function onDragLeave(stageKey, event) {
 }
 
 function onDrop(stageKey, event) {
+    if (event.dataTransfer?.types?.includes(THUMB_DRAG_MIME)) {
+        return;
+    }
+
     dragOverStage.value = null;
 
     const dropped = [...(event.dataTransfer?.files ?? [])];
@@ -403,6 +434,113 @@ function onDrop(stageKey, event) {
     }
 
     uploadFiles(stageKey, files);
+}
+
+function isThumbDragging(stageKey, index) {
+    return dragThumb.value?.stage === stageKey && dragThumb.value?.index === index;
+}
+
+function isThumbDragOver(stageKey, index) {
+    return dragOverThumb.value?.stage === stageKey && dragOverThumb.value?.index === index;
+}
+
+function onThumbDragStart(stageKey, index, event) {
+    dragThumb.value = { stage: stageKey, index };
+    dragOverThumb.value = null;
+    event.dataTransfer.effectAllowed = 'move';
+    event.dataTransfer.setData(THUMB_DRAG_MIME, String(index));
+}
+
+function onThumbDragOver(stageKey, index, event) {
+    if (! dragThumb.value || dragThumb.value.stage !== stageKey) {
+        return;
+    }
+
+    event.dataTransfer.dropEffect = 'move';
+    dragOverThumb.value = { stage: stageKey, index };
+}
+
+function onThumbDragLeave(stageKey, index, event) {
+    if (event.currentTarget?.contains(event.relatedTarget)) {
+        return;
+    }
+
+    if (dragOverThumb.value?.stage === stageKey && dragOverThumb.value?.index === index) {
+        dragOverThumb.value = null;
+    }
+}
+
+async function onThumbDrop(stageKey, dropIndex, event) {
+    event.stopPropagation();
+
+    const fromIndex = dragThumb.value?.stage === stageKey ? dragThumb.value.index : null;
+
+    dragThumb.value = null;
+    dragOverThumb.value = null;
+
+    if (fromIndex === null || fromIndex === dropIndex || ! props.vehicle?.id) {
+        return;
+    }
+
+    const urls = [...stageUrls(stageKey)];
+    const [moved] = urls.splice(fromIndex, 1);
+
+    urls.splice(dropIndex, 0, moved);
+
+    const previousOverride = orderOverrides.value[stageKey];
+
+    orderOverrides.value = {
+        ...orderOverrides.value,
+        [stageKey]: urls,
+    };
+
+    reorderingStage.value = stageKey;
+
+    try {
+        const result = await reorderVehicleGallery(props.vehicle.id, stageKey, urls);
+        const vehiclePayload = result.data ?? result;
+
+        displayVehicle.value = mergeGalleryIntoVehicle(props.vehicle, {
+            images_by_stage: vehiclePayload.images_by_stage,
+            images: vehiclePayload.images,
+            uploaded_images: vehiclePayload.uploaded_images,
+            gallery_fresh: true,
+        });
+        clearOrderOverrides();
+        emit('updated', vehiclePayload);
+
+        toast.add({
+            severity: 'success',
+            summary: 'تم تحديث الترتيب',
+            detail: 'تم حفظ ترتيب الصور بنجاح',
+            life: 2500,
+        });
+    } catch (e) {
+        if (previousOverride) {
+            orderOverrides.value = {
+                ...orderOverrides.value,
+                [stageKey]: previousOverride,
+            };
+        } else {
+            const { [stageKey]: _removed, ...rest } = orderOverrides.value;
+
+            orderOverrides.value = rest;
+        }
+
+        toast.add({
+            severity: 'error',
+            summary: 'فشل إعادة الترتيب',
+            detail: e.response?.data?.message || 'تعذر حفظ ترتيب الصور',
+            life: 4000,
+        });
+    } finally {
+        reorderingStage.value = null;
+    }
+}
+
+function onThumbDragEnd() {
+    dragThumb.value = null;
+    dragOverThumb.value = null;
 }
 
 async function onFilesSelected(stageKey, event) {
@@ -897,6 +1035,21 @@ function openZoom(url) {
 
 .thumb-card {
     position: relative;
+    cursor: grab;
+}
+
+.thumb-card:active {
+    cursor: grabbing;
+}
+
+.thumb-card--dragging {
+    opacity: 0.45;
+}
+
+.thumb-card--drag-over {
+    outline: 2px dashed var(--admin-accent);
+    outline-offset: 3px;
+    border-radius: 10px;
 }
 
 .thumb-card--uploaded {

@@ -28,8 +28,8 @@ class VehicleDetailService
 
         $vehicle->loadMissing('uploadedImages');
 
-        $vinstackStages = VehicleGalleryMerger::resolveVinstackStages($merged, $vehicle);
-        $imagesByStage = VehicleGalleryMerger::merge($vinstackStages, $vehicle);
+        $vinstackStages = VehicleGalleryMerger::resolveDisplayStages($merged, $vehicle);
+        $imagesByStage = $vinstackStages;
         $images = VehicleGalleryMerger::flatten($imagesByStage, $vehicle, $merged);
 
         $payload = [
