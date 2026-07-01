@@ -18,101 +18,94 @@
     <Teleport to="body">
         <div
             v-if="visible"
-            class="gallery-stage-bar"
-            role="tablist"
-            aria-label="Photo stages"
+            class="gallery-chrome"
             @click.stop
             @touchstart.stop
         >
-            <button
-                v-for="tab in tabs"
-                :key="tab.key"
-                type="button"
-                role="tab"
-                class="gallery-stage-tab"
-                :class="{ active: activeStage === tab.key }"
-                :aria-selected="activeStage === tab.key"
-                @click="selectStage(tab.key)"
-            >
-                <span class="gallery-stage-label">{{ tab.label }}</span>
-                <span class="gallery-stage-count">{{ tab.count }}</span>
-            </button>
-        </div>
+            <div class="gallery-chrome__row gallery-chrome__row--stages" role="tablist" aria-label="Photo stages">
+                <button
+                    v-for="tab in tabs"
+                    :key="tab.key"
+                    type="button"
+                    role="tab"
+                    class="gallery-stage-tab"
+                    :class="{ active: activeStage === tab.key }"
+                    :aria-selected="activeStage === tab.key"
+                    @click="selectStage(tab.key)"
+                >
+                    <span class="gallery-stage-label">{{ tab.label }}</span>
+                    <span class="gallery-stage-count">{{ tab.count }}</span>
+                </button>
+            </div>
 
-        <div
-            v-if="visible && activeImages.length > 1"
-            class="gallery-nav-bar"
-            role="navigation"
-            aria-label="تنقل الصور"
-            @click.stop
-            @touchstart.stop
-        >
-            <button
-                type="button"
-                class="gallery-nav-btn"
-                :disabled="activeIndex === 0"
-                aria-label="الصورة السابقة"
-                @click="goPrev"
-            >
-                <i class="pi pi-chevron-right" />
-            </button>
-            <span class="gallery-nav-counter">{{ activeIndex + 1 }} / {{ activeImages.length }}</span>
-            <button
-                type="button"
-                class="gallery-nav-btn"
-                :disabled="activeIndex >= activeImages.length - 1"
-                aria-label="الصورة التالية"
-                @click="goNext"
-            >
-                <i class="pi pi-chevron-left" />
-            </button>
-        </div>
+            <div class="gallery-chrome__row gallery-chrome__row--tools">
+                <div
+                    v-if="activeImages.length > 1"
+                    class="gallery-nav-bar"
+                    role="navigation"
+                    aria-label="تنقل الصور"
+                >
+                    <button
+                        type="button"
+                        class="gallery-nav-btn"
+                        :disabled="activeIndex === 0"
+                        aria-label="الصورة السابقة"
+                        @click="goPrev"
+                    >
+                        <i class="pi pi-chevron-right" />
+                    </button>
+                    <span class="gallery-nav-counter">{{ activeIndex + 1 }} / {{ activeImages.length }}</span>
+                    <button
+                        type="button"
+                        class="gallery-nav-btn"
+                        :disabled="activeIndex >= activeImages.length - 1"
+                        aria-label="الصورة التالية"
+                        @click="goNext"
+                    >
+                        <i class="pi pi-chevron-left" />
+                    </button>
+                </div>
 
-        <div
-            v-if="visible"
-            class="gallery-actions-bar"
-            role="toolbar"
-            aria-label="إجراءات الصور"
-            @click.stop
-            @touchstart.stop
-        >
-            <span v-if="currentIsLocal" class="gallery-local-badge">مرفوعة محلياً</span>
-            <button
-                type="button"
-                class="gallery-action-btn"
-                :disabled="!currentUrl || busyCurrent"
-                @click="onDownloadCurrent"
-            >
-                <i class="pi" :class="busyCurrent ? 'pi-spin pi-spinner' : 'pi-download'" />
-                <span class="gallery-action-label">صورة</span>
-            </button>
-            <button
-                type="button"
-                class="gallery-action-btn"
-                :disabled="!activeImages.length || busyStage"
-                @click="onDownloadStage"
-            >
-                <i class="pi" :class="busyStage ? 'pi-spin pi-spinner' : 'pi-file-export'" />
-                <span class="gallery-action-label">{{ busyStage ? stageProgressLabel : activeStageLabel }}</span>
-            </button>
-            <button
-                type="button"
-                class="gallery-action-btn"
-                :disabled="!allHdCount || busyAll"
-                @click="onDownloadAll"
-            >
-                <i class="pi" :class="busyAll ? 'pi-spin pi-spinner' : 'pi-box'" />
-                <span class="gallery-action-label">{{ busyAll ? bulkProgressLabel : 'كل الأنواع' }}</span>
-            </button>
-            <button
-                type="button"
-                class="gallery-action-btn"
-                :disabled="!allHdCount || busyShare"
-                @click="onShareAll"
-            >
-                <i class="pi" :class="busyShare ? 'pi-spin pi-spinner' : 'pi-share-alt'" />
-                <span>{{ busyShare ? shareProgressLabel : 'مشاركة الكل' }}</span>
-            </button>
+                <div class="gallery-actions-bar" role="toolbar" aria-label="إجراءات الصور">
+                    <span v-if="currentIsLocal" class="gallery-local-badge">مرفوعة محلياً</span>
+                    <button
+                        type="button"
+                        class="gallery-action-btn"
+                        :disabled="!currentUrl || busyCurrent"
+                        @click="onDownloadCurrent"
+                    >
+                        <i class="pi" :class="busyCurrent ? 'pi-spin pi-spinner' : 'pi-download'" />
+                        <span class="gallery-action-label">صورة</span>
+                    </button>
+                    <button
+                        type="button"
+                        class="gallery-action-btn"
+                        :disabled="!activeImages.length || busyStage"
+                        @click="onDownloadStage"
+                    >
+                        <i class="pi" :class="busyStage ? 'pi-spin pi-spinner' : 'pi-file-export'" />
+                        <span class="gallery-action-label">{{ busyStage ? stageProgressLabel : activeStageLabel }}</span>
+                    </button>
+                    <button
+                        type="button"
+                        class="gallery-action-btn"
+                        :disabled="!allHdCount || busyAll"
+                        @click="onDownloadAll"
+                    >
+                        <i class="pi" :class="busyAll ? 'pi-spin pi-spinner' : 'pi-box'" />
+                        <span class="gallery-action-label">{{ busyAll ? bulkProgressLabel : 'كل الأنواع' }}</span>
+                    </button>
+                    <button
+                        type="button"
+                        class="gallery-action-btn"
+                        :disabled="!allHdCount || busyShare"
+                        @click="onShareAll"
+                    >
+                        <i class="pi" :class="busyShare ? 'pi-spin pi-spinner' : 'pi-share-alt'" />
+                        <span>{{ busyShare ? shareProgressLabel : 'مشاركة الكل' }}</span>
+                    </button>
+                </div>
+            </div>
         </div>
     </Teleport>
 </template>
@@ -618,30 +611,47 @@ onBeforeUnmount(() => {
 </script>
 
 <style>
-.gallery-stage-bar {
+.gallery-chrome {
     position: fixed;
-    top: max(60px, calc(env(safe-area-inset-top, 0px) + 52px));
-    inset-inline-start: 12px;
-    inset-inline-end: 12px;
+    top: 0;
+    inset-inline: 0;
     z-index: 11050;
     display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
-    justify-content: center;
+    flex-direction: column;
+    gap: 0.55rem;
+    padding:
+        max(12px, env(safe-area-inset-top, 0px))
+        max(60px, calc(env(safe-area-inset-end, 0px) + 48px))
+        12px
+        max(12px, env(safe-area-inset-start, 0px));
+    background: linear-gradient(180deg, rgb(9 9 11 / 0.97) 0%, rgb(9 9 11 / 0.9) 100%);
+    border-bottom: 1px solid rgb(255 255 255 / 0.08);
     pointer-events: auto;
-    max-width: calc(100vw - 24px);
+}
+
+.gallery-chrome__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.45rem;
+}
+
+.gallery-chrome__row--tools {
+    gap: 0.65rem;
+}
+
+.gallery-stage-bar {
+    display: contents;
 }
 
 .gallery-nav-bar {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 11050;
-    display: flex;
+    position: static;
+    transform: none;
+    display: inline-flex;
     align-items: center;
-    gap: 0.65rem;
-    pointer-events: auto;
+    gap: 0.45rem;
+    flex-shrink: 0;
 }
 
 .gallery-nav-btn {
@@ -677,17 +687,12 @@ onBeforeUnmount(() => {
 }
 
 .gallery-actions-bar {
-    position: fixed;
-    top: max(112px, calc(env(safe-area-inset-top, 0px) + 104px));
-    inset-inline-start: 12px;
-    inset-inline-end: 12px;
-    z-index: 11050;
-    display: flex;
+    position: static;
+    display: inline-flex;
     flex-wrap: wrap;
     gap: 0.45rem;
     justify-content: center;
-    pointer-events: auto;
-    max-width: calc(100vw - 24px);
+    max-width: none;
 }
 
 .gallery-local-badge {
@@ -786,9 +791,17 @@ onBeforeUnmount(() => {
     z-index: 11000 !important;
 }
 
+.vel-modal .vel-img-wrapper {
+    top: calc(50% + 72px) !important;
+}
+
+.vel-modal .vel-toolbar {
+    display: none !important;
+}
+
 .vel-modal .vel-img {
     max-width: min(92vw, 1200px);
-    max-height: min(82vh, 900px);
+    max-height: calc(100vh - 220px);
     touch-action: pinch-zoom;
 }
 
@@ -822,16 +835,22 @@ onBeforeUnmount(() => {
 }
 
 @media (max-width: 640px) {
-    .gallery-stage-bar {
-        inset-inline-start: 8px;
-        inset-inline-end: 8px;
-        max-width: calc(100vw - 16px);
+    .gallery-chrome {
+        padding-inline-end: max(52px, calc(env(safe-area-inset-end, 0px) + 40px));
+    }
+
+    .gallery-chrome__row--tools {
+        flex-direction: column;
+        align-items: stretch;
+    }
+
+    .gallery-nav-bar {
+        justify-content: center;
+        width: 100%;
     }
 
     .gallery-actions-bar {
-        inset-inline-start: 8px;
-        inset-inline-end: 8px;
-        max-width: calc(100vw - 16px);
+        width: 100%;
     }
 
     .gallery-action-btn {
@@ -844,11 +863,6 @@ onBeforeUnmount(() => {
         font-size: 0.72rem;
     }
 
-    .gallery-nav-bar {
-        top: auto;
-        bottom: max(72px, calc(env(safe-area-inset-bottom, 0px) + 56px));
-    }
-
     .gallery-nav-btn {
         width: 44px;
         height: 44px;
@@ -857,6 +871,10 @@ onBeforeUnmount(() => {
     .vel-modal .btn__prev,
     .vel-modal .btn__next {
         display: none !important;
+    }
+
+    .vel-modal .vel-img-wrapper {
+        top: calc(50% + 88px) !important;
     }
 
     .vel-modal .vel-img-title {
@@ -868,7 +886,7 @@ onBeforeUnmount(() => {
 
     .vel-modal .vel-img {
         max-width: 100vw !important;
-        max-height: calc(100dvh - 240px) !important;
+        max-height: calc(100dvh - 260px) !important;
     }
 }
 </style>

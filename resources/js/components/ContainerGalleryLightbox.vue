@@ -12,48 +12,51 @@
 
     <Teleport to="body">
         <div
-            v-if="visible && images.length > 1"
-            class="gallery-nav-bar"
-            role="navigation"
-            aria-label="تنقل صور الحاوية"
-            @click.stop
-            @touchstart.stop
-        >
-            <button
-                type="button"
-                class="gallery-nav-btn"
-                :disabled="activeIndex === 0"
-                aria-label="الصورة السابقة"
-                @click="goPrev"
-            >
-                <i class="pi pi-chevron-right" />
-            </button>
-            <span class="gallery-nav-counter">
-                {{ activeIndex + 1 }} / {{ images.length }}
-            </span>
-            <button
-                type="button"
-                class="gallery-nav-btn"
-                :disabled="activeIndex >= images.length - 1"
-                aria-label="الصورة التالية"
-                @click="goNext"
-            >
-                <i class="pi pi-chevron-left" />
-            </button>
-        </div>
-
-        <div
             v-if="visible"
-            class="gallery-stage-bar"
-            role="status"
+            class="gallery-chrome"
             @click.stop
             @touchstart.stop
         >
-            <span class="gallery-stage-tab active">
-                <span class="gallery-stage-label">معرض الحاوية</span>
-                <span class="gallery-stage-count">{{ images.length }}</span>
-            </span>
-            <span v-if="currentVin" class="container-gallery-vin-badge">{{ currentVin }}</span>
+            <div class="gallery-chrome__row gallery-chrome__row--stages" role="status">
+                <span class="gallery-stage-tab active">
+                    <span class="gallery-stage-label">معرض الحاوية</span>
+                    <span class="gallery-stage-count">{{ images.length }}</span>
+                </span>
+                <span v-if="currentVin" class="container-gallery-vin-badge">{{ currentVin }}</span>
+            </div>
+
+            <div
+                v-if="images.length > 1"
+                class="gallery-chrome__row gallery-chrome__row--tools"
+            >
+                <div
+                    class="gallery-nav-bar"
+                    role="navigation"
+                    aria-label="تنقل صور الحاوية"
+                >
+                    <button
+                        type="button"
+                        class="gallery-nav-btn"
+                        :disabled="activeIndex === 0"
+                        aria-label="الصورة السابقة"
+                        @click="goPrev"
+                    >
+                        <i class="pi pi-chevron-right" />
+                    </button>
+                    <span class="gallery-nav-counter">
+                        {{ activeIndex + 1 }} / {{ images.length }}
+                    </span>
+                    <button
+                        type="button"
+                        class="gallery-nav-btn"
+                        :disabled="activeIndex >= images.length - 1"
+                        aria-label="الصورة التالية"
+                        @click="goNext"
+                    >
+                        <i class="pi pi-chevron-left" />
+                    </button>
+                </div>
+            </div>
         </div>
     </Teleport>
 </template>
@@ -176,19 +179,38 @@ onBeforeUnmount(() => {
 </script>
 
 <style>
-.gallery-stage-bar {
+.gallery-chrome {
     position: fixed;
-    top: max(60px, calc(env(safe-area-inset-top, 0px) + 52px));
-    inset-inline-start: 12px;
-    inset-inline-end: 12px;
+    top: 0;
+    inset-inline: 0;
     z-index: 11050;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    padding:
+        max(12px, env(safe-area-inset-top, 0px))
+        max(60px, calc(env(safe-area-inset-end, 0px) + 48px))
+        12px
+        max(12px, env(safe-area-inset-start, 0px));
+    background: linear-gradient(180deg, rgb(9 9 11 / 0.97) 0%, rgb(9 9 11 / 0.9) 100%);
+    border-bottom: 1px solid rgb(255 255 255 / 0.08);
+    pointer-events: auto;
+}
+
+.gallery-chrome__row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
     justify-content: center;
-    gap: 0.5rem;
-    pointer-events: none;
-    max-width: calc(100vw - 24px);
+    gap: 0.45rem;
+}
+
+.gallery-chrome__row--tools {
+    gap: 0.65rem;
+}
+
+.gallery-stage-bar {
+    display: contents;
 }
 
 .gallery-stage-tab {
@@ -235,15 +257,12 @@ onBeforeUnmount(() => {
 }
 
 .gallery-nav-bar {
-    position: fixed;
-    bottom: 24px;
-    left: 50%;
-    transform: translateX(-50%);
-    z-index: 11050;
-    display: flex;
+    position: static;
+    transform: none;
+    display: inline-flex;
     align-items: center;
-    gap: 0.65rem;
-    pointer-events: auto;
+    gap: 0.45rem;
+    flex-shrink: 0;
 }
 
 .gallery-nav-btn {
@@ -286,9 +305,17 @@ body > .vel-modal {
     z-index: 11000 !important;
 }
 
+.vel-modal .vel-img-wrapper {
+    top: calc(50% + 72px) !important;
+}
+
+.vel-modal .vel-toolbar {
+    display: none !important;
+}
+
 .vel-modal .vel-img {
     max-width: min(92vw, 1200px);
-    max-height: min(82vh, 900px);
+    max-height: calc(100vh - 220px);
     touch-action: pinch-zoom;
 }
 
@@ -322,20 +349,27 @@ body > .vel-modal {
 }
 
 @media (max-width: 640px) {
-    .gallery-stage-bar {
-        inset-inline-start: 8px;
-        inset-inline-end: 8px;
-        max-width: calc(100vw - 16px);
+    .gallery-chrome {
+        padding-inline-end: max(52px, calc(env(safe-area-inset-end, 0px) + 40px));
     }
 
     .gallery-nav-bar {
-        top: auto;
-        bottom: max(72px, calc(env(safe-area-inset-bottom, 0px) + 56px));
+        justify-content: center;
+        width: 100%;
+    }
+
+    .gallery-nav-btn {
+        width: 44px;
+        height: 44px;
     }
 
     .vel-modal .btn__prev,
     .vel-modal .btn__next {
         display: none !important;
+    }
+
+    .vel-modal .vel-img-wrapper {
+        top: calc(50% + 88px) !important;
     }
 
     .vel-modal .vel-img-title {
@@ -347,7 +381,7 @@ body > .vel-modal {
 
     .vel-modal .vel-img {
         max-width: 100vw !important;
-        max-height: calc(100dvh - 180px) !important;
+        max-height: calc(100dvh - 260px) !important;
     }
 }
 </style>

@@ -1,0 +1,1 @@
+import{al as t,ae as c}from"./app-Bn5160sm.js";function i(){const e=t(),{locale:o,availableLocales:a,direction:l,isRtl:s}=c(e);return{locale:o,availableLocales:a,direction:l,isRtl:s,setLocale:e.setLocale.bind(e)}}export{i as u};
