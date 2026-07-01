@@ -16,6 +16,15 @@
     />
 
     <Teleport to="body">
+        <button
+            v-if="visible"
+            type="button"
+            class="gallery-close-btn"
+            aria-label="إغلاق المعرض"
+            @click.stop="onHide"
+        >
+            <i class="pi pi-times" aria-hidden="true" />
+        </button>
         <div
             v-if="visible"
             class="gallery-chrome"
@@ -806,32 +815,36 @@ onBeforeUnmount(() => {
 }
 
 .vel-modal .btn__close {
-    z-index: 11120 !important;
-    position: fixed !important;
-    top: max(12px, env(safe-area-inset-top, 0px)) !important;
-    inset-inline-end: max(12px, env(safe-area-inset-end, 0px)) !important;
-    inset-inline-start: auto !important;
-    right: max(12px, env(safe-area-inset-end, 0px)) !important;
-    left: auto !important;
-    transform: none !important;
-    opacity: 1 !important;
-    width: 44px;
-    height: 44px;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    border-radius: 999px;
-    border: 1px solid rgb(255 255 255 / 18%);
-    background: rgb(24 24 27 / 82%);
-    backdrop-filter: blur(8px);
-    pointer-events: auto;
+    display: none !important;
 }
 
-.vel-modal.is-rtl .btn__close {
-    right: auto !important;
-    left: max(12px, env(safe-area-inset-start, 0px)) !important;
-    inset-inline-end: auto !important;
-    inset-inline-start: max(12px, env(safe-area-inset-start, 0px)) !important;
+.gallery-close-btn {
+    position: fixed;
+    z-index: 11150;
+    top: max(12px, env(safe-area-inset-top, 0px));
+    inset-inline-end: max(12px, env(safe-area-inset-end, 0px));
+    width: 44px;
+    height: 44px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    border: 1px solid rgb(255 255 255 / 25%);
+    background: rgb(24 24 27 / 92%);
+    color: #fff;
+    cursor: pointer;
+    backdrop-filter: blur(8px);
+    pointer-events: auto;
+    padding: 0;
+    line-height: 1;
+    transition: background 0.15s ease;
+}
+
+.gallery-close-btn:hover {
+    background: rgb(39 39 42 / 95%);
+}
+
+.gallery-close-btn i {
+    font-size: 1.1rem;
 }
 
 @media (max-width: 640px) {
