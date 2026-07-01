@@ -2,10 +2,12 @@
     <VueEasyLightbox
         :visible="visible"
         :imgs="lightboxSlides"
-        :index="0"
+        :index="activeIndex"
         :rtl="true"
+        :mask-closable="false"
         teleport="body"
         @hide="onHide"
+        @on-index-change="onLightboxIndexChange"
     />
 
     <Teleport to="body">
@@ -14,6 +16,8 @@
             class="gallery-nav-bar"
             role="navigation"
             aria-label="تنقل صور الحاوية"
+            @click.stop
+            @touchstart.stop
         >
             <button
                 type="button"
@@ -38,7 +42,13 @@
             </button>
         </div>
 
-        <div v-if="visible" class="gallery-stage-bar" role="status">
+        <div
+            v-if="visible"
+            class="gallery-stage-bar"
+            role="status"
+            @click.stop
+            @touchstart.stop
+        >
             <span class="gallery-stage-tab active">
                 <span class="gallery-stage-label">معرض الحاوية</span>
                 <span class="gallery-stage-count">{{ images.length }}</span>
@@ -70,50 +80,78 @@ const props = defineProps({
 const emit = defineEmits(['update:visible']);
 
 const activeIndex = ref(0);
+const navLock = ref(false);
 
-const lightboxSlides = computed(() => {
-    const slide = props.images[activeIndex.value];
-
-    if (! slide?.url) {
-        return [];
-    }
-
-    return [{
-        src: slide.url,
-        title: slide.vin || slide.name || `صورة ${activeIndex.value + 1}`,
-    }];
-});
+const lightboxSlides = computed(() =>
+    props.images
+        .filter((slide) => Boolean(slide?.url))
+        .map((slide, index) => ({
+            src: slide.url,
+            title: slide.vin || slide.name || `صورة ${index + 1}`,
+        })),
+);
 
 const currentVin = computed(() => props.images[activeIndex.value]?.vin ?? null);
 
 watch(
-    () => [props.visible, props.startIndex],
+    () => [props.visible, props.startIndex, props.images.length],
     ([visible, startIndex]) => {
         if (visible) {
-            activeIndex.value = Math.min(
-                Math.max(0, startIndex),
-                Math.max(0, props.images.length - 1),
-            );
+            const lastIndex = Math.max(0, lightboxSlides.value.length - 1);
+            activeIndex.value = Math.min(Math.max(0, startIndex), lastIndex);
         }
     },
     { immediate: true },
 );
 
 function onHide() {
+    if (navLock.value) {
+        return;
+    }
+
     emit('update:visible', false);
     activeIndex.value = 0;
 }
 
-function goPrev() {
-    if (activeIndex.value > 0) {
-        activeIndex.value -= 1;
+function onLightboxIndexChange(_oldIndex, newIndex) {
+    if (activeIndex.value === newIndex || navLock.value) {
+        return;
     }
+
+    navLock.value = true;
+    activeIndex.value = newIndex;
+
+    window.setTimeout(() => {
+        navLock.value = false;
+    }, 120);
+}
+
+function goPrev() {
+    if (navLock.value || activeIndex.value <= 0) {
+        return;
+    }
+
+    navLock.value = true;
+    activeIndex.value -= 1;
+
+    window.setTimeout(() => {
+        navLock.value = false;
+    }, 120);
 }
 
 function goNext() {
-    if (activeIndex.value < props.images.length - 1) {
-        activeIndex.value += 1;
+    const lastIndex = Math.max(0, lightboxSlides.value.length - 1);
+
+    if (navLock.value || activeIndex.value >= lastIndex) {
+        return;
     }
+
+    navLock.value = true;
+    activeIndex.value += 1;
+
+    window.setTimeout(() => {
+        navLock.value = false;
+    }, 120);
 }
 
 function onKeydown(event) {
@@ -196,7 +234,7 @@ onBeforeUnmount(() => {
 
 .gallery-nav-bar {
     position: fixed;
-    bottom: 88px;
+    bottom: 24px;
     left: 50%;
     transform: translateX(-50%);
     z-index: 11050;
@@ -283,8 +321,8 @@ body > .vel-modal {
 
 @media (max-width: 640px) {
     .gallery-stage-bar {
-        top: auto;
-        bottom: max(24px, env(safe-area-inset-bottom, 0px));
+        top: max(58px, calc(env(safe-area-inset-top, 0px) + 52px));
+        bottom: auto;
         left: 50%;
         right: auto;
         inset-inline: auto;
@@ -293,7 +331,20 @@ body > .vel-modal {
     }
 
     .gallery-nav-bar {
-        bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+        top: auto;
+        bottom: max(72px, calc(env(safe-area-inset-bottom, 0px) + 56px));
+    }
+
+    .vel-modal .btn__prev,
+    .vel-modal .btn__next {
+        display: none !important;
+    }
+
+    .vel-modal .vel-img-title {
+        bottom: max(16px, env(safe-area-inset-bottom, 0px)) !important;
+        max-width: 92vw;
+        white-space: normal;
+        line-height: 1.35;
     }
 
     .vel-modal .vel-img {

@@ -2,8 +2,9 @@
     <VueEasyLightbox
         :visible="visible"
         :imgs="lightboxImages"
-        :index="0"
+        :index="activeIndex"
         :rtl="true"
+        :mask-closable="false"
         :move-disabled="false"
         :rotate-disabled="false"
         :zoom-disabled="false"
@@ -11,10 +12,18 @@
         :scroll-disabled="false"
         teleport="body"
         @hide="onHide"
+        @on-index-change="onLightboxIndexChange"
     />
 
     <Teleport to="body">
-        <div v-if="visible" class="gallery-stage-bar" role="tablist" aria-label="Photo stages">
+        <div
+            v-if="visible"
+            class="gallery-stage-bar"
+            role="tablist"
+            aria-label="Photo stages"
+            @click.stop
+            @touchstart.stop
+        >
             <button
                 v-for="tab in tabs"
                 :key="tab.key"
@@ -30,7 +39,14 @@
             </button>
         </div>
 
-        <div v-if="visible && activeImages.length > 1" class="gallery-nav-bar" role="navigation" aria-label="تنقل الصور">
+        <div
+            v-if="visible && activeImages.length > 1"
+            class="gallery-nav-bar"
+            role="navigation"
+            aria-label="تنقل الصور"
+            @click.stop
+            @touchstart.stop
+        >
             <button
                 type="button"
                 class="gallery-nav-btn"
@@ -52,7 +68,14 @@
             </button>
         </div>
 
-        <div v-if="visible" class="gallery-actions-bar" role="toolbar" aria-label="إجراءات الصور">
+        <div
+            v-if="visible"
+            class="gallery-actions-bar"
+            role="toolbar"
+            aria-label="إجراءات الصور"
+            @click.stop
+            @touchstart.stop
+        >
             <span v-if="currentIsLocal" class="gallery-local-badge">مرفوعة محلياً</span>
             <button
                 type="button"
@@ -198,18 +221,12 @@ const activeStageLabel = computed(
     () => GALLERY_STAGES.find((t) => t.key === activeStage.value)?.label ?? activeStage.value,
 );
 
-const lightboxImages = computed(() => {
-    const url = currentUrl.value;
-
-    if (! url) {
-        return [];
-    }
-
-    return [{
+const lightboxImages = computed(() =>
+    activeImages.value.map((url) => ({
         src: url,
         title: `${label.value} — ${activeStageLabel.value}`,
-    }];
-});
+    })),
+);
 
 function firstStageWithImages() {
     return GALLERY_STAGES.find((tab) => (stages.value[tab.key]?.length ?? 0) > 0)?.key ?? 'terminal';
@@ -301,7 +318,25 @@ function goNext() {
     }, 120);
 }
 
+function onLightboxIndexChange(_oldIndex, newIndex) {
+    if (activeIndex.value === newIndex || navLock.value) {
+        return;
+    }
+
+    navLock.value = true;
+    activeIndex.value = newIndex;
+
+    window.setTimeout(() => {
+        navLock.value = false;
+        preloadAdjacentImages();
+    }, 120);
+}
+
 function onHide() {
+    if (navLock.value) {
+        return;
+    }
+
     emit('update:visible', false);
     emit('hide');
     preloadedUrls.clear();
@@ -790,8 +825,8 @@ onBeforeUnmount(() => {
     }
 
     .gallery-actions-bar {
-        top: auto;
-        bottom: max(12px, env(safe-area-inset-bottom, 0px));
+        top: max(108px, calc(env(safe-area-inset-top, 0px) + 100px));
+        bottom: auto;
         inset-inline-end: 8px;
         inset-inline-start: 8px;
         justify-content: center;
@@ -809,7 +844,8 @@ onBeforeUnmount(() => {
     }
 
     .gallery-nav-bar {
-        bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+        top: auto;
+        bottom: max(72px, calc(env(safe-area-inset-bottom, 0px) + 56px));
     }
 
     .gallery-nav-btn {
@@ -817,9 +853,21 @@ onBeforeUnmount(() => {
         height: 44px;
     }
 
+    .vel-modal .btn__prev,
+    .vel-modal .btn__next {
+        display: none !important;
+    }
+
+    .vel-modal .vel-img-title {
+        bottom: max(16px, env(safe-area-inset-bottom, 0px)) !important;
+        max-width: 92vw;
+        white-space: normal;
+        line-height: 1.35;
+    }
+
     .vel-modal .vel-img {
         max-width: 100vw !important;
-        max-height: calc(100dvh - 210px) !important;
+        max-height: calc(100dvh - 220px) !important;
     }
 }
 </style>
