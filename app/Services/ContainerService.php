@@ -121,6 +121,69 @@ class ContainerService
     }
 
     /**
+     * Resolve normalized refs that may have been used when persisting container gallery images.
+     *
+     * @param  array<string, mixed>  $containerHeader
+     * @return list<string>
+     */
+    public function imageLookupKeysForContainer(string $urlRef, array $containerHeader): array
+    {
+        $keys = [];
+
+        foreach ([$urlRef, $containerHeader['container_number'] ?? null, $containerHeader['booking_number'] ?? null] as $candidate) {
+            $container = $this->normalizeContainerNumber($candidate);
+
+            if ($container !== null && $container !== '') {
+                $keys[] = $container;
+            }
+
+            $booking = $this->normalizeBookingNumber($candidate);
+
+            if ($booking !== null && $booking !== '') {
+                $keys[] = $booking;
+            }
+        }
+
+        $booking = $this->normalizeBookingNumber($containerHeader['booking_number'] ?? $urlRef);
+
+        if ($booking !== null && $booking !== '') {
+            foreach ($this->fetchNormalized() as $row) {
+                $rowBooking = $this->normalizeBookingNumber($row['booking_number'] ?? null);
+
+                if ($rowBooking !== $booking) {
+                    continue;
+                }
+
+                $containerNumber = $this->normalizeContainerNumber($row['container_number'] ?? null);
+
+                if ($containerNumber !== null && $containerNumber !== '') {
+                    $keys[] = $containerNumber;
+                }
+            }
+        }
+
+        $containerNumber = $this->normalizeContainerNumber($containerHeader['container_number'] ?? $urlRef);
+
+        if ($containerNumber !== null && $containerNumber !== '') {
+            foreach ($this->fetchNormalized() as $row) {
+                $rowContainer = $this->normalizeContainerNumber($row['container_number'] ?? null);
+
+                if ($rowContainer !== $containerNumber) {
+                    continue;
+                }
+
+                $rowBooking = $this->normalizeBookingNumber($row['booking_number'] ?? null);
+
+                if ($rowBooking !== null && $rowBooking !== '') {
+                    $keys[] = $rowBooking;
+                }
+            }
+        }
+
+        return array_values(array_unique($keys));
+    }
+
+    /**
      * @return array<string, mixed>|null
      */
     protected function findContainerByRef(?string $containerNumber, ?string $bookingNumber, ?Dealer $dealer): ?array

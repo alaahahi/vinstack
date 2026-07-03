@@ -183,6 +183,33 @@ class ContainerServiceDealerListTest extends TestCase
         $this->assertSame('Copart', $payload['vehicles'][0]['auction']);
     }
 
+    public function test_image_lookup_keys_resolve_booking_to_vinstack_container_number(): void
+    {
+        $dealer = $this->createDealerWithAssignment(
+            vin: '1HGBH41JXMN109188',
+            rawData: ['booking_number' => 'BK-DEALER-ONLY'],
+        );
+
+        $this->mockVinstackContainers([
+            [
+                'container_number' => 'MSCU9999999',
+                'booking_number' => 'BK-DEALER-ONLY',
+                'autos' => [
+                    ['vin' => '1HGBH41JXMN109188', 'year' => 2021, 'make' => 'Toyota', 'model' => 'Camry'],
+                ],
+            ],
+        ]);
+
+        $service = app(ContainerService::class);
+        $keys = $service->imageLookupKeysForContainer('BK-DEALER-ONLY', [
+            'container_number' => null,
+            'booking_number' => 'BK-DEALER-ONLY',
+        ]);
+
+        $this->assertContains('BK-DEALER-ONLY', $keys);
+        $this->assertContains('MSCU9999999', $keys);
+    }
+
     public function test_admin_merges_manual_vehicle_container_with_vinstack_api(): void
     {
         Vehicle::query()->create([

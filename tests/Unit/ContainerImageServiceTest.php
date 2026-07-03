@@ -129,4 +129,39 @@ class ContainerImageServiceTest extends TestCase
         $this->assertDatabaseMissing('container_images', ['id' => $image->id]);
         $this->assertSame(0, $result['payload']['meta']['count']);
     }
+
+    public function test_payload_for_container_resolves_images_via_alternate_refs(): void
+    {
+        \App\Models\ContainerImage::query()->create([
+            'container_number' => 'MSCU1234567',
+            'original_name' => 'photo.jpg',
+            'cloudinary_url' => 'https://res.cloudinary.com/demo/image/upload/v1/photo.jpg',
+            'public_id' => 'vinstack/containers/MSCU1234567/photo-1',
+            'uploaded_at' => now(),
+        ]);
+
+        $service = app(ContainerImageService::class);
+
+        $payload = $service->payloadForContainer('BK-ONLY-REF', ['MSCU1234567']);
+
+        $this->assertSame(1, $payload['meta']['count']);
+        $this->assertSame('MSCU1234567', $service->normalizeContainerNumber('mscu 1234567'));
+    }
+
+    public function test_payload_for_container_keys_tries_each_ref_until_match(): void
+    {
+        \App\Models\ContainerImage::query()->create([
+            'container_number' => 'BKG789',
+            'original_name' => 'photo.jpg',
+            'cloudinary_url' => 'https://res.cloudinary.com/demo/image/upload/v1/photo.jpg',
+            'public_id' => 'vinstack/containers/BKG789/photo-1',
+            'uploaded_at' => now(),
+        ]);
+
+        $service = app(ContainerImageService::class);
+
+        $payload = $service->payloadForContainerKeys(['UNKNOWN', 'BKG789']);
+
+        $this->assertSame(1, $payload['meta']['count']);
+    }
 }

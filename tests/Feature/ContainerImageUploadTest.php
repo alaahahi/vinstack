@@ -215,4 +215,72 @@ class ContainerImageUploadTest extends TestCase
             ->assertJsonPath('failed.0.error', 'Invalid API key')
             ->assertJsonFragment(['message' => '0 images uploaded to Cloudinary. Invalid API key']);
     }
+
+    public function test_dealer_can_fetch_images_by_booking_when_stored_under_container_number(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $dealerUser = User::factory()->create(['role' => UserRole::Dealer]);
+        $dealer = \App\Models\Dealer::query()->create([
+            'user_id' => $dealerUser->id,
+            'company_name' => 'Test Dealer',
+        ]);
+
+        $vehicle = \App\Models\Vehicle::query()->create([
+            'vinstack_id' => 'vs-dealer-img',
+            'vin' => '1HGBH41JXMN109188',
+            'source' => \App\Enums\VehicleSource::Vinstack,
+            'status' => \App\Enums\VehicleStatus::Assigned,
+            'raw_data' => ['booking_number' => 'BK-DEALER-IMG'],
+        ]);
+
+        \App\Models\VehicleAssignment::query()->create([
+            'vehicle_id' => $vehicle->id,
+            'dealer_id' => $dealer->id,
+            'assigned_by' => $admin->id,
+            'assigned_at' => now(),
+            'is_active' => true,
+        ]);
+
+        $mock = \Mockery::mock(\App\Services\VinstackService::class);
+        $containers = [
+            [
+                'container_number' => 'MSCU-DEALER-IMG',
+                'booking_number' => 'BK-DEALER-IMG',
+                'autos' => [
+                    ['vin' => '1HGBH41JXMN109188', 'year' => 2021, 'make' => 'Toyota', 'model' => 'Camry'],
+                ],
+            ],
+        ];
+        $mock->shouldReceive('containers')->andReturn($containers);
+        $mock->shouldReceive('container')
+            ->andReturnUsing(function (string $number) use ($containers) {
+                $normalized = strtoupper(preg_replace('/\s+/', '', $number) ?? '');
+
+                foreach ($containers as $row) {
+                    $rowNumber = strtoupper(preg_replace('/\s+/', '', (string) ($row['container_number'] ?? '')));
+
+                    if ($rowNumber === $normalized) {
+                        return $row;
+                    }
+                }
+
+                throw new \RuntimeException('Container not found');
+            });
+        $this->app->instance(\App\Services\VinstackService::class, $mock);
+
+        ContainerImage::query()->create([
+            'container_number' => 'MSCU-DEALER-IMG',
+            'original_name' => 'photo.jpg',
+            'cloudinary_url' => 'https://res.cloudinary.com/demo/image/upload/v1/photo.jpg',
+            'public_id' => 'vinstack/containers/MSCU-DEALER-IMG/photo-1',
+            'uploaded_at' => now(),
+        ]);
+
+        Sanctum::actingAs($dealerUser);
+
+        $this->getJson('/api/dealer/containers/BK-DEALER-IMG/images')
+            ->assertOk()
+            ->assertJsonPath('data.meta.count', 1)
+            ->assertJsonPath('data.images.0.url', 'https://res.cloudinary.com/demo/image/upload/v1/photo.jpg');
+    }
 }

@@ -20,22 +20,55 @@ class ContainerImageService
     }
 
     /**
+     * @param  list<string|null>  $alternateRefs
      * @return array{images: list<array<string, mixed>>, byVin: array<string, list<string>>, unmatched: list<string>, meta: array<string, mixed>}
      */
-    public function payloadForContainer(string $container): array
+    public function payloadForContainer(string $container, array $alternateRefs = []): array
     {
-        $number = $this->normalizeContainerNumber($container);
+        return $this->payloadForContainerKeys(array_merge([$container], $alternateRefs));
+    }
 
-        if ($number === '') {
-            return $this->emptyPayload();
+    /**
+     * @param  list<string|null>  $refs
+     * @return array{images: list<array<string, mixed>>, byVin: array<string, list<string>>, unmatched: list<string>, meta: array<string, mixed>}
+     */
+    public function payloadForContainerKeys(array $refs): array
+    {
+        foreach ($this->uniqueLookupKeys($refs) as $number) {
+            $records = ContainerImage::query()
+                ->where('container_number', $number)
+                ->orderBy('id')
+                ->get();
+
+            if ($records->isNotEmpty()) {
+                return $this->buildPayloadFromRecords($records);
+            }
         }
 
-        $records = ContainerImage::query()
-            ->where('container_number', $number)
-            ->orderBy('id')
-            ->get();
+        return $this->emptyPayload();
+    }
 
-        return $this->buildPayloadFromRecords($records);
+    /**
+     * @param  list<string|null>  $refs
+     * @return list<string>
+     */
+    protected function uniqueLookupKeys(array $refs): array
+    {
+        $keys = [];
+
+        foreach ($refs as $ref) {
+            if ($ref === null || $ref === '') {
+                continue;
+            }
+
+            $normalized = $this->normalizeContainerNumber((string) $ref);
+
+            if ($normalized !== '') {
+                $keys[] = $normalized;
+            }
+        }
+
+        return array_values(array_unique($keys));
     }
 
     /**

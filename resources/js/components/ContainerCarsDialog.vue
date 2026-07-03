@@ -407,7 +407,7 @@ const statusClass = computed(() =>
     containerListStatusClass(headerMeta.value ?? props.container ?? {}),
 );
 
-const containerKey = computed(() => containerRefKey(props.container ?? headerMeta.value ?? {}));
+const containerKey = computed(() => containerRefKey(headerMeta.value ?? props.container ?? {}));
 
 const zipMeta = computed(() => {
     if (zipPayload.value) {
@@ -597,7 +597,7 @@ function onContainerGalleryKeydown(event) {
 }
 
 function containerApiRef() {
-    const r = containerRefs(props.container ?? {});
+    const r = containerRefs(headerMeta.value ?? props.container ?? {});
 
     return r.container || r.booking || '';
 }
@@ -645,8 +645,10 @@ async function loadCloudImages() {
         if (payload?.images?.length) {
             zipPayload.value = applyCloudinaryContainerPayload(containerKey.value, payload);
         }
-    } catch {
-        // Cloudinary may be unconfigured or no images yet
+    } catch (e) {
+        if (import.meta.env.DEV) {
+            console.debug('Container cloud images unavailable', e.response?.status, e.response?.data?.message);
+        }
     }
 }
 

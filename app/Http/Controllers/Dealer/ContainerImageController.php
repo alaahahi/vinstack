@@ -28,8 +28,10 @@ class ContainerImageController extends Controller
             return response()->json(['message' => 'Container not found.'], 404);
         }
 
+        $lookupKeys = $containers->imageLookupKeysForContainer($container, $payload['container']);
+
         return response()->json([
-            'data' => $images->payloadForContainer($container),
+            'data' => $images->payloadForContainerKeys($lookupKeys),
         ]);
     }
 }
