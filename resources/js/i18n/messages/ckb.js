@@ -146,6 +146,7 @@ export default {
         searchChassis: 'گەڕان بە ژمارەی شاسی...',
         empty: 'هیچ کۆنتەینەرێک نییە',
         columns: {
+            images: 'وێنەکان',
             refs: 'CNTR / BKG / SEAL',
             customer: 'کڕیار',
             route: 'ڕێگا',
@@ -161,6 +162,9 @@ export default {
         vehicle: 'ئۆتۆمبێل',
         showVehicles: 'پیشاندانی ئۆتۆمبێلەکانی کۆنتەینەر',
         noVehicles: 'هیچ ئۆتۆمبێلێک نییە',
+        containerImages: 'وێنەکانی کۆنتەینەر',
+        showImages: 'بینینی وێنەکانی کۆنتەینەر ({count})',
+        noImages: 'هیچ وێنەیەک نییە',
         track: 'بەدواداچوونی بار',
         trackUnavailable: 'بەدواداچوون — داتای ڕێگا بەردەست نییە',
         uploadZip: 'بارکردنی وێنەی ZIP',

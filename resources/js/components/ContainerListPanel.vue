@@ -1,6 +1,7 @@
 <template>
     <div class="container-list-panel">
         <div v-if="showHeader" class="list-header">
+            <span>{{ t('containers.columns.images') }}</span>
             <span>{{ t('containers.columns.refs') }}</span>
             <span>{{ t('containers.columns.customer') }}</span>
             <span>{{ t('containers.columns.route') }}</span>
@@ -130,7 +131,7 @@ const sentinelRef = sentinel;
 
 .list-header {
     display: grid;
-    grid-template-columns: minmax(150px, 1.1fr) minmax(120px, 0.9fr) minmax(130px, 1fr) minmax(110px, 0.85fr) minmax(120px, 0.8fr) minmax(180px, 1.15fr) minmax(90px, 0.55fr) minmax(100px, 0.7fr) minmax(48px, 0.4fr);
+    grid-template-columns: 64px minmax(150px, 1.1fr) minmax(120px, 0.9fr) minmax(130px, 1fr) minmax(110px, 0.85fr) minmax(120px, 0.8fr) minmax(180px, 1.15fr) minmax(90px, 0.55fr) minmax(100px, 0.7fr) minmax(48px, 0.4fr);
     gap: 1rem;
     padding: 0.75rem 1.25rem;
     background: var(--vs-surface-elevated);

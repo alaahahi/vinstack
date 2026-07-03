@@ -146,6 +146,7 @@ export default {
         searchChassis: 'بحث برقم الشاصي...',
         empty: 'لا توجد حاويات',
         columns: {
+            images: 'الصور',
             refs: 'CNTR / BKG / SEAL',
             customer: 'العميل',
             route: 'المسار',
@@ -161,6 +162,9 @@ export default {
         vehicle: 'سيارة',
         showVehicles: 'عرض سيارات الحاوية',
         noVehicles: 'لا توجد سيارات',
+        containerImages: 'صور الحاوية',
+        showImages: 'عرض صور الحاوية ({count})',
+        noImages: 'لا توجد صور',
         track: 'تتبع الشحنة',
         trackUnavailable: 'تتبع الشحنة — بيانات المسار غير متوفرة',
         uploadZip: 'رفع صور ZIP',

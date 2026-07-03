@@ -2,6 +2,33 @@
 
     <div class="container-row">
 
+        <div class="cell cell-image">
+            <button
+                type="button"
+                class="thumb-btn"
+                :class="{
+                    empty: !hasThumbnail,
+                    clickable: hasImages,
+                }"
+                :disabled="!hasImages"
+                :title="imageTitle"
+                :aria-label="imageTitle"
+                @click="openGallery"
+            >
+                <img
+                    v-if="thumbnailUrl"
+                    :src="thumbnailUrl"
+                    :alt="t('containers.containerImages')"
+                    class="thumb-img"
+                    loading="lazy"
+                />
+                <span v-else class="thumb-empty">
+                    <i class="pi pi-image" />
+                </span>
+                <span v-if="showCountBadge" class="count-badge">{{ imageCount }}</span>
+            </button>
+        </div>
+
         <div class="cell cell-refs">
 
             <div v-if="refs.container" class="ref-line">
@@ -296,7 +323,7 @@ const props = defineProps({
 
 
 
-defineEmits(['track', 'show-cars']);
+const emit = defineEmits(['track', 'show-cars']);
 
 const { t } = useI18n();
 const toast = useToast();
@@ -343,6 +370,36 @@ const trackingTitle = computed(() =>
 
 const vehicleCount = computed(() => props.container?.vehicles?.length ?? 0);
 
+const imageCount = computed(() => Number(props.container?.image_count ?? 0));
+
+const thumbnailUrl = computed(() => {
+    const url = props.container?.thumbnail_url;
+
+    return typeof url === 'string' && url !== '' ? url : null;
+});
+
+const hasThumbnail = computed(() => thumbnailUrl.value !== null);
+
+const hasImages = computed(() => imageCount.value > 0);
+
+const showCountBadge = computed(() => imageCount.value > 1);
+
+const imageTitle = computed(() => {
+    if (hasImages.value) {
+        return t('containers.showImages', { count: imageCount.value });
+    }
+
+    return t('containers.noImages');
+});
+
+function openGallery() {
+    if (! hasImages.value) {
+        return;
+    }
+
+    emit('show-cars', props.container);
+}
+
 function triggerZipUpload() {
     zipInputRef.value?.click();
 }
@@ -373,6 +430,10 @@ async function onZipSelected(event) {
         });
 
         applyCloudinaryContainerPayload(containerRefKey(props.container), payload);
+
+        const count = payload.meta?.count ?? payload.images?.length ?? 0;
+        props.container.image_count = count;
+        props.container.thumbnail_url = payload.images?.[0]?.url ?? null;
 
         for (const image of extracted.images) {
             if (image.url?.startsWith('blob:')) {
@@ -410,7 +471,7 @@ async function onZipSelected(event) {
 
     display: grid;
 
-    grid-template-columns: minmax(150px, 1.1fr) minmax(120px, 0.9fr) minmax(130px, 1fr) minmax(110px, 0.85fr) minmax(120px, 0.8fr) minmax(180px, 1.15fr) minmax(90px, 0.55fr) minmax(100px, 0.7fr) minmax(48px, 0.4fr);
+    grid-template-columns: 64px minmax(150px, 1.1fr) minmax(120px, 0.9fr) minmax(130px, 1fr) minmax(110px, 0.85fr) minmax(120px, 0.8fr) minmax(180px, 1.15fr) minmax(90px, 0.55fr) minmax(100px, 0.7fr) minmax(48px, 0.4fr);
 
     gap: 1rem;
 
@@ -443,6 +504,132 @@ async function onZipSelected(event) {
 }
 
 
+
+.cell-image {
+
+    display: flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+}
+
+.thumb-btn {
+
+    position: relative;
+
+    width: 56px;
+
+    height: 42px;
+
+    padding: 0;
+
+    border: 1px solid #e4e4e7;
+
+    border-radius: 8px;
+
+    overflow: hidden;
+
+    background: #fafafa;
+
+    cursor: default;
+
+    flex-shrink: 0;
+
+    transition: box-shadow 0.15s ease, transform 0.15s ease;
+
+}
+
+.thumb-btn.clickable {
+
+    cursor: pointer;
+
+}
+
+.thumb-btn.clickable:hover:not(:disabled) {
+
+    box-shadow: 0 4px 12px rgb(0 0 0 / 12%);
+
+    transform: translateY(-1px);
+
+}
+
+.thumb-btn.empty {
+
+    opacity: 0.65;
+
+}
+
+.thumb-btn:disabled {
+
+    cursor: default;
+
+}
+
+.thumb-img {
+
+    width: 100%;
+
+    height: 100%;
+
+    object-fit: cover;
+
+    display: block;
+
+}
+
+.thumb-empty {
+
+    width: 100%;
+
+    height: 100%;
+
+    display: grid;
+
+    place-items: center;
+
+    color: #a1a1aa;
+
+    font-size: 1.1rem;
+
+}
+
+.count-badge {
+
+    position: absolute;
+
+    bottom: 3px;
+
+    inset-inline-end: 3px;
+
+    min-width: 16px;
+
+    height: 16px;
+
+    padding: 0 4px;
+
+    border-radius: 999px;
+
+    background: rgb(24 24 27 / 82%);
+
+    color: #fff;
+
+    font-size: 10px;
+
+    font-weight: 700;
+
+    line-height: 16px;
+
+    text-align: center;
+
+    pointer-events: none;
+
+    z-index: 2;
+
+    box-shadow: 0 1px 3px rgb(0 0 0 / 0.35);
+
+}
 
 .ref-line {
 
@@ -482,7 +669,7 @@ async function onZipSelected(event) {
 
     color: var(--vs-text-secondary);
 
-    word-break: break-all;
+    overflow-wrap: anywhere;
 
 }
 

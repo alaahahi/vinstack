@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\ContainerImage;
 use App\Models\Dealer;
 use App\Models\Vehicle;
 use Illuminate\Support\Arr;
@@ -45,7 +46,7 @@ class ContainerService
             ));
         }
 
-        return $items;
+        return $this->attachListImageSummaries($items);
     }
 
     /**
@@ -87,7 +88,7 @@ class ContainerService
 
         $this->logDealerContainerEdgeCases($dealer, $keys, $items, $fromApi, $fromVehicles, $merged);
 
-        return $merged;
+        return $this->attachListImageSummaries($merged);
     }
 
     public function trackingAvailable(): bool
@@ -899,6 +900,107 @@ class ContainerService
         $encoded = json_encode($value, JSON_UNESCAPED_UNICODE);
 
         return is_string($encoded) && $encoded !== '[]' && $encoded !== '{}' ? $encoded : null;
+    }
+
+    /**
+     * Attach image_count and thumbnail_url to each list row (single batched query).
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    protected function attachListImageSummaries(array $items): array
+    {
+        if ($items === []) {
+            return $items;
+        }
+
+        /** @var array<string, string> $bookingToContainer */
+        $bookingToContainer = [];
+        /** @var array<string, string> $containerToBooking */
+        $containerToBooking = [];
+
+        foreach ($items as $row) {
+            $container = $this->normalizeContainerNumber($row['container_number'] ?? null);
+            $booking = $this->normalizeBookingNumber($row['booking_number'] ?? null);
+
+            if ($container !== null && $container !== '' && $booking !== null && $booking !== '') {
+                $bookingToContainer[$booking] = $container;
+                $containerToBooking[$container] = $booking;
+            }
+        }
+
+        /** @var array<int, list<string>> $rowLookupKeys */
+        $rowLookupKeys = [];
+        $allKeys = [];
+
+        foreach ($items as $index => $row) {
+            $keys = [];
+            $container = $this->normalizeContainerNumber($row['container_number'] ?? null);
+            $booking = $this->normalizeBookingNumber($row['booking_number'] ?? null);
+
+            if ($container !== null && $container !== '') {
+                $keys[] = $container;
+
+                if (isset($containerToBooking[$container])) {
+                    $keys[] = $containerToBooking[$container];
+                }
+            }
+
+            if ($booking !== null && $booking !== '') {
+                $keys[] = $booking;
+
+                if (isset($bookingToContainer[$booking])) {
+                    $keys[] = $bookingToContainer[$booking];
+                }
+            }
+
+            $keys = array_values(array_unique($keys));
+            $rowLookupKeys[$index] = $keys;
+
+            foreach ($keys as $key) {
+                $allKeys[$key] = true;
+            }
+        }
+
+        if ($allKeys === []) {
+            return array_map(function (array $row): array {
+                $row['image_count'] = 0;
+                $row['thumbnail_url'] = null;
+
+                return $row;
+            }, $items);
+        }
+
+        $imagesByKey = ContainerImage::query()
+            ->whereIn('container_number', array_keys($allKeys))
+            ->orderBy('id')
+            ->get()
+            ->groupBy('container_number');
+
+        $enriched = [];
+
+        foreach ($items as $index => $row) {
+            $imageCount = 0;
+            $thumbnailUrl = null;
+
+            foreach ($rowLookupKeys[$index] ?? [] as $key) {
+                $records = $imagesByKey->get($key);
+
+                if ($records === null || $records->isEmpty()) {
+                    continue;
+                }
+
+                $imageCount = $records->count();
+                $thumbnailUrl = $records->first()->cloudinary_url;
+                break;
+            }
+
+            $row['image_count'] = $imageCount;
+            $row['thumbnail_url'] = $thumbnailUrl;
+            $enriched[] = $row;
+        }
+
+        return $enriched;
     }
 
     /**

@@ -210,6 +210,80 @@ class ContainerServiceDealerListTest extends TestCase
         $this->assertContains('MSCU9999999', $keys);
     }
 
+    public function test_list_includes_image_count_and_thumbnail_from_batched_lookup(): void
+    {
+        $dealer = $this->createDealerWithAssignment(
+            vin: '1HGBH41JXMN109199',
+            rawData: ['container_number' => 'IMG1234567', 'booking_number' => 'BK-IMG'],
+        );
+
+        $this->mockVinstackContainers([
+            [
+                'container_number' => 'IMG1234567',
+                'booking_number' => 'BK-IMG',
+                'autos' => [
+                    ['vin' => '1HGBH41JXMN109199', 'year' => 2022, 'make' => 'Honda', 'model' => 'Civic'],
+                ],
+            ],
+        ]);
+
+        \App\Models\ContainerImage::query()->create([
+            'container_number' => 'IMG1234567',
+            'original_name' => 'first.jpg',
+            'cloudinary_url' => 'https://res.cloudinary.com/demo/first.jpg',
+            'public_id' => 'vinstack/containers/IMG1234567/first-1',
+            'uploaded_at' => now(),
+        ]);
+
+        \App\Models\ContainerImage::query()->create([
+            'container_number' => 'IMG1234567',
+            'original_name' => 'second.jpg',
+            'cloudinary_url' => 'https://res.cloudinary.com/demo/second.jpg',
+            'public_id' => 'vinstack/containers/IMG1234567/second-2',
+            'uploaded_at' => now(),
+        ]);
+
+        $rows = app(ContainerService::class)->listForDealer($dealer);
+        $row = collect($rows)->firstWhere('container_number', 'IMG1234567');
+
+        $this->assertNotNull($row);
+        $this->assertSame(2, $row['image_count']);
+        $this->assertSame('https://res.cloudinary.com/demo/first.jpg', $row['thumbnail_url']);
+    }
+
+    public function test_list_resolves_images_stored_under_booking_number(): void
+    {
+        $dealer = $this->createDealerWithAssignment(
+            vin: '1HGBH41JXMN109200',
+            rawData: ['booking_number' => 'BK-ONLY-IMG'],
+        );
+
+        $this->mockVinstackContainers([
+            [
+                'container_number' => 'CNTRONLYIMG',
+                'booking_number' => 'BK-ONLY-IMG',
+                'autos' => [
+                    ['vin' => '1HGBH41JXMN109200', 'year' => 2020, 'make' => 'BMW', 'model' => 'X5'],
+                ],
+            ],
+        ]);
+
+        \App\Models\ContainerImage::query()->create([
+            'container_number' => 'BK-ONLY-IMG',
+            'original_name' => 'booking.jpg',
+            'cloudinary_url' => 'https://res.cloudinary.com/demo/booking.jpg',
+            'public_id' => 'vinstack/containers/BK-ONLY-IMG/booking-1',
+            'uploaded_at' => now(),
+        ]);
+
+        $rows = app(ContainerService::class)->listForDealer($dealer);
+        $row = collect($rows)->firstWhere('booking_number', 'BK-ONLY-IMG');
+
+        $this->assertNotNull($row);
+        $this->assertSame(1, $row['image_count']);
+        $this->assertSame('https://res.cloudinary.com/demo/booking.jpg', $row['thumbnail_url']);
+    }
+
     public function test_admin_merges_manual_vehicle_container_with_vinstack_api(): void
     {
         Vehicle::query()->create([

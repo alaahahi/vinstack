@@ -146,6 +146,7 @@ export default {
         searchChassis: 'Search by VIN...',
         empty: 'No containers',
         columns: {
+            images: 'Images',
             refs: 'CNTR / BKG / SEAL',
             customer: 'Customer',
             route: 'Route',
@@ -161,6 +162,9 @@ export default {
         vehicle: 'vehicle',
         showVehicles: 'Show container vehicles',
         noVehicles: 'No vehicles',
+        containerImages: 'Container images',
+        showImages: 'View container images ({count})',
+        noImages: 'No images',
         track: 'Track shipment',
         trackUnavailable: 'Track shipment — route data unavailable',
         uploadZip: 'Upload ZIP images',
