@@ -62,15 +62,21 @@
                 </div>
                 <Button
                     icon="pi pi-map-marker"
+                    :label="mode === 'dealer' && canTrackContainer ? t('vehicles.track') : undefined"
                     :severity="canTrackContainer ? 'info' : 'secondary'"
-                    text
+                    :text="mode !== 'dealer'"
+                    :outlined="mode === 'dealer' && canTrackContainer"
                     rounded
-                    size="small"
+                    :size="mode === 'dealer' ? 'small' : 'small'"
                     :disabled="!canTrackContainer"
                     class="track-btn"
-                    :class="{ 'track-btn--ready': canTrackContainer }"
+                    :class="{
+                        'track-btn--ready': canTrackContainer,
+                        'track-btn--dealer': mode === 'dealer',
+                        'track-btn--pulse': mode === 'dealer' && canTrackContainer,
+                    }"
                     :aria-label="t('vehicles.trackContainer')"
-                    :title="t('vehicles.trackContainer')"
+                    :title="canTrackContainer ? t('vehicles.trackContainer') : t('vehicles.trackUnavailable')"
                     @click.stop="$emit('track-container', vehicle)"
                 />
             </div>
@@ -544,6 +550,61 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     margin-inline-end: 0;
 }
 
+.track-btn--dealer :deep(.p-button) {
+    min-height: 2.15rem;
+    padding-inline: 0.75rem;
+    font-weight: 600;
+    font-size: 0.78rem;
+    gap: 0.35rem;
+    border-width: 1.5px;
+}
+
+.track-btn--dealer.track-btn--ready :deep(.p-button) {
+    color: #0369a1;
+    border-color: #38bdf8;
+    background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%);
+}
+
+.track-btn--dealer.track-btn--ready:hover :deep(.p-button) {
+    color: #075985;
+    border-color: #0ea5e9;
+    background: #e0f2fe;
+}
+
+.track-btn--dealer.track-btn--pulse :deep(.p-button) {
+    animation: track-btn-pulse 2.2s ease-in-out infinite;
+}
+
+.track-btn--dealer.track-btn--pulse :deep(.p-button-icon) {
+    animation: track-icon-bounce 2.2s ease-in-out infinite;
+}
+
+@keyframes track-btn-pulse {
+    0%,
+    100% {
+        box-shadow: 0 0 0 0 rgb(14 165 233 / 0.35);
+    }
+
+    50% {
+        box-shadow: 0 0 0 7px rgb(14 165 233 / 0);
+    }
+}
+
+@keyframes track-icon-bounce {
+    0%,
+    100% {
+        transform: translateY(0);
+    }
+
+    40% {
+        transform: translateY(-2px);
+    }
+
+    60% {
+        transform: translateY(0);
+    }
+}
+
 .track-btn--ready :deep(.p-button-icon) {
     color: #0ea5e9;
 }
@@ -798,6 +859,16 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
         grid-template-columns: 1fr;
         gap: 0.75rem;
         padding: 1rem;
+    }
+
+    .ref-line--container {
+        justify-content: space-between;
+    }
+
+    .track-btn--dealer :deep(.p-button) {
+        min-height: 2.5rem;
+        padding-inline: 1rem;
+        font-size: 0.82rem;
     }
 
     .cell-admin {
