@@ -62,12 +62,10 @@
                 </div>
                 <Button
                     icon="pi pi-map-marker"
-                    :label="mode === 'dealer' && canTrackContainer ? t('vehicles.trackContainer') : undefined"
-                    :severity="canTrackContainer ? 'info' : 'secondary'"
-                    :text="mode !== 'dealer'"
-                    :outlined="mode === 'dealer' && canTrackContainer"
+                    :severity="canTrackContainer ? 'help' : 'secondary'"
+                    :text="!canTrackContainer"
                     rounded
-                    :size="mode === 'dealer' ? 'small' : 'small'"
+                    size="small"
                     :disabled="!canTrackContainer"
                     class="track-btn"
                     :class="{
@@ -541,7 +539,7 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
 
 .ref-container-num {
     min-width: 0;
-    word-break: break-all;
+    overflow-wrap: anywhere;
 }
 
 .track-btn {
@@ -550,33 +548,30 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     margin-inline-end: 0;
 }
 
-.track-btn--dealer :deep(.p-button) {
-    min-height: 2.15rem;
-    padding-inline: 0.85rem;
-    font-weight: 700;
-    font-size: 0.78rem;
-    gap: 0.4rem;
-    border-width: 1.5px !important;
-}
-
-.track-btn--dealer.track-btn--ready :deep(.p-button) {
+/* Dealer: solid purple, prominent, icon-only. The PrimeVue button root itself
+   carries these classes, so target it directly (no descendant .p-button). */
+.track-btn--dealer.track-btn--ready:deep(.p-button),
+.track-btn--dealer.track-btn--ready {
+    width: 2.35rem;
+    height: 2.35rem;
     color: #fff !important;
-    border-color: #8b5cf6 !important;
+    border: 1.5px solid #7c3aed !important;
     background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%) !important;
     box-shadow: 0 2px 10px rgb(139 92 246 / 0.45);
 }
 
-.track-btn--dealer.track-btn--ready :deep(.p-button-icon),
-.track-btn--dealer.track-btn--ready :deep(.p-button-label) {
+.track-btn--dealer.track-btn--ready :deep(.p-button-icon) {
     color: #fff !important;
+    font-size: 1.05rem;
 }
 
-.track-btn--dealer.track-btn--ready:hover :deep(.p-button) {
+.track-btn--dealer.track-btn--ready:hover {
     background: linear-gradient(135deg, #9333ea 0%, #6d28d9 100%) !important;
-    border-color: #7c3aed !important;
+    border-color: #6d28d9 !important;
+    transform: translateY(-1px);
 }
 
-.track-btn--dealer.track-btn--pulse :deep(.p-button) {
+.track-btn--dealer.track-btn--pulse {
     animation: track-btn-pulse 1.8s ease-in-out infinite;
 }
 
@@ -875,12 +870,6 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
 
     .ref-line--container {
         justify-content: space-between;
-    }
-
-    .track-btn--dealer :deep(.p-button) {
-        min-height: 2.5rem;
-        padding-inline: 1rem;
-        font-size: 0.82rem;
     }
 
     .cell-admin {
