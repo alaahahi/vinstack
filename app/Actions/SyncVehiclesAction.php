@@ -7,14 +7,17 @@ use App\Enums\VehicleStatus;
 use App\Models\Vehicle;
 use App\Models\VinstackSetting;
 use App\Services\VinstackService;
+use App\Services\VehicleStatusNotificationService;
 use App\Support\VehicleGalleryMerger;
 use App\Support\VehicleImageStages;
+use App\Support\VehicleRawDataLocations;
 use Illuminate\Support\Arr;
 
 class SyncVehiclesAction
 {
     public function __construct(
         protected VinstackService $vinstack,
+        protected VehicleStatusNotificationService $statusNotifications,
     ) {}
 
     /**
@@ -51,11 +54,19 @@ class SyncVehiclesAction
                     continue;
                 }
 
-                if (in_array($vehicle->source, [VehicleSource::Manual, VehicleSource::NujoomAlJazeera], true)) {
+                if ($vehicle->source === VehicleSource::Manual) {
                     continue;
                 }
 
-                $vehicle->update(VehicleGalleryMerger::mergeSyncPayload($vehicle, $payload));
+                $previousRaw = is_array($vehicle->raw_data) ? $vehicle->raw_data : [];
+                $merged = VehicleGalleryMerger::mergeSyncPayload($vehicle, $payload);
+                $vehicle->update($merged);
+                $this->statusNotifications->recordFromRawDataChange(
+                    $vehicle,
+                    $previousRaw,
+                    is_array($merged['raw_data'] ?? null) ? $merged['raw_data'] : [],
+                    'sync',
+                );
                 $updated++;
 
                 continue;

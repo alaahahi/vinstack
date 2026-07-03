@@ -47,4 +47,31 @@ class VehicleRawDataLocationsTest extends TestCase
         $this->assertArrayNotHasKey('loading_point', $sanitized);
         $this->assertSame('Jebel Ali', $sanitized['destination']);
     }
+
+    public function test_apply_incoming_logistics_overwrites_stale_destination_and_status(): void
+    {
+        $merged = [
+            'destination' => 'Dubai',
+            'loading_point' => 'Los Angeles',
+            'status' => 'Loaded',
+            'gallery' => [
+                'destination' => [
+                    'urls' => ['https://cdn.example.com/images-1700000000000-a.jpeg'],
+                    'keys' => [null],
+                ],
+            ],
+        ];
+
+        $incoming = [
+            'destination' => 'Mersin',
+            'loading_point' => 'Toronto',
+            'status' => 'At terminal',
+        ];
+
+        $next = VehicleRawDataLocations::applyIncomingLogistics($merged, $incoming);
+
+        $this->assertSame('Mersin', $next['destination']);
+        $this->assertSame('Toronto', $next['loading_point']);
+        $this->assertSame('At terminal', $next['status']);
+    }
 }

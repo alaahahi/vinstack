@@ -571,10 +571,13 @@ export default {
     },
     notifications: {
         aria: 'Notifications',
-        title: 'Dealer messages',
-        empty: 'No new messages.',
+        title: 'Notifications',
+        empty: 'No new notifications.',
         vehicleFallback: 'Vehicle',
         dealerFallback: 'Dealer',
+        statusBadge: 'Status',
+        sourceSync: 'Vinstack sync',
+        sourceAdmin: 'Admin edit',
     },
     chat: {
         titleAdmin: 'Chat with dealer',

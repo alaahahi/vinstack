@@ -211,36 +211,33 @@ class VehicleGalleryMerger
             'photos',
             'thumbnail_url',
             'gallery_synced_at',
-            ...VehicleImageStages::STAGES,
         ];
 
         $mergedRaw = array_merge($existingRaw, Arr::except($newRaw, $protectedKeys));
         $mergedRaw['images'] = $mergedImages;
         $mergedRaw['images_by_stage'] = $mergedStages;
 
-        $hasGalleryStructure = is_array(Arr::get($existingRaw, 'gallery'))
-            || is_array(Arr::get($newRaw, 'gallery'))
-            || (isset($existingRaw['photos']) && is_array($existingRaw['photos']));
+        foreach (VehicleImageStages::STAGES as $stage) {
+            $existing = Arr::get($existingRaw, $stage);
+            $incoming = Arr::get($newRaw, $stage);
 
-        if (! $hasGalleryStructure) {
-            foreach (VehicleImageStages::STAGES as $stage) {
+            if (
+                VehicleRawDataLocations::isGalleryStageBlock($existing)
+                || VehicleRawDataLocations::isGalleryStageBlock($incoming)
+            ) {
                 $mergedRaw[$stage] = self::mergeRawStageBlock(
-                    Arr::get($existingRaw, $stage),
-                    Arr::get($newRaw, $stage),
+                    $existing,
+                    $incoming,
                     $mergedStages[$stage],
                 );
-            }
-        } else {
-            foreach (VehicleImageStages::STAGES as $stage) {
-                $existing = Arr::get($existingRaw, $stage);
 
-                if (is_string($existing) && $existing !== '') {
-                    $mergedRaw[$stage] = $existing;
-                } else {
-                    unset($mergedRaw[$stage]);
-                }
+                continue;
             }
+
+            unset($mergedRaw[$stage]);
         }
+
+        $mergedRaw = VehicleRawDataLocations::applyIncomingLogistics($mergedRaw, $newRaw);
 
         $mergedRaw['gallery'] = self::mergeRawGalleryNode(
             Arr::get($existingRaw, 'gallery'),
@@ -482,12 +479,24 @@ class VehicleGalleryMerger
      */
     protected static function mergeRawStageBlock(mixed $existing, mixed $incoming, array $mergedUrls): mixed
     {
-        if (is_string($existing) && $existing !== '') {
-            return $existing;
+        if (
+            is_string($existing)
+            && $existing !== ''
+            && ! VehicleRawDataLocations::isGalleryStageBlock($existing)
+        ) {
+            $existing = null;
         }
 
         if ($mergedUrls === []) {
-            return $existing ?? $incoming;
+            if (VehicleRawDataLocations::isGalleryStageBlock($existing)) {
+                return $existing;
+            }
+
+            if (VehicleRawDataLocations::isGalleryStageBlock($incoming)) {
+                return $incoming;
+            }
+
+            return null;
         }
 
         $existingKeys = is_array($existing) && is_array($existing['keys'] ?? null)

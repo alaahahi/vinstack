@@ -89,6 +89,7 @@ class CreateManualVehicleAction
             'loading_point',
             'destination',
             'location',
+            'status',
             'title_status',
             'title_type',
             'keys',

@@ -157,4 +157,47 @@ class VehicleGalleryMergerTest extends TestCase
         $this->assertCount(1, $enriched['images']);
         $this->assertCount(1, $enriched['images_by_stage']['terminal']);
     }
+
+    public function test_merge_sync_payload_updates_destination_when_gallery_structure_exists(): void
+    {
+        $vehicle = Vehicle::query()->create([
+            'source' => VehicleSource::Vinstack,
+            'vinstack_id' => 'vs-400',
+            'vin' => '1HGCY2F89RA800433',
+            'status' => VehicleStatus::Available,
+            'images' => ['https://cdn.example.com/gallery/existing.jpg'],
+            'raw_data' => [
+                'destination' => 'Dubai',
+                'loading_point' => 'Los Angeles',
+                'status' => 'Loaded',
+                'gallery' => [
+                    'terminal' => [
+                        'urls' => ['https://cdn.example.com/gallery/existing.jpg'],
+                        'keys' => [null],
+                    ],
+                ],
+                'gallery_synced_at' => '2026-06-01T12:00:00Z',
+            ],
+        ]);
+
+        $merged = VehicleGalleryMerger::mergeSyncPayload($vehicle, [
+            'price' => 18000,
+            'images' => ['https://cdn.example.com/gallery/existing.jpg'],
+            'raw_data' => [
+                'destination' => 'Mersin',
+                'loading_point' => 'Toronto',
+                'status' => 'At terminal',
+                'gallery' => [
+                    'terminal' => [
+                        'urls' => ['https://cdn.example.com/gallery/existing.jpg'],
+                        'keys' => [null],
+                    ],
+                ],
+            ],
+        ]);
+
+        $this->assertSame('Mersin', $merged['raw_data']['destination']);
+        $this->assertSame('Toronto', $merged['raw_data']['loading_point']);
+        $this->assertSame('At terminal', $merged['raw_data']['status']);
+    }
 }

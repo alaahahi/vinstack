@@ -129,8 +129,9 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 import IconField from 'primevue/iconfield';
@@ -151,6 +152,8 @@ import api from '../../api/client';
 import { deleteVehicle } from '../../api/vehicles';
 
 const { t } = useI18n();
+const route = useRoute();
+const router = useRouter();
 const toast = useToast();
 const confirm = useConfirm();
 const vehicles = ref([]);
@@ -414,9 +417,35 @@ async function unassignVehicle(vehicle) {
     }
 }
 
+function openDetailFromQuery() {
+    const rawId = route.query.vehicle;
+
+    if (! rawId) {
+        return;
+    }
+
+    const vehicleId = Number(rawId);
+
+    if (! Number.isFinite(vehicleId) || vehicleId <= 0) {
+        return;
+    }
+
+    detailVehicleId.value = vehicleId;
+    detailVisible.value = true;
+
+    const nextQuery = { ...route.query };
+    delete nextQuery.vehicle;
+    router.replace({ query: nextQuery });
+}
+
+watch(() => route.query.vehicle, () => {
+    openDetailFromQuery();
+});
+
 onMounted(async () => {
     await loadDealers();
     await resetAndLoad();
+    openDetailFromQuery();
 });
 </script>
 

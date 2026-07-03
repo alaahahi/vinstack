@@ -12,6 +12,28 @@ class VehicleRawDataLocations
     /** @var list<string> */
     public const DESTINATION_FALLBACK_KEYS = ['postpod', 'pod', 'shipping_destination'];
 
+    /** @var list<string> */
+    public const LOGISTICS_SCALAR_KEYS = [
+        'status',
+        'city',
+        'container_number',
+        'booking_number',
+        'shipping_method',
+        'delivery_type',
+        'location',
+        'lot',
+        'auction',
+        'purchase_date',
+        'arrived_terminal_date',
+        'left_terminal',
+        'title_received',
+        'title_status',
+        'title_type',
+        'keys',
+        'buyer',
+        'value',
+    ];
+
     /**
      * @param  array<string, mixed>  $raw
      * @return array<string, mixed>
@@ -40,6 +62,46 @@ class VehicleRawDataLocations
     }
 
     /**
+     * Apply scalar logistics fields from an incoming Vinstack payload onto merged raw_data.
+     *
+     * @param  array<string, mixed>  $merged
+     * @param  array<string, mixed>  $incoming
+     * @return array<string, mixed>
+     */
+    public static function applyIncomingLogistics(array $merged, array $incoming): array
+    {
+        foreach (['loading_point', 'destination'] as $key) {
+            if (! array_key_exists($key, $incoming)) {
+                continue;
+            }
+
+            $label = self::locationLabel($incoming[$key]);
+
+            if ($label !== null) {
+                $merged[$key] = $label;
+            }
+        }
+
+        foreach (self::LOGISTICS_SCALAR_KEYS as $key) {
+            if (! array_key_exists($key, $incoming)) {
+                continue;
+            }
+
+            $value = $incoming[$key];
+
+            if ($value === null || $value === '') {
+                continue;
+            }
+
+            if (is_string($value) || is_int($value) || is_float($value) || is_bool($value)) {
+                $merged[$key] = $value;
+            }
+        }
+
+        return $merged;
+    }
+
+    /**
      * @param  array<string, mixed>  $raw
      */
     public static function resolveOrigin(array $raw): ?string
@@ -53,6 +115,22 @@ class VehicleRawDataLocations
     public static function resolveDestination(array $raw): ?string
     {
         return self::resolveLocation($raw, 'destination', self::DESTINATION_FALLBACK_KEYS);
+    }
+
+    /**
+     * @param  array<string, mixed>  $raw
+     */
+    public static function resolveLogisticsStatus(array $raw): ?string
+    {
+        $status = $raw['status'] ?? null;
+
+        if (! is_string($status)) {
+            return null;
+        }
+
+        $trimmed = trim($status);
+
+        return $trimmed !== '' ? $trimmed : null;
     }
 
     /**

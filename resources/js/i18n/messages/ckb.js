@@ -410,10 +410,13 @@ export default {
     },
     notifications: {
         aria: 'ئاگادارکردنەوەکان',
-        title: 'پەیامەکانی بازرگانان',
-        empty: 'هیچ پەیامی نوێ نییە.',
+        title: 'ئاگادارکردنەوەکان',
+        empty: 'هیچ ئاگادارکردنەوەیەکی نوێ نییە.',
         vehicleFallback: 'ئۆتۆمبێل',
         dealerFallback: 'بازرگان',
+        statusBadge: 'دۆخ',
+        sourceSync: 'هاوکاتکردنی Vinstack',
+        sourceAdmin: 'دەستکاری بەڕێوەبەر',
     },
     chat: {
         titleAdmin: 'گفتوگۆ لەگەڵ بازرگان',

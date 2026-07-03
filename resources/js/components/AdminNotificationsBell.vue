@@ -28,15 +28,23 @@
             <ul v-else class="admin-notifications__list">
                 <li
                     v-for="item in items"
-                    :key="item.vehicle_id"
+                    :key="itemKey(item)"
                     class="admin-notifications__item"
                 >
-                    <button type="button" class="admin-notifications__item-btn" @click="openChat(item)">
+                    <button type="button" class="admin-notifications__item-btn" @click="openItem(item)">
                         <span class="admin-notifications__item-top">
                             <strong>{{ item.vehicle?.title || t('notifications.vehicleFallback') }}</strong>
-                            <span class="admin-notifications__count">{{ item.unread_count }}</span>
+                            <span v-if="item.type === 'dealer_message'" class="admin-notifications__count">{{ item.unread_count }}</span>
+                            <span v-else-if="item.type === 'status_change'" class="admin-notifications__badge admin-notifications__badge--status">
+                                {{ t('notifications.statusBadge') }}
+                            </span>
                         </span>
-                        <span class="admin-notifications__dealer">{{ item.dealer_name || t('notifications.dealerFallback') }}</span>
+                        <span v-if="item.type === 'dealer_message'" class="admin-notifications__dealer">
+                            {{ item.dealer_name || t('notifications.dealerFallback') }}
+                        </span>
+                        <span v-else-if="item.source" class="admin-notifications__dealer">
+                            {{ sourceLabel(item.source) }}
+                        </span>
                         <span class="admin-notifications__preview">{{ preview(item.preview) }}</span>
                         <span class="admin-notifications__time" dir="ltr">{{ formatDateTime(item.created_at) }}</span>
                     </button>
@@ -57,6 +65,7 @@
 <script setup>
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
+import { useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
 import ProgressSpinner from 'primevue/progressspinner';
@@ -65,6 +74,7 @@ import api from '../api/client';
 import { formatDateTime } from '../utils/formatDateTime';
 
 const { t } = useI18n();
+const router = useRouter();
 const items = ref([]);
 const unreadCount = ref(0);
 const loadingList = ref(false);
@@ -86,9 +96,29 @@ function preview(message) {
     return `${text.slice(0, 90)}…`;
 }
 
+function itemKey(item) {
+    if (item.type === 'status_change') {
+        return `status-${item.id}`;
+    }
+
+    return `message-${item.vehicle_id}`;
+}
+
+function sourceLabel(source) {
+    if (source === 'sync') {
+        return t('notifications.sourceSync');
+    }
+
+    if (source === 'admin') {
+        return t('notifications.sourceAdmin');
+    }
+
+    return source;
+}
+
 async function fetchUnreadCount() {
     try {
-        const { data } = await api.get('/admin/messages/unread-count');
+        const { data } = await api.get('/admin/notifications/unread-count');
         unreadCount.value = Number(data.unread_count || 0);
     } catch {
         // ignore polling errors
@@ -110,6 +140,31 @@ async function loadList() {
 async function openList() {
     listVisible.value = true;
     await loadList();
+}
+
+async function openItem(item) {
+    if (item.type === 'status_change') {
+        listVisible.value = false;
+
+        try {
+            await api.post(`/admin/notifications/status/${item.id}/read`);
+        } catch {
+            // ignore mark-read errors
+        }
+
+        await fetchUnreadCount();
+
+        if (item.vehicle?.id) {
+            await router.push({
+                name: 'admin.vehicles',
+                query: { vehicle: String(item.vehicle.id) },
+            });
+        }
+
+        return;
+    }
+
+    openChat(item);
 }
 
 function openChat(item) {
@@ -209,6 +264,19 @@ onUnmounted(() => {
     display: inline-flex;
     align-items: center;
     justify-content: center;
+}
+
+.admin-notifications__badge {
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.65rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.admin-notifications__badge--status {
+    background: rgb(245 158 11 / 0.18);
+    color: #b45309;
 }
 
 .admin-notifications__dealer {

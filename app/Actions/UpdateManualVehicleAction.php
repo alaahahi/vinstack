@@ -4,6 +4,7 @@ namespace App\Actions;
 
 use App\Enums\VehicleSource;
 use App\Models\Vehicle;
+use App\Services\VehicleStatusNotificationService;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -11,9 +12,8 @@ use Symfony\Component\HttpKernel\Exception\HttpException;
 class UpdateManualVehicleAction
 {
     public function __construct(
-
         protected CreateManualVehicleAction $creator,
-
+        protected VehicleStatusNotificationService $statusNotifications,
     ) {}
 
     /**
@@ -69,7 +69,16 @@ class UpdateManualVehicleAction
 
         ]);
 
-        return $vehicle->fresh();
+        $vehicle = $vehicle->fresh();
+
+        $this->statusNotifications->recordFromRawDataChange(
+            $vehicle,
+            $existingRaw,
+            is_array($vehicle->raw_data) ? $vehicle->raw_data : [],
+            'admin',
+        );
+
+        return $vehicle;
 
     }
 

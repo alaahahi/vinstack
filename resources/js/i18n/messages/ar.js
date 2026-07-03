@@ -410,10 +410,13 @@ export default {
     },
     notifications: {
         aria: 'الإشعارات',
-        title: 'رسائل التجار',
-        empty: 'لا توجد رسائل جديدة.',
+        title: 'الإشعارات',
+        empty: 'لا توجد إشعارات جديدة.',
         vehicleFallback: 'سيارة',
         dealerFallback: 'تاجر',
+        statusBadge: 'حالة',
+        sourceSync: 'مزامنة Vinstack',
+        sourceAdmin: 'تعديل إداري',
     },
     chat: {
         titleAdmin: 'محادثة مع التاجر',

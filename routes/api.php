@@ -50,6 +50,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/notifications', [NotificationController::class, 'index']);
         Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
+        Route::post('/notifications/status/{notification}/read', [NotificationController::class, 'markStatusRead']);
 
         Route::get('/dealers', [DealerController::class, 'index']);
         Route::get('/dealers/summary', [DealerController::class, 'summary']);
