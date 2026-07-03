@@ -561,9 +561,9 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
 
 .track-btn--dealer.track-btn--ready :deep(.p-button) {
     color: #fff !important;
-    border-color: #0ea5e9 !important;
-    background: linear-gradient(180deg, #0ea5e9 0%, #0284c7 100%) !important;
-    box-shadow: 0 2px 8px rgb(14 165 233 / 0.4);
+    border-color: #8b5cf6 !important;
+    background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%) !important;
+    box-shadow: 0 2px 10px rgb(139 92 246 / 0.45);
 }
 
 .track-btn--dealer.track-btn--ready :deep(.p-button-icon),
@@ -572,8 +572,8 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
 }
 
 .track-btn--dealer.track-btn--ready:hover :deep(.p-button) {
-    background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%) !important;
-    border-color: #0284c7 !important;
+    background: linear-gradient(135deg, #9333ea 0%, #6d28d9 100%) !important;
+    border-color: #7c3aed !important;
 }
 
 .track-btn--dealer.track-btn--pulse :deep(.p-button) {
@@ -587,11 +587,11 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
 @keyframes track-btn-pulse {
     0%,
     100% {
-        box-shadow: 0 2px 8px rgb(14 165 233 / 0.4), 0 0 0 0 rgb(14 165 233 / 0.55);
+        box-shadow: 0 2px 10px rgb(139 92 246 / 0.45), 0 0 0 0 rgb(168 85 247 / 0.6);
     }
 
     50% {
-        box-shadow: 0 2px 8px rgb(14 165 233 / 0.4), 0 0 0 9px rgb(14 165 233 / 0);
+        box-shadow: 0 2px 10px rgb(139 92 246 / 0.45), 0 0 0 9px rgb(168 85 247 / 0);
     }
 }
 
@@ -618,15 +618,15 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
 }
 
 .track-btn--ready :deep(.p-button-icon) {
-    color: #0ea5e9;
+    color: #8b5cf6;
 }
 
 .track-btn--ready:hover :deep(.p-button-icon) {
-    color: #0284c7;
+    color: #7c3aed;
 }
 
 .track-btn:focus-visible :deep(.p-button) {
-    outline: 2px solid #14b8a6;
+    outline: 2px solid #a855f7;
     outline-offset: 2px;
 }
 
