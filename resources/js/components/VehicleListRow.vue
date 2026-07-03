@@ -62,7 +62,7 @@
                 </div>
                 <Button
                     icon="pi pi-map-marker"
-                    :label="mode === 'dealer' && canTrackContainer ? t('vehicles.track') : undefined"
+                    :label="mode === 'dealer' && canTrackContainer ? t('vehicles.trackContainer') : undefined"
                     :severity="canTrackContainer ? 'info' : 'secondary'"
                     :text="mode !== 'dealer'"
                     :outlined="mode === 'dealer' && canTrackContainer"
@@ -76,7 +76,7 @@
                         'track-btn--pulse': mode === 'dealer' && canTrackContainer,
                     }"
                     :aria-label="t('vehicles.trackContainer')"
-                    :title="canTrackContainer ? t('vehicles.trackContainer') : t('vehicles.trackUnavailable')"
+                    :title="canTrackContainer ? t('vehicles.trackContainer') : t('containers.trackUnavailable')"
                     @click.stop="$emit('track-container', vehicle)"
                 />
             </div>
@@ -552,56 +552,68 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
 
 .track-btn--dealer :deep(.p-button) {
     min-height: 2.15rem;
-    padding-inline: 0.75rem;
-    font-weight: 600;
+    padding-inline: 0.85rem;
+    font-weight: 700;
     font-size: 0.78rem;
-    gap: 0.35rem;
-    border-width: 1.5px;
+    gap: 0.4rem;
+    border-width: 1.5px !important;
 }
 
 .track-btn--dealer.track-btn--ready :deep(.p-button) {
-    color: #0369a1;
-    border-color: #38bdf8;
-    background: linear-gradient(180deg, #f0f9ff 0%, #e0f2fe 100%);
+    color: #fff !important;
+    border-color: #0ea5e9 !important;
+    background: linear-gradient(180deg, #0ea5e9 0%, #0284c7 100%) !important;
+    box-shadow: 0 2px 8px rgb(14 165 233 / 0.4);
+}
+
+.track-btn--dealer.track-btn--ready :deep(.p-button-icon),
+.track-btn--dealer.track-btn--ready :deep(.p-button-label) {
+    color: #fff !important;
 }
 
 .track-btn--dealer.track-btn--ready:hover :deep(.p-button) {
-    color: #075985;
-    border-color: #0ea5e9;
-    background: #e0f2fe;
+    background: linear-gradient(180deg, #0284c7 0%, #0369a1 100%) !important;
+    border-color: #0284c7 !important;
 }
 
 .track-btn--dealer.track-btn--pulse :deep(.p-button) {
-    animation: track-btn-pulse 2.2s ease-in-out infinite;
+    animation: track-btn-pulse 1.8s ease-in-out infinite;
 }
 
 .track-btn--dealer.track-btn--pulse :deep(.p-button-icon) {
-    animation: track-icon-bounce 2.2s ease-in-out infinite;
+    animation: track-icon-bounce 1.8s ease-in-out infinite;
 }
 
 @keyframes track-btn-pulse {
     0%,
     100% {
-        box-shadow: 0 0 0 0 rgb(14 165 233 / 0.35);
+        box-shadow: 0 2px 8px rgb(14 165 233 / 0.4), 0 0 0 0 rgb(14 165 233 / 0.55);
     }
 
     50% {
-        box-shadow: 0 0 0 7px rgb(14 165 233 / 0);
+        box-shadow: 0 2px 8px rgb(14 165 233 / 0.4), 0 0 0 9px rgb(14 165 233 / 0);
     }
 }
 
 @keyframes track-icon-bounce {
     0%,
     100% {
-        transform: translateY(0);
+        transform: translateY(0) scale(1);
     }
 
-    40% {
-        transform: translateY(-2px);
+    35% {
+        transform: translateY(-3px) scale(1.12);
     }
 
-    60% {
-        transform: translateY(0);
+    70% {
+        transform: translateY(0) scale(1);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .track-btn--dealer.track-btn--pulse :deep(.p-button),
+    .track-btn--dealer.track-btn--pulse :deep(.p-button-icon) {
+        animation: none;
     }
 }
 
