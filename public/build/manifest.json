@@ -1,10 +1,6 @@
 {
-  "_AdminPageHeader-Cwr1S9WZ.css": {
-    "file": "assets/AdminPageHeader-Cwr1S9WZ.css",
-    "src": "_AdminPageHeader-Cwr1S9WZ.css"
-  },
-  "_AdminPageHeader-I_ln86La.js": {
-    "file": "assets/AdminPageHeader-I_ln86La.js",
+  "_AdminPageHeader-BOIYLDKw.js": {
+    "file": "assets/AdminPageHeader-BOIYLDKw.js",
     "name": "AdminPageHeader",
     "imports": [
       "resources/js/app.js",
@@ -14,13 +10,17 @@
       "assets/AdminPageHeader-Cwr1S9WZ.css"
     ]
   },
-  "_AuthShell-BqhTc7rl.js": {
-    "file": "assets/AuthShell-BqhTc7rl.js",
+  "_AdminPageHeader-Cwr1S9WZ.css": {
+    "file": "assets/AdminPageHeader-Cwr1S9WZ.css",
+    "src": "_AdminPageHeader-Cwr1S9WZ.css"
+  },
+  "_AuthShell-uAzSTwsa.js": {
+    "file": "assets/AuthShell-uAzSTwsa.js",
     "name": "AuthShell",
     "imports": [
       "resources/js/app.js",
-      "_ThemeToggle-B_-peLfc.js",
-      "_DealerFooter-CpQrmCtE.js",
+      "_ThemeToggle-DiUh99wn.js",
+      "_DealerFooter-gsYaeh_S.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ],
     "css": [
@@ -35,23 +35,27 @@
     "file": "assets/ContainerCarsDialog-BBXM8poV.css",
     "src": "_ContainerCarsDialog-BBXM8poV.css"
   },
-  "_ContainerCarsDialog-DN7ALg1v.js": {
-    "file": "assets/ContainerCarsDialog-DN7ALg1v.js",
+  "_ContainerCarsDialog-DfnNxT4v.js": {
+    "file": "assets/ContainerCarsDialog-DfnNxT4v.js",
     "name": "ContainerCarsDialog",
     "imports": [
       "resources/js/app.js",
-      "_index-DwUd1_ai.js",
-      "_useInfiniteScroll-JSgyrwnp.js",
+      "_index-DVTUz-oi.js",
+      "_useInfiniteScroll-iNspy8lz.js",
       "__plugin-vue_export-helper-DlAUqK2U.js",
-      "_index-BkeEDaKE.js",
-      "_vehicleMeta-DC2Ju_2H.js"
+      "_index-BNNmQGPo.js",
+      "_vehicleMeta-tnxEt9GY.js"
     ],
     "css": [
       "assets/ContainerCarsDialog-BBXM8poV.css"
     ]
   },
-  "_DealerFilterBadges-BdJzFYAD.js": {
-    "file": "assets/DealerFilterBadges-BdJzFYAD.js",
+  "_DealerFilterBadges-D-4jJaiq.css": {
+    "file": "assets/DealerFilterBadges-D-4jJaiq.css",
+    "src": "_DealerFilterBadges-D-4jJaiq.css"
+  },
+  "_DealerFilterBadges-DGz4nqnK.js": {
+    "file": "assets/DealerFilterBadges-DGz4nqnK.js",
     "name": "DealerFilterBadges",
     "imports": [
       "resources/js/app.js",
@@ -61,16 +65,12 @@
       "assets/DealerFilterBadges-D-4jJaiq.css"
     ]
   },
-  "_DealerFilterBadges-D-4jJaiq.css": {
-    "file": "assets/DealerFilterBadges-D-4jJaiq.css",
-    "src": "_DealerFilterBadges-D-4jJaiq.css"
-  },
   "_DealerFooter-CJ3kUOi0.css": {
     "file": "assets/DealerFooter-CJ3kUOi0.css",
     "src": "_DealerFooter-CJ3kUOi0.css"
   },
-  "_DealerFooter-CpQrmCtE.js": {
-    "file": "assets/DealerFooter-CpQrmCtE.js",
+  "_DealerFooter-gsYaeh_S.js": {
+    "file": "assets/DealerFooter-gsYaeh_S.js",
     "name": "DealerFooter",
     "imports": [
       "resources/js/app.js",
@@ -84,12 +84,12 @@
     "file": "assets/RecoveryCodesDialog-ClbPamNE.css",
     "src": "_RecoveryCodesDialog-ClbPamNE.css"
   },
-  "_RecoveryCodesDialog-DsAVFG-Y.js": {
-    "file": "assets/RecoveryCodesDialog-DsAVFG-Y.js",
+  "_RecoveryCodesDialog-TNfB0YLU.js": {
+    "file": "assets/RecoveryCodesDialog-TNfB0YLU.js",
     "name": "RecoveryCodesDialog",
     "imports": [
       "resources/js/app.js",
-      "_index-BJ0r6goL.js",
+      "_index-36lkvXuV.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ],
     "css": [
@@ -100,12 +100,12 @@
     "file": "assets/ThemeToggle-BAZHyRul.css",
     "src": "_ThemeToggle-BAZHyRul.css"
   },
-  "_ThemeToggle-B_-peLfc.js": {
-    "file": "assets/ThemeToggle-B_-peLfc.js",
+  "_ThemeToggle-DiUh99wn.js": {
+    "file": "assets/ThemeToggle-DiUh99wn.js",
     "name": "ThemeToggle",
     "imports": [
       "resources/js/app.js",
-      "_useLocale-CHuN5F65.js",
+      "_useLocale-X7ezNgvw.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ],
     "css": [
@@ -116,14 +116,14 @@
     "file": "assets/VehicleChatDialog-CR8VMcew.css",
     "src": "_VehicleChatDialog-CR8VMcew.css"
   },
-  "_VehicleChatDialog-Cu3aDiIr.js": {
-    "file": "assets/VehicleChatDialog-Cu3aDiIr.js",
+  "_VehicleChatDialog-ykJQKNUo.js": {
+    "file": "assets/VehicleChatDialog-ykJQKNUo.js",
     "name": "VehicleChatDialog",
     "imports": [
       "resources/js/app.js",
-      "_index-BeJapwKX.js",
-      "_index-DwUd1_ai.js",
-      "_vehicleMeta-DC2Ju_2H.js",
+      "_index-Cns9bI2B.js",
+      "_index-DVTUz-oi.js",
+      "_vehicleMeta-tnxEt9GY.js",
       "_formatDateTime-BLTbgLs_.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ],
@@ -131,15 +131,15 @@
       "assets/VehicleChatDialog-CR8VMcew.css"
     ]
   },
-  "_VehicleDetailDrawer-CGiTEhoZ.js": {
-    "file": "assets/VehicleDetailDrawer-CGiTEhoZ.js",
+  "_VehicleDetailDrawer-Bu_GfXcc.js": {
+    "file": "assets/VehicleDetailDrawer-Bu_GfXcc.js",
     "name": "VehicleDetailDrawer",
     "imports": [
       "resources/js/app.js",
-      "_useInfiniteScroll-JSgyrwnp.js",
-      "_index-DwUd1_ai.js",
-      "_index-_QvmOgAq.js",
-      "_vehicleMeta-DC2Ju_2H.js",
+      "_useInfiniteScroll-iNspy8lz.js",
+      "_index-DVTUz-oi.js",
+      "_index-D6W_zwED.js",
+      "_vehicleMeta-tnxEt9GY.js",
       "__plugin-vue_export-helper-DlAUqK2U.js"
     ],
     "css": [
@@ -158,113 +158,113 @@
     "file": "assets/formatDateTime-BLTbgLs_.js",
     "name": "formatDateTime"
   },
-  "_index-B6DY69Qb.js": {
-    "file": "assets/index-B6DY69Qb.js",
+  "_index-36lkvXuV.js": {
+    "file": "assets/index-36lkvXuV.js",
+    "name": "index",
+    "imports": [
+      "resources/js/app.js"
+    ]
+  },
+  "_index-B0KahI7k.js": {
+    "file": "assets/index-B0KahI7k.js",
     "name": "index",
     "imports": [
       "resources/js/app.js",
-      "_index-BeJapwKX.js"
+      "_index-Cns9bI2B.js"
     ]
   },
-  "_index-BJ0r6goL.js": {
-    "file": "assets/index-BJ0r6goL.js",
-    "name": "index",
-    "imports": [
-      "resources/js/app.js"
-    ]
-  },
-  "_index-BeJapwKX.js": {
-    "file": "assets/index-BeJapwKX.js",
-    "name": "index",
-    "imports": [
-      "resources/js/app.js"
-    ]
-  },
-  "_index-BkeEDaKE.js": {
-    "file": "assets/index-BkeEDaKE.js",
+  "_index-BNNmQGPo.js": {
+    "file": "assets/index-BNNmQGPo.js",
     "name": "index",
     "imports": [
       "resources/js/app.js",
-      "_index-DRRoGepw.js",
-      "_useInfiniteScroll-JSgyrwnp.js",
-      "_index-B6DY69Qb.js",
-      "_index-BeJapwKX.js"
+      "_index-DN-fNOni.js",
+      "_useInfiniteScroll-iNspy8lz.js",
+      "_index-B0KahI7k.js",
+      "_index-Cns9bI2B.js"
     ]
   },
-  "_index-D-m0QUU9.js": {
-    "file": "assets/index-D-m0QUU9.js",
-    "name": "index",
-    "imports": [
-      "_index-BeJapwKX.js",
-      "resources/js/app.js"
-    ]
-  },
-  "_index-DRRoGepw.js": {
-    "file": "assets/index-DRRoGepw.js",
-    "name": "index",
-    "imports": [
-      "resources/js/app.js"
-    ]
-  },
-  "_index-DSQbDwqw.js": {
-    "file": "assets/index-DSQbDwqw.js",
+  "_index-BZ-M3Qot.js": {
+    "file": "assets/index-BZ-M3Qot.js",
     "name": "index",
     "imports": [
       "resources/js/app.js",
-      "_index-DRRoGepw.js",
-      "_index-D-m0QUU9.js",
-      "_index-BeJapwKX.js"
+      "_index-DN-fNOni.js"
     ]
   },
-  "_index-DSZKYWnu.js": {
-    "file": "assets/index-DSZKYWnu.js",
+  "_index-Cbb4kMz4.js": {
+    "file": "assets/index-Cbb4kMz4.js",
+    "name": "index",
+    "imports": [
+      "resources/js/app.js"
+    ]
+  },
+  "_index-Cns9bI2B.js": {
+    "file": "assets/index-Cns9bI2B.js",
+    "name": "index",
+    "imports": [
+      "resources/js/app.js"
+    ]
+  },
+  "_index-D6W_zwED.js": {
+    "file": "assets/index-D6W_zwED.js",
+    "name": "index",
+    "imports": [
+      "resources/js/app.js"
+    ]
+  },
+  "_index-DN-fNOni.js": {
+    "file": "assets/index-DN-fNOni.js",
+    "name": "index",
+    "imports": [
+      "resources/js/app.js"
+    ]
+  },
+  "_index-DVTUz-oi.js": {
+    "file": "assets/index-DVTUz-oi.js",
+    "name": "index",
+    "imports": [
+      "resources/js/app.js"
+    ]
+  },
+  "_index-NzhBnsGN.js": {
+    "file": "assets/index-NzhBnsGN.js",
+    "name": "index",
+    "imports": [
+      "_index-Cns9bI2B.js",
+      "resources/js/app.js"
+    ]
+  },
+  "_index-ymOB4uCG.js": {
+    "file": "assets/index-ymOB4uCG.js",
     "name": "index",
     "imports": [
       "resources/js/app.js",
-      "_index-DRRoGepw.js"
-    ]
-  },
-  "_index-DglmM3V-.js": {
-    "file": "assets/index-DglmM3V-.js",
-    "name": "index",
-    "imports": [
-      "resources/js/app.js"
-    ]
-  },
-  "_index-DwUd1_ai.js": {
-    "file": "assets/index-DwUd1_ai.js",
-    "name": "index",
-    "imports": [
-      "resources/js/app.js"
-    ]
-  },
-  "_index-_QvmOgAq.js": {
-    "file": "assets/index-_QvmOgAq.js",
-    "name": "index",
-    "imports": [
-      "resources/js/app.js"
+      "_index-DN-fNOni.js",
+      "_index-NzhBnsGN.js",
+      "_index-Cns9bI2B.js"
     ]
   },
   "_presence-u-koMcNl.js": {
     "file": "assets/presence-u-koMcNl.js",
     "name": "presence"
   },
-  "_useInfiniteScroll-B5RdALC0.css": {
-    "file": "assets/useInfiniteScroll-B5RdALC0.css",
-    "src": "_useInfiniteScroll-B5RdALC0.css"
+  "_useInfiniteScroll-CjiCt1T1.css": {
+    "file": "assets/useInfiniteScroll-CjiCt1T1.css",
+    "src": "_useInfiniteScroll-CjiCt1T1.css"
   },
-  "_useInfiniteScroll-JSgyrwnp.js": {
-    "file": "assets/useInfiniteScroll-JSgyrwnp.js",
+  "_useInfiniteScroll-iNspy8lz.js": {
+    "file": "assets/useInfiniteScroll-iNspy8lz.js",
     "name": "useInfiniteScroll",
     "imports": [
       "resources/js/app.js",
-      "_index-DRRoGepw.js",
-      "_index-D-m0QUU9.js",
-      "_index-BeJapwKX.js",
+      "_index-DN-fNOni.js",
+      "_index-NzhBnsGN.js",
+      "_index-Cns9bI2B.js",
       "__plugin-vue_export-helper-DlAUqK2U.js",
-      "_index-DwUd1_ai.js",
-      "_vehicleMeta-DC2Ju_2H.js",
-      "_useLocale-CHuN5F65.js"
+      "_index-DVTUz-oi.js",
+      "_vehicleMeta-tnxEt9GY.js",
+      "_useLocale-X7ezNgvw.js"
     ],
     "dynamicImports": [
       "node_modules/leaflet/dist/images/marker-icon-2x.png",
@@ -279,7 +279,7 @@
       "node_modules/leaflet/dist/leaflet-src.esm.js"
     ],
     "css": [
-      "assets/useInfiniteScroll-B5RdALC0.css"
+      "assets/useInfiniteScroll-CjiCt1T1.css"
     ],
     "assets": [
       "assets/layers-BWBAp2CZ.png",
@@ -287,28 +287,28 @@
       "assets/marker-icon-hN30_KVU.png"
     ]
   },
-  "_useLocale-CHuN5F65.js": {
-    "file": "assets/useLocale-CHuN5F65.js",
+  "_useLocale-X7ezNgvw.js": {
+    "file": "assets/useLocale-X7ezNgvw.js",
     "name": "useLocale",
     "imports": [
       "resources/js/app.js"
     ]
   },
-  "_useOtpSubmit-BXFkE_8v.js": {
-    "file": "assets/useOtpSubmit-BXFkE_8v.js",
+  "_useOtpSubmit-DhqQUjag.js": {
+    "file": "assets/useOtpSubmit-DhqQUjag.js",
     "name": "useOtpSubmit",
     "imports": [
       "resources/js/app.js",
-      "_index-D-m0QUU9.js",
-      "_index-BeJapwKX.js"
+      "_index-NzhBnsGN.js",
+      "_index-Cns9bI2B.js"
     ]
   },
   "_vehicleMeta-BurHhDtl.css": {
     "file": "assets/vehicleMeta-BurHhDtl.css",
     "src": "_vehicleMeta-BurHhDtl.css"
   },
-  "_vehicleMeta-DC2Ju_2H.js": {
-    "file": "assets/vehicleMeta-DC2Ju_2H.js",
+  "_vehicleMeta-tnxEt9GY.js": {
+    "file": "assets/vehicleMeta-tnxEt9GY.js",
     "name": "vehicleMeta",
     "imports": [
       "resources/js/app.js",
@@ -389,7 +389,7 @@
     ]
   },
   "resources/js/app.js": {
-    "file": "assets/app-Y_WjmpXs.js",
+    "file": "assets/app-9HLvDpz7.js",
     "name": "app",
     "src": "resources/js/app.js",
     "isEntry": true,
@@ -410,221 +410,221 @@
     ]
   },
   "resources/js/layouts/AdminLayout.vue": {
-    "file": "assets/AdminLayout-XmnnxR4M.js",
+    "file": "assets/AdminLayout-PHGt5AT4.js",
     "name": "AdminLayout",
     "src": "resources/js/layouts/AdminLayout.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_index-DSZKYWnu.js",
-      "_ThemeToggle-B_-peLfc.js",
-      "_index-DwUd1_ai.js",
-      "_VehicleChatDialog-Cu3aDiIr.js",
+      "_index-BZ-M3Qot.js",
+      "_ThemeToggle-DiUh99wn.js",
+      "_index-DVTUz-oi.js",
+      "_VehicleChatDialog-ykJQKNUo.js",
       "_formatDateTime-BLTbgLs_.js",
       "__plugin-vue_export-helper-DlAUqK2U.js",
-      "_index-DRRoGepw.js",
-      "_useLocale-CHuN5F65.js",
-      "_index-BeJapwKX.js",
-      "_vehicleMeta-DC2Ju_2H.js"
+      "_index-DN-fNOni.js",
+      "_useLocale-X7ezNgvw.js",
+      "_index-Cns9bI2B.js",
+      "_vehicleMeta-tnxEt9GY.js"
     ],
     "css": [
       "assets/AdminLayout-Pg-8hLOB.css"
     ]
   },
   "resources/js/layouts/DealerLayout.vue": {
-    "file": "assets/DealerLayout-Hu_TJev8.js",
+    "file": "assets/DealerLayout-BUFIX1fq.js",
     "name": "DealerLayout",
     "src": "resources/js/layouts/DealerLayout.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_index-DSZKYWnu.js",
-      "_ThemeToggle-B_-peLfc.js",
-      "_DealerFooter-CpQrmCtE.js",
+      "_index-BZ-M3Qot.js",
+      "_ThemeToggle-DiUh99wn.js",
+      "_DealerFooter-gsYaeh_S.js",
       "_presence-u-koMcNl.js",
       "__plugin-vue_export-helper-DlAUqK2U.js",
-      "_index-DRRoGepw.js",
-      "_useLocale-CHuN5F65.js"
+      "_index-DN-fNOni.js",
+      "_useLocale-X7ezNgvw.js"
     ],
     "css": [
       "assets/DealerLayout-CrAQ3Fq6.css"
     ]
   },
   "resources/js/pages/LoginPage.vue": {
-    "file": "assets/LoginPage-DIj008dX.js",
+    "file": "assets/LoginPage-CJjRzjTY.js",
     "name": "LoginPage",
     "src": "resources/js/pages/LoginPage.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_index-DglmM3V-.js",
-      "_index-D-m0QUU9.js",
-      "_index-DSQbDwqw.js",
-      "_AuthShell-BqhTc7rl.js",
+      "_index-Cbb4kMz4.js",
+      "_index-NzhBnsGN.js",
+      "_index-ymOB4uCG.js",
+      "_AuthShell-uAzSTwsa.js",
       "__plugin-vue_export-helper-DlAUqK2U.js",
-      "_index-BeJapwKX.js",
-      "_index-DRRoGepw.js",
-      "_ThemeToggle-B_-peLfc.js",
-      "_useLocale-CHuN5F65.js",
-      "_DealerFooter-CpQrmCtE.js"
+      "_index-Cns9bI2B.js",
+      "_index-DN-fNOni.js",
+      "_ThemeToggle-DiUh99wn.js",
+      "_useLocale-X7ezNgvw.js",
+      "_DealerFooter-gsYaeh_S.js"
     ],
     "css": [
       "assets/LoginPage-x_fjQKUg.css"
     ]
   },
   "resources/js/pages/TwoFactorChallengePage.vue": {
-    "file": "assets/TwoFactorChallengePage-ADeVctCX.js",
+    "file": "assets/TwoFactorChallengePage-Dlb-KXTK.js",
     "name": "TwoFactorChallengePage",
     "src": "resources/js/pages/TwoFactorChallengePage.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_index-DglmM3V-.js",
-      "_useOtpSubmit-BXFkE_8v.js",
-      "_index-D-m0QUU9.js",
-      "_AuthShell-BqhTc7rl.js",
+      "_index-Cbb4kMz4.js",
+      "_useOtpSubmit-DhqQUjag.js",
+      "_index-NzhBnsGN.js",
+      "_AuthShell-uAzSTwsa.js",
       "__plugin-vue_export-helper-DlAUqK2U.js",
-      "_index-BeJapwKX.js",
-      "_ThemeToggle-B_-peLfc.js",
-      "_useLocale-CHuN5F65.js",
-      "_DealerFooter-CpQrmCtE.js"
+      "_index-Cns9bI2B.js",
+      "_ThemeToggle-DiUh99wn.js",
+      "_useLocale-X7ezNgvw.js",
+      "_DealerFooter-gsYaeh_S.js"
     ],
     "css": [
       "assets/TwoFactorChallengePage-B2--R21K.css"
     ]
   },
   "resources/js/pages/TwoFactorSetupPage.vue": {
-    "file": "assets/TwoFactorSetupPage-Bn5yg8WO.js",
+    "file": "assets/TwoFactorSetupPage-D1RNUHTJ.js",
     "name": "TwoFactorSetupPage",
     "src": "resources/js/pages/TwoFactorSetupPage.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_index-DglmM3V-.js",
-      "_useOtpSubmit-BXFkE_8v.js",
-      "_index-DwUd1_ai.js",
-      "_AuthShell-BqhTc7rl.js",
-      "_RecoveryCodesDialog-DsAVFG-Y.js",
+      "_index-Cbb4kMz4.js",
+      "_useOtpSubmit-DhqQUjag.js",
+      "_index-DVTUz-oi.js",
+      "_AuthShell-uAzSTwsa.js",
+      "_RecoveryCodesDialog-TNfB0YLU.js",
       "__plugin-vue_export-helper-DlAUqK2U.js",
-      "_index-D-m0QUU9.js",
-      "_index-BeJapwKX.js",
-      "_ThemeToggle-B_-peLfc.js",
-      "_useLocale-CHuN5F65.js",
-      "_DealerFooter-CpQrmCtE.js",
-      "_index-BJ0r6goL.js"
+      "_index-NzhBnsGN.js",
+      "_index-Cns9bI2B.js",
+      "_ThemeToggle-DiUh99wn.js",
+      "_useLocale-X7ezNgvw.js",
+      "_DealerFooter-gsYaeh_S.js",
+      "_index-36lkvXuV.js"
     ],
     "css": [
       "assets/TwoFactorSetupPage-Cw0qlV6m.css"
     ]
   },
   "resources/js/pages/admin/AdminProfilePage.vue": {
-    "file": "assets/AdminProfilePage-BKxan8mK.js",
+    "file": "assets/AdminProfilePage-C2OfnC2J.js",
     "name": "AdminProfilePage",
     "src": "resources/js/pages/admin/AdminProfilePage.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_index-DglmM3V-.js",
-      "_index-D-m0QUU9.js",
-      "_index-DSQbDwqw.js",
-      "_index-DwUd1_ai.js",
+      "_index-Cbb4kMz4.js",
+      "_index-NzhBnsGN.js",
+      "_index-ymOB4uCG.js",
+      "_index-DVTUz-oi.js",
       "__plugin-vue_export-helper-DlAUqK2U.js",
-      "_index-BeJapwKX.js",
-      "_index-DRRoGepw.js"
+      "_index-Cns9bI2B.js",
+      "_index-DN-fNOni.js"
     ],
     "css": [
       "assets/AdminProfilePage-BIwVlbMO.css"
     ]
   },
   "resources/js/pages/admin/ContainersPage.vue": {
-    "file": "assets/ContainersPage-Cb5JMtBR.js",
+    "file": "assets/ContainersPage-C1xi1PiO.js",
     "name": "ContainersPage",
     "src": "resources/js/pages/admin/ContainersPage.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_useInfiniteScroll-JSgyrwnp.js",
-      "_index-D-m0QUU9.js",
-      "_AdminPageHeader-I_ln86La.js",
-      "_DealerFilterBadges-BdJzFYAD.js",
-      "_ContainerCarsDialog-DN7ALg1v.js",
-      "_index-DRRoGepw.js",
-      "_index-BeJapwKX.js",
+      "_useInfiniteScroll-iNspy8lz.js",
+      "_index-NzhBnsGN.js",
+      "_AdminPageHeader-BOIYLDKw.js",
+      "_DealerFilterBadges-DGz4nqnK.js",
+      "_ContainerCarsDialog-DfnNxT4v.js",
+      "_index-DN-fNOni.js",
+      "_index-Cns9bI2B.js",
       "__plugin-vue_export-helper-DlAUqK2U.js",
-      "_index-DwUd1_ai.js",
-      "_vehicleMeta-DC2Ju_2H.js",
-      "_useLocale-CHuN5F65.js",
-      "_index-BkeEDaKE.js",
-      "_index-B6DY69Qb.js"
+      "_index-DVTUz-oi.js",
+      "_vehicleMeta-tnxEt9GY.js",
+      "_useLocale-X7ezNgvw.js",
+      "_index-BNNmQGPo.js",
+      "_index-B0KahI7k.js"
     ]
   },
   "resources/js/pages/admin/DealersPage.vue": {
-    "file": "assets/DealersPage-KjC86JRc.js",
+    "file": "assets/DealersPage-C88g8B3U.js",
     "name": "DealersPage",
     "src": "resources/js/pages/admin/DealersPage.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_index-D-m0QUU9.js",
-      "_index-DSQbDwqw.js",
-      "_index-DwUd1_ai.js",
-      "_AdminPageHeader-I_ln86La.js",
-      "_RecoveryCodesDialog-DsAVFG-Y.js",
+      "_index-NzhBnsGN.js",
+      "_index-ymOB4uCG.js",
+      "_index-DVTUz-oi.js",
+      "_AdminPageHeader-BOIYLDKw.js",
+      "_RecoveryCodesDialog-TNfB0YLU.js",
       "_presence-u-koMcNl.js",
       "__plugin-vue_export-helper-DlAUqK2U.js",
-      "_index-BeJapwKX.js",
-      "_index-DRRoGepw.js",
-      "_index-BJ0r6goL.js"
+      "_index-Cns9bI2B.js",
+      "_index-DN-fNOni.js",
+      "_index-36lkvXuV.js"
     ],
     "css": [
       "assets/DealersPage-0vgFxm87.css"
     ]
   },
   "resources/js/pages/admin/SettingsPage.vue": {
-    "file": "assets/SettingsPage-P1cVyf1Q.js",
+    "file": "assets/SettingsPage-Do9elfrX.js",
     "name": "SettingsPage",
     "src": "resources/js/pages/admin/SettingsPage.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_index-D-m0QUU9.js",
-      "_index-DSQbDwqw.js",
-      "_index-B6DY69Qb.js",
-      "_index-_QvmOgAq.js",
-      "_index-DwUd1_ai.js",
-      "_AdminPageHeader-I_ln86La.js",
+      "_index-NzhBnsGN.js",
+      "_index-ymOB4uCG.js",
+      "_index-B0KahI7k.js",
+      "_index-D6W_zwED.js",
+      "_index-DVTUz-oi.js",
+      "_AdminPageHeader-BOIYLDKw.js",
       "__plugin-vue_export-helper-DlAUqK2U.js",
       "_formatDateTime-BLTbgLs_.js",
-      "_index-BeJapwKX.js",
-      "_index-DRRoGepw.js"
+      "_index-Cns9bI2B.js",
+      "_index-DN-fNOni.js"
     ],
     "css": [
       "assets/SettingsPage-eAccXWRi.css"
     ]
   },
   "resources/js/pages/admin/VehiclesPage.vue": {
-    "file": "assets/VehiclesPage-EbVLhYbJ.js",
+    "file": "assets/VehiclesPage-DYD5Wwpr.js",
     "name": "VehiclesPage",
     "src": "resources/js/pages/admin/VehiclesPage.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_useInfiniteScroll-JSgyrwnp.js",
-      "_index-D-m0QUU9.js",
-      "_VehicleDetailDrawer-CGiTEhoZ.js",
-      "_AdminPageHeader-I_ln86La.js",
-      "_DealerFilterBadges-BdJzFYAD.js",
-      "_index-DRRoGepw.js",
-      "_index-BkeEDaKE.js",
-      "_index-BeJapwKX.js",
-      "_VehicleChatDialog-Cu3aDiIr.js",
-      "_index-BJ0r6goL.js",
-      "_index-_QvmOgAq.js",
-      "_vehicleMeta-DC2Ju_2H.js",
+      "_useInfiniteScroll-iNspy8lz.js",
+      "_index-NzhBnsGN.js",
+      "_VehicleDetailDrawer-Bu_GfXcc.js",
+      "_AdminPageHeader-BOIYLDKw.js",
+      "_DealerFilterBadges-DGz4nqnK.js",
+      "_index-DN-fNOni.js",
+      "_index-BNNmQGPo.js",
+      "_index-Cns9bI2B.js",
+      "_VehicleChatDialog-ykJQKNUo.js",
+      "_index-36lkvXuV.js",
+      "_index-D6W_zwED.js",
+      "_vehicleMeta-tnxEt9GY.js",
       "__plugin-vue_export-helper-DlAUqK2U.js",
-      "_index-DwUd1_ai.js",
-      "_useLocale-CHuN5F65.js",
-      "_index-B6DY69Qb.js",
+      "_index-DVTUz-oi.js",
+      "_useLocale-X7ezNgvw.js",
+      "_index-B0KahI7k.js",
       "_formatDateTime-BLTbgLs_.js"
     ],
     "css": [
@@ -632,65 +632,65 @@
     ]
   },
   "resources/js/pages/dealer/ContainersPage.vue": {
-    "file": "assets/ContainersPage-5IxdRXsT.js",
+    "file": "assets/ContainersPage-BxLusbR9.js",
     "name": "ContainersPage",
     "src": "resources/js/pages/dealer/ContainersPage.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_ContainerCarsDialog-DN7ALg1v.js",
-      "_useInfiniteScroll-JSgyrwnp.js",
+      "_ContainerCarsDialog-DfnNxT4v.js",
+      "_useInfiniteScroll-iNspy8lz.js",
       "__plugin-vue_export-helper-DlAUqK2U.js",
-      "_index-DwUd1_ai.js",
-      "_index-BkeEDaKE.js",
-      "_index-DRRoGepw.js",
-      "_index-B6DY69Qb.js",
-      "_index-BeJapwKX.js",
-      "_vehicleMeta-DC2Ju_2H.js",
-      "_index-D-m0QUU9.js",
-      "_useLocale-CHuN5F65.js"
+      "_index-DVTUz-oi.js",
+      "_index-BNNmQGPo.js",
+      "_index-DN-fNOni.js",
+      "_index-B0KahI7k.js",
+      "_index-Cns9bI2B.js",
+      "_vehicleMeta-tnxEt9GY.js",
+      "_index-NzhBnsGN.js",
+      "_useLocale-X7ezNgvw.js"
     ],
     "css": [
       "assets/ContainersPage-CzFEKyr2.css"
     ]
   },
   "resources/js/pages/dealer/DealerProfilePage.vue": {
-    "file": "assets/DealerProfilePage-xP-O0rS1.js",
+    "file": "assets/DealerProfilePage-DVJtq3uJ.js",
     "name": "DealerProfilePage",
     "src": "resources/js/pages/dealer/DealerProfilePage.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_index-DglmM3V-.js",
-      "_index-D-m0QUU9.js",
-      "_index-BJ0r6goL.js",
-      "_index-DwUd1_ai.js",
-      "_RecoveryCodesDialog-DsAVFG-Y.js",
+      "_index-Cbb4kMz4.js",
+      "_index-NzhBnsGN.js",
+      "_index-36lkvXuV.js",
+      "_index-DVTUz-oi.js",
+      "_RecoveryCodesDialog-TNfB0YLU.js",
       "__plugin-vue_export-helper-DlAUqK2U.js",
-      "_index-BeJapwKX.js"
+      "_index-Cns9bI2B.js"
     ],
     "css": [
       "assets/DealerProfilePage-Dx35qCR2.css"
     ]
   },
   "resources/js/pages/dealer/VehiclesPage.vue": {
-    "file": "assets/VehiclesPage-wiyglymM.js",
+    "file": "assets/VehiclesPage-nLgCnVzj.js",
     "name": "VehiclesPage",
     "src": "resources/js/pages/dealer/VehiclesPage.vue",
     "isDynamicEntry": true,
     "imports": [
       "resources/js/app.js",
-      "_useInfiniteScroll-JSgyrwnp.js",
-      "_index-D-m0QUU9.js",
+      "_useInfiniteScroll-iNspy8lz.js",
+      "_index-NzhBnsGN.js",
       "__plugin-vue_export-helper-DlAUqK2U.js",
-      "_VehicleDetailDrawer-CGiTEhoZ.js",
-      "_VehicleChatDialog-Cu3aDiIr.js",
-      "_index-DRRoGepw.js",
-      "_index-BeJapwKX.js",
-      "_index-DwUd1_ai.js",
-      "_vehicleMeta-DC2Ju_2H.js",
-      "_useLocale-CHuN5F65.js",
-      "_index-_QvmOgAq.js",
+      "_VehicleDetailDrawer-Bu_GfXcc.js",
+      "_VehicleChatDialog-ykJQKNUo.js",
+      "_index-DN-fNOni.js",
+      "_index-Cns9bI2B.js",
+      "_index-DVTUz-oi.js",
+      "_vehicleMeta-tnxEt9GY.js",
+      "_useLocale-X7ezNgvw.js",
+      "_index-D6W_zwED.js",
       "_formatDateTime-BLTbgLs_.js"
     ],
     "css": [

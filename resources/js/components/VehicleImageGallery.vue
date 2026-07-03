@@ -9,14 +9,10 @@
             class="thumb-btn"
 
             :class="{
-
-                empty: !hasPreview,
-
                 clickable: canOpenGallery,
-
                 'thumb-btn--row': variant === 'row',
                 'thumb-btn--drawer': variant === 'drawer',
-
+                'thumb-btn--placeholder': !showPhotoThumbnail,
             }"
 
             :title="thumbTitle"
@@ -26,23 +22,20 @@
         >
 
             <img
-
-                v-if="thumbnail"
-
+                v-if="showPhotoThumbnail"
                 :src="thumbnail"
-
                 :alt="label"
-
                 class="thumb-img"
-
                 loading="lazy"
-
+                @error="onThumbError"
             />
 
-            <span v-else class="thumb-empty">
+            <div v-else-if="brandLogoUrl" class="thumb-brand" aria-hidden="true">
+                <img :src="brandLogoUrl" class="thumb-brand-logo" alt="" />
+            </div>
 
-                <i class="pi pi-image" />
-
+            <span v-else class="thumb-empty thumb-empty--brand">
+                <i class="pi pi-car" />
             </span>
 
             <span
@@ -94,7 +87,7 @@
 
 <script setup>
 
-import { computed, ref } from 'vue';
+import { computed, ref, watch } from 'vue';
 import {
     fetchLiveVehicleGallery,
     mergeGalleryIntoVehicle,
@@ -109,8 +102,6 @@ import {
 
     hasVehicleGallery,
 
-    hasVehiclePreview,
-
     vehicleGalleryCount,
 
     vehicleLabel,
@@ -118,6 +109,7 @@ import {
     vehicleThumbnail,
 
 } from '../utils/vehicleImages';
+import { vehicleBrandLogoUrl } from '../utils/vehicleBrandLogo';
 
 
 
@@ -169,15 +161,19 @@ const lightboxVehicle = ref(null);
 
 const galleryFetching = ref(false);
 
-
+const thumbFailed = ref(false);
 
 const thumbnail = computed(() => vehicleThumbnail(props.vehicle));
+
+const brandLogoUrl = computed(() => vehicleBrandLogoUrl(props.vehicle));
+
+const showPhotoThumbnail = computed(() => Boolean(thumbnail.value) && ! thumbFailed.value);
 
 const galleryCount = computed(() => vehicleGalleryCount(props.vehicle));
 
 const label = computed(() => vehicleLabel(props.vehicle));
 
-const hasPreview = computed(() => hasVehiclePreview(props.vehicle));
+const hasPreview = computed(() => showPhotoThumbnail.value || Boolean(brandLogoUrl.value));
 
 const canOpenGallery = computed(() => {
     if (hasVehicleGallery(props.vehicle)) {
@@ -233,7 +229,6 @@ const buttonLabel = computed(() =>
 
 
 async function openGallery() {
-
     if (! canOpenGallery.value || galleryFetching.value) {
 
         return;
@@ -263,6 +258,17 @@ async function openGallery() {
     visible.value = true;
 
 }
+
+function onThumbError() {
+    thumbFailed.value = true;
+}
+
+watch(
+    () => [props.vehicle?.id, props.vehicle?.vin, thumbnail.value],
+    () => {
+        thumbFailed.value = false;
+    },
+);
 
 </script>
 
@@ -386,10 +392,8 @@ async function openGallery() {
 
 
 
-.thumb-btn.empty {
-
-    opacity: 0.65;
-
+.thumb-btn--placeholder {
+    border-color: rgb(139 92 246 / 35%);
 }
 
 
@@ -409,19 +413,34 @@ async function openGallery() {
 
 
 .thumb-empty {
-
     width: 100%;
-
     height: 100%;
-
     display: grid;
-
     place-items: center;
-
     color: #a1a1aa;
-
     font-size: 1.1rem;
+}
 
+.thumb-brand {
+    width: 100%;
+    height: 100%;
+    display: grid;
+    place-items: center;
+    background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+}
+
+.thumb-brand-logo {
+    width: 68%;
+    height: 68%;
+    object-fit: contain;
+    filter: brightness(0) invert(1);
+    pointer-events: none;
+}
+
+.thumb-empty--brand {
+    background: linear-gradient(135deg, #a855f7 0%, #7c3aed 100%);
+    color: #fff;
+    font-size: 1.35rem;
 }
 
 
