@@ -50,4 +50,8 @@ return [
         'folder' => env('CLOUDINARY_FOLDER', 'vinstack/containers'),
     ],
 
+    'wa_queue' => [
+        'base_url' => env('WA_QUEUE_BASE_URL'),
+    ],
+
 ];

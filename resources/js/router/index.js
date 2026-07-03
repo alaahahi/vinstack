@@ -71,6 +71,15 @@ const routes = [
                 },
             },
             {
+                path: 'notifications',
+                name: 'admin.notifications',
+                component: () => import('../pages/admin/NotificationsPage.vue'),
+                meta: {
+                    titleKey: 'pages.admin.notifications.title',
+                    subtitleKey: 'pages.admin.notifications.subtitle',
+                },
+            },
+            {
                 path: 'profile',
                 name: 'admin.profile',
                 component: () => import('../pages/admin/AdminProfilePage.vue'),

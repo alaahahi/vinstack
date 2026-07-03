@@ -134,6 +134,7 @@ const navGroups = computed(() => [
         label: t('navigation.business'),
         items: [
             { name: 'admin.dealers', label: t('pages.admin.dealers.title'), icon: 'pi pi-building' },
+            { name: 'admin.notifications', label: t('pages.admin.notifications.title'), icon: 'pi pi-whatsapp' },
         ],
     },
     {

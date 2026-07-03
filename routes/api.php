@@ -6,6 +6,7 @@ use App\Http\Controllers\Admin\DatabaseBackupController;
 use App\Http\Controllers\Admin\DealerController;
 use App\Http\Controllers\Admin\ManualVehicleController;
 use App\Http\Controllers\Admin\NujoomAlJazeeraImportController;
+use App\Http\Controllers\Admin\DealerNotificationController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\Admin\SystemController;
@@ -51,6 +52,13 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/notifications', [NotificationController::class, 'index']);
         Route::get('/notifications/unread-count', [NotificationController::class, 'unreadCount']);
         Route::post('/notifications/status/{notification}/read', [NotificationController::class, 'markStatusRead']);
+
+        Route::get('/dealer-notifications', [DealerNotificationController::class, 'index']);
+        Route::get('/dealer-notifications/dealers', [DealerNotificationController::class, 'dealers']);
+        Route::get('/wa-queue/settings', [DealerNotificationController::class, 'settings']);
+        Route::put('/wa-queue/settings', [DealerNotificationController::class, 'updateSettings']);
+        Route::post('/wa-queue/test-connection', [DealerNotificationController::class, 'testConnection']);
+        Route::post('/dealer-notifications/send', [DealerNotificationController::class, 'send']);
 
         Route::get('/dealers', [DealerController::class, 'index']);
         Route::get('/dealers/summary', [DealerController::class, 'summary']);
