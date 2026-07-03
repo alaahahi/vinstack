@@ -3,7 +3,7 @@
         <!-- Vehicle -->
         <div class="cell cell-vehicle">
             <div class="vehicle-thumb-wrap">
-                <VehicleImageGallery :vehicle="vehicle" variant="row" />
+                <VehicleImageGallery :vehicle="vehicle" variant="row" :api-mode="mode" />
                 <span
                     v-if="hasUnreadMessages"
                     class="message-unread-badge"
