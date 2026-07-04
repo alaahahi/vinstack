@@ -40,6 +40,10 @@
                                 <i :class="isDealerOnline(dealer) ? 'pi pi-circle-fill' : 'pi pi-clock'" />
                                 {{ presenceLabel(dealer) }}
                             </span>
+                            <span class="locale-badge" :title="t('dealers.notificationLocale')">
+                                <i class="pi pi-language" />
+                                {{ notificationLocaleLabel(dealer) }}
+                            </span>
                         </p>
                     </div>
                     <div v-if="dealer.phone" class="dealer-card__meta">
@@ -177,6 +181,7 @@ import AdminPageHeader from '../../components/AdminPageHeader.vue';
 import RecoveryCodesDialog from '../../components/RecoveryCodesDialog.vue';
 import api from '../../api/client';
 import { ADMIN_POLL_MS } from '../../constants/presence';
+import { SUPPORTED_LOCALES } from '../../constants/locales';
 import { formatDealerLoginCopy } from '../../utils/dealerLoginCopy';
 import { formatLastSeenLabel, isDealerOnline } from '../../utils/lastSeen';
 
@@ -216,6 +221,17 @@ const editForm = reactive({
 
 function presenceLabel(dealer) {
     return isDealerOnline(dealer) ? t('dealers.online') : formatLastSeenLabel(dealer);
+}
+
+function notificationLocaleLabel(dealer) {
+    if (! dealer.notification_locale_customized) {
+        return t('dealers.notificationLocaleDefault');
+    }
+
+    const code = dealer.notification_locale || dealer.locale || 'ckb';
+    const definition = SUPPORTED_LOCALES.find((entry) => entry.code === code);
+
+    return definition?.nativeName || code;
 }
 
 async function load({ silent = false } = {}) {
@@ -551,6 +567,10 @@ onUnmounted(() => {
 
 .dealer-card__presence {
     margin: 0.35rem 0 0;
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem;
 }
 
 .presence-badge {
@@ -577,6 +597,22 @@ onUnmounted(() => {
     color: var(--vs-zinc-600);
     background: var(--admin-surface);
     border-color: var(--admin-border);
+}
+
+.locale-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    font-size: 0.76rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 999px;
+    color: var(--admin-accent, #7c3aed);
+    background: color-mix(in srgb, var(--admin-accent, #7c3aed) 10%, transparent);
+    border: 1px solid color-mix(in srgb, var(--admin-accent, #7c3aed) 22%, var(--vs-border));
+}
+
+.locale-badge i {
+    font-size: 0.72rem;
 }
 
 .dealer-card__sep {

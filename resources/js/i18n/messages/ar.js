@@ -272,6 +272,8 @@ export default {
         recoveryHeader: 'رموز الاسترداد المحفوظة',
         online: 'متصل',
         noData: 'لا توجد بيانات',
+        notificationLocale: 'لغة الإشعارات',
+        notificationLocaleDefault: 'کوردی (افتراضي)',
         noLoginData: 'لا يوجد هاتف أو بريد لنسخ بيانات الدخول.',
         copied: 'تم النسخ',
         copiedDetail: 'تم نسخ بيانات الدخول إلى الحافظة.',

@@ -3,6 +3,8 @@ import i18n, { applyLocaleToDocument, readStartingLocale } from '../i18n';
 import { LOCALE_STORAGE_KEY, SUPPORTED_LOCALES, getLocaleDirection, normalizeLocale } from '../constants/locales';
 import api from '../api/client';
 
+const DEALER_DEFAULT_LOCALE = 'ckb';
+
 export const useLocaleStore = defineStore('locale', {
     state: () => ({
         locale: readStartingLocale(),
@@ -13,14 +15,10 @@ export const useLocaleStore = defineStore('locale', {
         isRtl: (state) => getLocaleDirection(state.locale) === 'rtl',
     },
     actions: {
-        initFromUser(userLocale) {
-            if (userLocale) {
-                this.setLocale(userLocale, { syncServer: false });
+        initFromUser(userLocale, { isDealer = false } = {}) {
+            const startingLocale = userLocale || (isDealer ? DEALER_DEFAULT_LOCALE : this.locale);
 
-                return;
-            }
-
-            this.applyLocale(this.locale);
+            this.setLocale(startingLocale, { syncServer: false });
         },
         setLocale(locale, { syncServer = true } = {}) {
             const nextLocale = normalizeLocale(locale);

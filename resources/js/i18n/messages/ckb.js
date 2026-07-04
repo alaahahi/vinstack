@@ -272,6 +272,8 @@ export default {
         recoveryHeader: 'کۆدی گەڕانەوەی پاشەکەوتکراو',
         online: 'سەرهێڵ',
         noData: 'داتا نییە',
+        notificationLocale: 'زمانی ئاگادارکردنەوە',
+        notificationLocaleDefault: 'کوردی (بنەڕەتی)',
         noLoginData: 'تەلەفۆن یان ئیمەیڵ نییە بۆ کۆپیکردن.',
         copied: 'کۆپیکرا',
         copiedDetail: 'زانیاری چوونەژوورەوە کۆپیکرا.',

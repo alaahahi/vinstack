@@ -13,7 +13,7 @@ class DealerNotificationMessageBuilder
     {
         $dealer->loadMissing('user');
 
-        return SupportedLocale::normalize($dealer->user?->locale);
+        return SupportedLocale::forNotifications($dealer->user?->locale);
     }
 
     public function vehicleAssigned(Dealer $dealer, Vehicle $vehicle, ?string $companyName = null): string

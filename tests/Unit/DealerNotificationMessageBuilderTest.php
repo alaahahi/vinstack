@@ -42,10 +42,36 @@ class DealerNotificationMessageBuilderTest extends TestCase
         $this->assertStringContainsString('Destination: Dubai', $message);
     }
 
-    public function test_supported_locale_normalizes_unknown_values(): void
+    public function test_vehicle_assigned_defaults_to_kurdish_when_locale_not_set(): void
     {
-        $this->assertSame('ar', SupportedLocale::normalize(null));
-        $this->assertSame('en', SupportedLocale::normalize('en'));
-        $this->assertSame('ar', SupportedLocale::normalize('fr'));
+        $user = User::factory()->create([
+            'role' => UserRole::Dealer,
+            'locale' => null,
+        ]);
+        $dealer = Dealer::query()->create([
+            'user_id' => $user->id,
+            'company_name' => 'Acme Motors',
+            'phone' => '+9647500000001',
+        ]);
+        $vehicle = Vehicle::query()->create([
+            'vin' => 'TESTVIN123',
+            'make' => 'Toyota',
+            'model' => 'Camry',
+            'year' => 2022,
+        ]);
+
+        $message = app(DealerNotificationMessageBuilder::class)->vehicleAssigned($dealer, $vehicle, 'Kamal Kamal');
+
+        $this->assertStringContainsString('ئۆتۆمبێلێکی نوێ زیادکرا بۆ هەژمارەکەتان لە کۆمپانیای Kamal Kamal', $message);
+        $this->assertStringContainsString('ژمارەی شاسی: TESTVIN123', $message);
+    }
+
+    public function test_supported_locale_defaults_to_kurdish_for_notifications(): void
+    {
+        $this->assertSame('ckb', SupportedLocale::forNotifications(null));
+        $this->assertSame('en', SupportedLocale::forNotifications('en'));
+        $this->assertSame('ckb', SupportedLocale::forNotifications('fr'));
+        $this->assertFalse(SupportedLocale::isCustomized(null));
+        $this->assertTrue(SupportedLocale::isCustomized('ar'));
     }
 }

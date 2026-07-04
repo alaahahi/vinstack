@@ -272,6 +272,8 @@ export default {
         recoveryHeader: 'Saved recovery codes',
         online: 'Online',
         noData: 'No data',
+        notificationLocale: 'Notification language',
+        notificationLocaleDefault: 'Kurdish (default)',
         noLoginData: 'No phone or email to copy login details.',
         copied: 'Copied',
         copiedDetail: 'Login details copied to clipboard.',

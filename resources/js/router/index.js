@@ -156,8 +156,12 @@ router.beforeEach(async (to) => {
         }
     }
 
-    if (auth.user?.locale) {
-        useLocaleStore().setLocale(auth.user.locale, { syncServer: false });
+    if (auth.user) {
+        const locale = auth.user.locale || (auth.isDealer ? 'ckb' : null);
+
+        if (locale) {
+            useLocaleStore().setLocale(locale, { syncServer: false });
+        }
     }
 
     if (to.meta.guest && auth.isAuthenticated) {
