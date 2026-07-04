@@ -26,6 +26,7 @@ class User extends Authenticatable
         'password',
         'role',
         'locale',
+        'locale_customized',
     ];
 
     protected $hidden = [
@@ -43,6 +44,7 @@ class User extends Authenticatable
             'last_seen_at' => 'datetime',
             'password' => 'hashed',
             'role' => UserRole::class,
+            'locale_customized' => 'boolean',
             'two_factor_confirmed_at' => 'datetime',
             'recovery_codes_archived_at' => 'datetime',
         ];

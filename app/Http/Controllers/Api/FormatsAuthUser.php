@@ -21,6 +21,7 @@ trait FormatsAuthUser
             'phone' => $user->phone,
             'role' => $user->role->value,
             'locale' => $user->locale,
+            'locale_customized' => (bool) $user->locale_customized,
             'two_factor_enabled' => $user->isDealer() && $user->hasEnabledTwoFactorAuthentication(),
             'dealer' => $user->dealer ? [
                 'id' => $user->dealer->id,

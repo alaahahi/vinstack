@@ -157,7 +157,10 @@ router.beforeEach(async (to) => {
     }
 
     if (auth.user) {
-        const locale = auth.user.locale || (auth.isDealer ? 'ckb' : null);
+        const customized = Boolean(auth.user.locale_customized);
+        const locale = customized
+            ? auth.user.locale
+            : (auth.isDealer ? 'ckb' : auth.user.locale);
 
         if (locale) {
             useLocaleStore().setLocale(locale, { syncServer: false });

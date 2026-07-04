@@ -1,5 +1,5 @@
 import { defineStore } from 'pinia';
-import i18n, { applyLocaleToDocument, readStartingLocale } from '../i18n';
+import i18n, { applyLocaleToDocument } from '../i18n';
 import { LOCALE_STORAGE_KEY, SUPPORTED_LOCALES, getLocaleDirection, normalizeLocale } from '../constants/locales';
 import api from '../api/client';
 
@@ -7,7 +7,7 @@ const DEALER_DEFAULT_LOCALE = 'ckb';
 
 export const useLocaleStore = defineStore('locale', {
     state: () => ({
-        locale: readStartingLocale(),
+        locale: DEALER_DEFAULT_LOCALE,
     }),
     getters: {
         availableLocales: () => SUPPORTED_LOCALES,
@@ -15,10 +15,28 @@ export const useLocaleStore = defineStore('locale', {
         isRtl: (state) => getLocaleDirection(state.locale) === 'rtl',
     },
     actions: {
-        initFromUser(userLocale, { isDealer = false } = {}) {
-            const startingLocale = userLocale || (isDealer ? DEALER_DEFAULT_LOCALE : this.locale);
+        initFromUser(userLocale, { isDealer = false, localeCustomized = false } = {}) {
+            if (isDealer && ! localeCustomized) {
+                this.setLocale(DEALER_DEFAULT_LOCALE, { syncServer: false });
 
-            this.setLocale(startingLocale, { syncServer: false });
+                return;
+            }
+
+            if (userLocale) {
+                this.setLocale(userLocale, { syncServer: false });
+
+                return;
+            }
+
+            const stored = localStorage.getItem(LOCALE_STORAGE_KEY);
+
+            if (stored) {
+                this.applyLocale(stored);
+
+                return;
+            }
+
+            this.setLocale(isDealer ? DEALER_DEFAULT_LOCALE : 'ar', { syncServer: false });
         },
         setLocale(locale, { syncServer = true } = {}) {
             const nextLocale = normalizeLocale(locale);

@@ -4,16 +4,17 @@ namespace App\Support;
 
 class SupportedLocale
 {
-    /** @deprecated Use NOTIFICATION_DEFAULT for dealers who never set a locale */
-    public const DEFAULT = 'ar';
-
     public const NOTIFICATION_DEFAULT = 'ckb';
 
     /** @var list<string> */
     public const CODES = ['ar', 'en', 'ckb'];
 
-    public static function forNotifications(?string $locale): string
+    public static function forNotifications(?string $locale, bool $customized = false): string
     {
+        if (! $customized) {
+            return self::NOTIFICATION_DEFAULT;
+        }
+
         $locale = strtolower(trim((string) $locale));
 
         if ($locale !== '' && in_array($locale, self::CODES, true)) {
@@ -21,13 +22,6 @@ class SupportedLocale
         }
 
         return self::NOTIFICATION_DEFAULT;
-    }
-
-    public static function isCustomized(?string $locale): bool
-    {
-        $locale = strtolower(trim((string) $locale));
-
-        return $locale !== '' && in_array($locale, self::CODES, true);
     }
 
     public static function normalize(?string $locale): string

@@ -15,7 +15,10 @@ class LocaleController extends Controller
         $user = $request->user();
         $locale = SupportedLocale::normalize($request->string('locale')->toString());
 
-        $user->update(['locale' => $locale]);
+        $user->update([
+            'locale' => $locale,
+            'locale_customized' => true,
+        ]);
 
         return response()->json([
             'data' => ['locale' => $locale],

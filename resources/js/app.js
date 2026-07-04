@@ -29,7 +29,10 @@ app.use(PrimeVue, {
 
 const auth = useAuthStore();
 const localeStore = useLocaleStore();
-localeStore.initFromUser(auth.user?.locale, { isDealer: auth.isDealer });
+localeStore.initFromUser(auth.user?.locale, {
+    isDealer: auth.isDealer,
+    localeCustomized: Boolean(auth.user?.locale_customized),
+});
 useThemeStore(pinia).init();
 app.use(ToastService);
 app.use(ConfirmationService);

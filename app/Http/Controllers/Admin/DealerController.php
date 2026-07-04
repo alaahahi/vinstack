@@ -22,7 +22,7 @@ class DealerController extends Controller
     {
         $dealers = Dealer::query()
             ->withCount('activeAssignments as vehicles_count')
-            ->with('user:id,name,email,phone,locale,last_seen_at,recovery_codes_archive,two_factor_confirmed_at')
+            ->with('user:id,name,email,phone,locale,locale_customized,last_seen_at,recovery_codes_archive,two_factor_confirmed_at')
             ->orderBy('company_name')
             ->get()
             ->map(fn (Dealer $dealer) => $this->formatDealer($dealer));
@@ -73,7 +73,7 @@ class DealerController extends Controller
             'login_password_encrypted' => $request->string('password')->toString(),
         ]);
 
-        $dealer->load('user:id,name,email,phone,locale,last_seen_at,recovery_codes_archive,two_factor_confirmed_at');
+        $dealer->load('user:id,name,email,phone,locale,locale_customized,last_seen_at,recovery_codes_archive,two_factor_confirmed_at');
 
         $formatted = $this->formatDealer($dealer);
 
@@ -123,7 +123,7 @@ class DealerController extends Controller
             $dealer->save();
         }
 
-        $dealer->load('user:id,name,email,phone,locale,last_seen_at,recovery_codes_archive,two_factor_confirmed_at');
+        $dealer->load('user:id,name,email,phone,locale,locale_customized,last_seen_at,recovery_codes_archive,two_factor_confirmed_at');
 
         return response()->json([
             'data' => $this->formatDealer($dealer),
@@ -206,8 +206,12 @@ class DealerController extends Controller
             'two_factor_enabled' => $user?->two_factor_confirmed_at !== null,
             'vehicles_count' => (int) ($dealer->vehicles_count ?? $dealer->activeAssignments()->count()),
             'locale' => $user?->locale,
-            'notification_locale' => SupportedLocale::forNotifications($user?->locale),
-            'notification_locale_customized' => SupportedLocale::isCustomized($user?->locale),
+            'locale_customized' => (bool) $user?->locale_customized,
+            'notification_locale' => SupportedLocale::forNotifications(
+                $user?->locale,
+                (bool) $user?->locale_customized,
+            ),
+            'notification_locale_customized' => (bool) $user?->locale_customized,
         ];
     }
 
