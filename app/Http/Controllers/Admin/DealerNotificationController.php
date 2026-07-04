@@ -83,6 +83,8 @@ class DealerNotificationController extends Controller
         return response()->json([
             'data' => $result['log'] ?? null,
             'message' => $result['message'],
+            'wa_queue_status' => $result['status'] ?? null,
+            'errors' => $result['errors'] ?? null,
         ], $result['ok'] ? 201 : 422);
     }
 

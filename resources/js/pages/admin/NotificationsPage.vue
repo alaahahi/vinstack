@@ -349,11 +349,14 @@ async function sendNotification() {
             await loadLog();
         }
     } catch (e) {
+        const msg = e.response?.data?.message || t('dealerNotifications.sendFailed');
         toast.add({
             severity: 'error',
-            summary: t('common.error'),
-            detail: e.response?.data?.message || t('dealerNotifications.sendFailed'),
-            life: 5000,
+            summary: msg,
+            detail: e.response?.data?.errors
+                ? Object.values(e.response.data.errors).flat().join(' · ')
+                : undefined,
+            life: 6000,
         });
     } finally {
         sending.value = false;

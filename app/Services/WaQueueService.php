@@ -167,7 +167,7 @@ class WaQueueService
         if ($formattedPhone === null) {
             return [
                 'ok' => false,
-                'message' => 'رقم هاتف التاجر غير صالح.',
+                'message' => 'رقم هاتف التاجر غير صالح أو أطول من المسموح (20 حرفاً بصيغة +964...).',
             ];
         }
 
@@ -189,6 +189,8 @@ class WaQueueService
                 return [
                     'ok' => false,
                     'message' => $this->extractErrorMessage($response->json(), $response->status()),
+                    'status' => $response->status(),
+                    'errors' => is_array($response->json('errors')) ? $response->json('errors') : null,
                 ];
             }
 
@@ -226,11 +228,21 @@ class WaQueueService
             return null;
         }
 
+        if (str_starts_with($digits, '00')) {
+            $digits = substr($digits, 2);
+        }
+
         if (str_starts_with($digits, '0') && strlen($digits) === 11) {
             $digits = '964'.substr($digits, 1);
         }
 
-        return '+'.$digits;
+        $formatted = '+'.$digits;
+
+        if (strlen($formatted) > 20) {
+            return null;
+        }
+
+        return $formatted;
     }
 
     protected function client()
@@ -257,6 +269,19 @@ class WaQueueService
                     return $first;
                 }
             }
+        }
+
+        return $this->httpFailureMessage($status);
+    }
+
+    protected function httpFailureMessage(int $status): string
+    {
+        if ($status === 419) {
+            return 'WA Queue رفض الطلب (CSRF) — تأكد من تحديث wa-queue لاستثناء api/v1 من CSRF.';
+        }
+
+        if ($status === 422) {
+            return 'بيانات الإرسال مرفوضة من WA Queue — تحقق من رقم الهاتف (حد أقصى 20 حرفاً) والحقول المطلوبة.';
         }
 
         return "فشل طلب WA Queue (HTTP {$status}).";

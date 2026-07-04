@@ -79,6 +79,8 @@ class DealerNotificationService
         return [
             'ok' => $result['ok'],
             'message' => $result['message'],
+            'status' => $result['status'] ?? null,
+            'errors' => $result['errors'] ?? null,
             'log' => $this->serialize($log->fresh(['dealer:id,company_name,phone', 'author:id,name'])),
         ];
     }
