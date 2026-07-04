@@ -50,7 +50,7 @@ return [
     |
     */
 
-    'expiration' => (int) env('SANCTUM_EXPIRATION', 43200), // 30 days (1 month)
+    'expiration' => (int) env('SANCTUM_EXPIRATION', 525600), // 365 days (1 year)
 
     /*
     |--------------------------------------------------------------------------
