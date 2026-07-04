@@ -1,5 +1,6 @@
 import { createRouter, createWebHistory } from 'vue-router';
 import { useAuthStore } from '../stores/auth';
+import { useLocaleStore } from '../stores/locale';
 
 const routes = [
     {
@@ -153,6 +154,10 @@ router.beforeEach(async (to) => {
         } catch {
             auth.logout();
         }
+    }
+
+    if (auth.user?.locale) {
+        useLocaleStore().setLocale(auth.user.locale, { syncServer: false });
     }
 
     if (to.meta.guest && auth.isAuthenticated) {

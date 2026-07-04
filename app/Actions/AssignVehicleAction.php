@@ -7,13 +7,18 @@ use App\Models\Dealer;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleAssignment;
+use App\Services\DealerNotificationService;
 use Illuminate\Support\Facades\DB;
 
 class AssignVehicleAction
 {
+    public function __construct(
+        protected DealerNotificationService $dealerNotifications,
+    ) {}
+
     public function execute(Vehicle $vehicle, Dealer $dealer, User $admin): VehicleAssignment
     {
-        return DB::transaction(function () use ($vehicle, $dealer, $admin) {
+        $assignment = DB::transaction(function () use ($vehicle, $dealer, $admin) {
             VehicleAssignment::query()
                 ->where('vehicle_id', $vehicle->id)
                 ->where('is_active', true)
@@ -34,5 +39,9 @@ class AssignVehicleAction
 
             return $assignment->load(['dealer.user', 'vehicle']);
         });
+
+        $this->dealerNotifications->notifyVehicleAssigned($dealer, $vehicle->fresh(), $admin);
+
+        return $assignment;
     }
 }

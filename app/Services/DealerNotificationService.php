@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Dealer;
 use App\Models\DealerNotificationLog;
 use App\Models\User;
+use App\Models\Vehicle;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -12,6 +13,7 @@ class DealerNotificationService
 {
     public function __construct(
         protected WaQueueService $waQueue,
+        protected DealerNotificationMessageBuilder $messages,
     ) {}
 
     /**
@@ -28,19 +30,31 @@ class DealerNotificationService
     }
 
     /**
-     * @return array{ok: bool, message: string, log?: array<string, mixed>}
+     * @return array{ok: bool, message: string, log?: array<string, mixed>, status?: int|null, errors?: array<string, mixed>|null}
+     */
+    public function notifyVehicleAssigned(Dealer $dealer, Vehicle $vehicle, ?User $author = null): array
+    {
+        $locale = $this->messages->localeForDealer($dealer);
+        $message = $this->messages->vehicleAssigned($dealer, $vehicle);
+        $uniqueKey = 'assign-vehicle-'.$vehicle->id.'-dealer-'.$dealer->id.'-'.now()->timestamp;
+
+        return $this->dispatchToDealer(
+            dealer: $dealer,
+            message: $message,
+            source: 'assignment',
+            event: 'dealer.vehicle_assigned',
+            uniqueKey: $uniqueKey,
+            author: $author,
+            vehicleId: $vehicle->id,
+            locale: $locale,
+        );
+    }
+
+    /**
+     * @return array{ok: bool, message: string, log?: array<string, mixed>, status?: int|null, errors?: array<string, mixed>|null}
      */
     public function sendManualToDealer(Dealer $dealer, string $message, ?User $author = null): array
     {
-        $phone = $dealer->phone;
-
-        if (! filled($phone)) {
-            return [
-                'ok' => false,
-                'message' => 'التاجر لا يملك رقم هاتف مسجّل.',
-            ];
-        }
-
         $trimmed = trim($message);
 
         if ($trimmed === '') {
@@ -52,24 +66,59 @@ class DealerNotificationService
 
         $uniqueKey = 'manual-dealer-'.$dealer->id.'-'.now()->timestamp.'-'.Str::random(6);
 
+        return $this->dispatchToDealer(
+            dealer: $dealer,
+            message: $trimmed,
+            source: 'manual',
+            event: 'dealer.manual_notification',
+            uniqueKey: $uniqueKey,
+            author: $author,
+            locale: $this->messages->localeForDealer($dealer),
+        );
+    }
+
+    /**
+     * @return array{ok: bool, message: string, log?: array<string, mixed>, status?: int|null, errors?: array<string, mixed>|null}
+     */
+    protected function dispatchToDealer(
+        Dealer $dealer,
+        string $message,
+        string $source,
+        string $event,
+        string $uniqueKey,
+        ?User $author = null,
+        ?int $vehicleId = null,
+        ?string $locale = null,
+    ): array {
+        $phone = $dealer->phone;
+
+        if (! filled($phone)) {
+            return [
+                'ok' => false,
+                'message' => 'التاجر لا يملك رقم هاتف مسجّل.',
+            ];
+        }
+
         $result = $this->waQueue->enqueueMessage(
             phone: $phone,
-            message: $trimmed,
+            message: $message,
             source: 'support',
-            event: 'dealer.manual_notification',
+            event: $event,
             recipientName: $dealer->company_name,
             uniqueKey: $uniqueKey,
-            createdBy: $author ? 'admin:'.$author->id : 'admin',
+            createdBy: $author ? 'admin:'.$author->id : 'vinstack-lite',
         );
 
         $log = DealerNotificationLog::query()->create([
             'dealer_id' => $dealer->id,
+            'vehicle_id' => $vehicleId,
             'created_by' => $author?->id,
             'phone' => $this->waQueue->formatQueuePhone($phone) ?? $phone,
-            'message' => $trimmed,
+            'message' => $message,
             'channel' => 'whatsapp',
-            'source' => 'manual',
-            'event' => 'dealer.manual_notification',
+            'source' => $source,
+            'event' => $event,
+            'locale' => $locale,
             'wa_queue_id' => data_get($result, 'data.id'),
             'wa_queue_status' => data_get($result, 'data.status'),
             'wa_queue_response' => $result['data'] ?? null,
@@ -93,12 +142,14 @@ class DealerNotificationService
         return [
             'id' => $row->id,
             'dealer_id' => $row->dealer_id,
+            'vehicle_id' => $row->vehicle_id,
             'dealer_name' => $row->dealer?->company_name,
             'phone' => $row->phone,
             'message' => $row->message,
             'channel' => $row->channel,
             'source' => $row->source,
             'event' => $row->event,
+            'locale' => $row->locale,
             'wa_queue_id' => $row->wa_queue_id,
             'wa_queue_status' => $row->wa_queue_status,
             'error_message' => $row->error_message,

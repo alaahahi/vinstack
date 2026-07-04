@@ -9,12 +9,14 @@ class DealerNotificationLog extends Model
 {
     protected $fillable = [
         'dealer_id',
+        'vehicle_id',
         'created_by',
         'phone',
         'message',
         'channel',
         'source',
         'event',
+        'locale',
         'wa_queue_id',
         'wa_queue_status',
         'wa_queue_response',
@@ -31,6 +33,11 @@ class DealerNotificationLog extends Model
     public function dealer(): BelongsTo
     {
         return $this->belongsTo(Dealer::class);
+    }
+
+    public function vehicle(): BelongsTo
+    {
+        return $this->belongsTo(Vehicle::class);
     }
 
     public function author(): BelongsTo

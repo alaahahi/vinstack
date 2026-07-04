@@ -10,6 +10,7 @@ import i18n from './i18n';
 import router from './router';
 import { useLocaleStore } from './stores/locale';
 import { useThemeStore } from './stores/theme';
+import { useAuthStore } from './stores/auth';
 
 const pinia = createPinia();
 const app = createApp(App);
@@ -26,7 +27,9 @@ app.use(PrimeVue, {
     },
 });
 
-useLocaleStore(pinia).init();
+const auth = useAuthStore();
+const localeStore = useLocaleStore();
+localeStore.initFromUser(auth.user?.locale);
 useThemeStore(pinia).init();
 app.use(ToastService);
 app.use(ConfirmationService);

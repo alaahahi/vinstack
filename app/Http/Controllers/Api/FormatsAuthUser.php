@@ -20,6 +20,7 @@ trait FormatsAuthUser
             'email' => $user->email,
             'phone' => $user->phone,
             'role' => $user->role->value,
+            'locale' => $user->locale ?? 'ar',
             'two_factor_enabled' => $user->isDealer() && $user->hasEnabledTwoFactorAuthentication(),
             'dealer' => $user->dealer ? [
                 'id' => $user->dealer->id,

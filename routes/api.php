@@ -26,6 +26,7 @@ use App\Http\Controllers\VehicleGalleryController;
 use App\Http\Controllers\Dealer\ContainerController as DealerContainerController;
 use App\Http\Controllers\Dealer\ContainerImageController as DealerContainerImageController;
 use App\Http\Controllers\Dealer\HeartbeatController as DealerHeartbeatController;
+use App\Http\Controllers\Dealer\LocaleController as DealerLocaleController;
 use App\Http\Controllers\Dealer\ProfileController as DealerProfileController;
 use App\Http\Controllers\Dealer\TwoFactorController as DealerTwoFactorController;
 use App\Http\Controllers\Dealer\VehicleController as DealerVehicleController;
@@ -129,6 +130,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/heartbeat', [DealerHeartbeatController::class, 'store']);
         Route::get('/profile', [DealerProfileController::class, 'show']);
         Route::put('/profile', [DealerProfileController::class, 'update']);
+        Route::put('/locale', [DealerLocaleController::class, 'update']);
         Route::post('/two-factor/recovery-codes', [DealerTwoFactorController::class, 'regenerateRecoveryCodes']);
         Route::get('/stats', [DealerProfileController::class, 'stats']);
         Route::get('/containers', [DealerContainerController::class, 'index']);
