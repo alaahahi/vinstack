@@ -295,7 +295,7 @@ async function load({ silent = false } = {}) {
 
     try {
         const { data } = await api.get('/admin/dealers');
-        dealers.value = [...(data.data ?? [])].sort((left, right) => Number(left.id) - Number(right.id));
+        dealers.value = [...(data.data ?? [])].sort((left, right) => Number(right.id) - Number(left.id));
         loginUrl.value = data.meta?.login_url || loginUrl.value;
     } finally {
         if (!silent) {

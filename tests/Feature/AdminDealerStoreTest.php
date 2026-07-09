@@ -67,7 +67,7 @@ class AdminDealerStoreTest extends TestCase
 
         $response->assertOk();
         $this->assertSame(
-            [$firstDealer->id, $secondDealer->id],
+            [$secondDealer->id, $firstDealer->id],
             array_column($response->json('data'), 'id'),
         );
     }
