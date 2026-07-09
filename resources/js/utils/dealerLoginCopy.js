@@ -3,10 +3,14 @@
  * @returns {string}
  */
 export function dealerLoginPageUrl(baseUrl) {
-    const root = (baseUrl || '').replace(/\/+$/, '');
+    const root = (baseUrl || '').trim().replace(/\/+$/, '');
 
     if (!root) {
         return '/login';
+    }
+
+    if (/\/login$/i.test(root)) {
+        return root;
     }
 
     return `${root}/login`;
