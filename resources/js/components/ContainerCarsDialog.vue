@@ -60,12 +60,14 @@
                 <i class="pi pi-images" />
                 {{ zipMeta.count }} صورة في المعرض ({{ zipMeta.matched }} مطابقة)
             </span>
-            <ContainerImageGallery
+            <Button
                 v-if="containerManageImages.length"
-                :images="containerManageImages"
-                variant="row"
-                show-button
-                label="معرض الحاوية"
+                icon="pi pi-images"
+                :label="apiRole === 'admin' ? 'إدارة صور الحاوية' : 'معرض الحاوية'"
+                size="small"
+                severity="secondary"
+                outlined
+                @click="openContainerGallery"
             />
         </div>
 
@@ -188,11 +190,15 @@
             v-model:visible="containerManageVisible"
             modal
             :draggable="false"
-            :header="apiRole === 'admin' ? 'معرض الحاوية' : 'صور الحاوية'"
+            :header="apiRole === 'admin' ? 'إدارة صور الحاوية' : 'صور الحاوية'"
             :style="{ width: 'min(920px, 96vw)' }"
             :pt="{ root: { class: 'container-gallery-manage-dialog' } }"
         >
-            <p v-if="apiRole === 'dealer'" class="container-gallery-view-note">
+            <p v-if="apiRole === 'admin'" class="container-gallery-admin-note">
+                <i class="pi pi-info-circle" />
+                اضغط الصورة للمعاينة. زر الحذف يزيل الصورة من Cloudinary ومعرض الحاوية.
+            </p>
+            <p v-else class="container-gallery-view-note">
                 <i class="pi pi-info-circle" />
                 معرض للعرض فقط — صور مرفوعة من الإدارة
             </p>
@@ -205,21 +211,30 @@
                     :key="image.id ?? image.url"
                     class="container-gallery-thumb"
                 >
-                    <ContainerImageGallery
-                        :images="[image]"
-                        variant="table"
-                        :label="image.vin || `صورة ${index + 1}`"
-                    />
+                    <button
+                        type="button"
+                        class="container-gallery-thumb-btn"
+                        :title="image.vin ? `معاينة — ${image.vin}` : `معاينة صورة ${index + 1}`"
+                        @click="previewContainerImage(index)"
+                    >
+                        <img
+                            :src="image.url"
+                            :alt="image.name || image.vin || `صورة ${index + 1}`"
+                            loading="lazy"
+                            decoding="async"
+                        />
+                    </button>
                     <span v-if="image.vin" class="container-gallery-vin">{{ image.vin }}</span>
+                    <span v-else class="container-gallery-vin container-gallery-vin--muted">بدون شاصي</span>
                     <Button
                         v-if="apiRole === 'admin' && image.id"
                         icon="pi pi-trash"
+                        label="حذف"
                         severity="danger"
-                        rounded
                         size="small"
-                        class="container-gallery-delete"
+                        outlined
+                        class="container-gallery-delete-btn"
                         :loading="deletingContainerImageId === image.id"
-                        aria-label="حذف الصورة"
                         @click="confirmDeleteContainerImage(image)"
                     />
                 </div>
@@ -282,7 +297,6 @@ import ProgressSpinner from 'primevue/progressspinner';
 import VueEasyLightbox from 'vue-easy-lightbox';
 import api from '../api/client';
 import VehicleImageGallery from './VehicleImageGallery.vue';
-import ContainerImageGallery from './ContainerImageGallery.vue';
 import ContainerGalleryLightbox from './ContainerGalleryLightbox.vue';
 import VehicleGalleryLightbox from './VehicleGalleryLightbox.vue';
 import VinCopyLabel from './VinCopyLabel.vue';
@@ -452,6 +466,11 @@ function openVehicleGallery(vehicle) {
 
     galleryVehicle.value = displayVehicle(vehicle);
     galleryVisible.value = true;
+}
+
+function previewContainerImage(index) {
+    containerGalleryIndex.value = index;
+    containerGalleryVisible.value = true;
 }
 
 function openContainerGallery() {
@@ -1024,6 +1043,20 @@ onBeforeUnmount(() => {
     color: var(--vs-text-muted);
 }
 
+.container-gallery-admin-note {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+    margin: 0 0 0.85rem;
+    padding: 0.55rem 0.75rem;
+    border-radius: 10px;
+    background: rgb(245 158 11 / 10%);
+    border: 1px solid rgb(245 158 11 / 22%);
+    color: #b45309;
+    font-size: 0.82rem;
+    line-height: 1.45;
+}
+
 .container-gallery-view-note {
     display: flex;
     align-items: center;
@@ -1044,7 +1077,9 @@ onBeforeUnmount(() => {
 }
 
 .container-gallery-thumb {
-    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
 }
 
 .container-gallery-thumb-btn {
@@ -1075,6 +1110,15 @@ onBeforeUnmount(() => {
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
+}
+
+.container-gallery-vin--muted {
+    font-style: italic;
+    opacity: 0.75;
+}
+
+.container-gallery-delete-btn {
+    width: 100%;
 }
 
 .container-gallery-delete {
