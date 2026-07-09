@@ -12,6 +12,9 @@ use RuntimeException;
 
 class ContainerService
 {
+    /** @var list<array<string, mixed>>|null */
+    protected ?array $normalizedContainersCache = null;
+
     public function __construct(
         protected VinstackService $vinstack,
         protected VehicleUploadedImageService $gallery,
@@ -466,16 +469,24 @@ class ContainerService
      */
     protected function fetchNormalized(): array
     {
+        if ($this->normalizedContainersCache !== null) {
+            return $this->normalizedContainersCache;
+        }
+
         try {
             $raw = $this->vinstack->containers();
         } catch (RuntimeException) {
-            return [];
+            $this->normalizedContainersCache = [];
+
+            return $this->normalizedContainersCache;
         }
 
-        return array_values(array_map(
+        $this->normalizedContainersCache = array_values(array_map(
             fn (array $item) => $this->normalize($item),
             array_filter($raw, fn ($item) => is_array($item)),
         ));
+
+        return $this->normalizedContainersCache;
     }
 
     /**
@@ -1193,6 +1204,10 @@ class ContainerService
         array $fromVehicles,
         array $merged,
     ): void {
+        if (! config('vinstack.log_container_matching', false)) {
+            return;
+        }
+
         $hasKeys = $keys['vins'] !== [] || $keys['container_numbers'] !== [] || $keys['booking_numbers'] !== [];
 
         if ($hasKeys && $fromApi === [] && $fromVehicles !== []) {

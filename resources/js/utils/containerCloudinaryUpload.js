@@ -1,4 +1,5 @@
 import api from '../api/client';
+import { UPLOAD_TIMEOUT_MS } from '../constants/uploadTimeouts';
 
 const MIME_BY_EXT = {
     jpg: 'image/jpeg',
@@ -128,6 +129,7 @@ export async function uploadContainerImagesToCloud({
             response = await api.post(
                 `${apiPrefix}/containers/${encodeURIComponent(containerRef)}/images/upload`,
                 form,
+                { timeout: UPLOAD_TIMEOUT_MS },
             );
         } catch (error) {
             error.message = formatCloudinaryUploadError(error);

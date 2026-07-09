@@ -1,10 +1,15 @@
 import api from '../api/client';
+import { UPLOAD_TIMEOUT_MS, ZIP_UPLOAD_TIMEOUT_MS } from '../constants/uploadTimeouts';
 
 /**
  * @param {unknown} error
  * @returns {string}
  */
 export function formatVinstackZipUploadError(error) {
+    if (error?.code === 'ECONNABORTED' || /timeout/i.test(error?.message || '')) {
+        return 'انتهت مهلة الاتصال أثناء معالجة ZIP على الخادم. إن كان شريط الرفع وصل 100% فقد تكون الصور رُفعت — حدّث الصفحة. للملفات الكبيرة جرّب تقسيمها أو زِد مهلة Nginx/PHP.';
+    }
+
     const data = error?.response?.data;
 
     if (! data) {
@@ -47,6 +52,7 @@ export async function uploadVehicleZipImages(vehicleId, stage, zipFile, onProgre
 
     try {
         const { data } = await api.post(`/admin/vehicles/${vehicleId}/images/zip`, form, {
+            timeout: ZIP_UPLOAD_TIMEOUT_MS,
             onUploadProgress: (event) => {
                 if (onProgress && event.total) {
                     onProgress(Math.round((event.loaded * 100) / event.total));

@@ -13,6 +13,7 @@ use App\Models\Vehicle;
 
 use App\Models\VehicleUploadedImage;
 
+use App\Support\UploadLimits;
 use App\Support\VehicleGalleryMerger;
 
 use App\Support\VehicleRawDataLocations;
@@ -60,6 +61,8 @@ class VehicleUploadedImageService
     public function storeMany(Vehicle $vehicle, string $stage, array $files, User $user): array
 
     {
+
+        UploadLimits::extendExecutionTime();
 
         if (! VehicleUploadedImage::isValidStage($stage)) {
 

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ContainerImage;
 use App\Models\Vehicle;
+use App\Support\UploadLimits;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
@@ -78,6 +79,8 @@ class ContainerImageService
      */
     public function uploadBatch(string $container, array $files, array $metadata, bool $replace = true): array
     {
+        UploadLimits::extendExecutionTime();
+
         if (! $this->cloudinary->isConfigured()) {
             throw new \RuntimeException('Cloudinary is not configured.');
         }

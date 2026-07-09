@@ -1,4 +1,5 @@
 import api from '../api/client';
+import { UPLOAD_TIMEOUT_MS } from '../constants/uploadTimeouts';
 
 export async function uploadVehicleImages(vehicleId, stage, files) {
     const form = new FormData();
@@ -9,6 +10,7 @@ export async function uploadVehicleImages(vehicleId, stage, files) {
     }
 
     const { data } = await api.post(`/admin/vehicles/${vehicleId}/images`, form, {
+        timeout: UPLOAD_TIMEOUT_MS,
         headers: { 'Content-Type': 'multipart/form-data' },
     });
 
@@ -27,6 +29,7 @@ export async function uploadSingleVehicleImage(vehicleId, stage, file, onProgres
     form.append('images[]', file);
 
     const { data } = await api.post(`/admin/vehicles/${vehicleId}/images`, form, {
+        timeout: UPLOAD_TIMEOUT_MS,
         onUploadProgress: (event) => {
             if (onProgress && event.total) {
                 onProgress(Math.round((event.loaded * 100) / event.total));

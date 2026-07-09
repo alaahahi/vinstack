@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Exceptions\GalleryTokenExpiredException;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Support\UploadLimits;
 use App\Support\VehicleImageStages;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -36,7 +37,7 @@ class VehicleVinstackZipUploadService
      */
     public function uploadZip(Vehicle $vehicle, string $stage, UploadedFile $zip, ?User $user = null): array
     {
-        @set_time_limit(600);
+        UploadLimits::extendExecutionTime();
 
         if (! in_array($stage, VehicleImageStages::STAGES, true)) {
             throw new RuntimeException('invalid_stage');
@@ -55,10 +56,12 @@ class VehicleVinstackZipUploadService
         try {
             $vinstackUploaded = 0;
             $vinstackFailed = [];
+            $cloudinaryUploaded = 0;
+            $cloudinaryFailed = [];
 
-            if ($this->gallery->usesLiveGalleryApi($vehicle)) {
-                [$vinstackUploaded, $vinstackFailed] = $this->uploadEntriesToVinstack($vehicle, $stage, $entries);
-            } elseif ($user && $this->cloudinary->isConfigured()) {
+            // Bulk ZIP uploads are slow through the live Vinstack gallery API (one HTTP call per image).
+            // Prefer Cloudinary when configured to avoid proxy timeouts on large archives.
+            if ($user && $this->cloudinary->isConfigured()) {
                 [$cloudinaryUploaded, $cloudinaryFailed] = $this->uploadEntriesToCloudinary(
                     $vehicle,
                     $stage,
@@ -76,7 +79,11 @@ class VehicleVinstackZipUploadService
 
                     return $this->buildResult($vehicle, $cloudinaryUploaded, $cloudinaryFailed, 'cloudinary');
                 }
+            }
 
+            if ($this->gallery->usesLiveGalleryApi($vehicle)) {
+                [$vinstackUploaded, $vinstackFailed] = $this->uploadEntriesToVinstack($vehicle, $stage, $entries);
+            } elseif ($user && $this->cloudinary->isConfigured()) {
                 $firstError = $cloudinaryFailed[0]['error'] ?? 'cloudinary_upload_failed';
 
                 throw new RuntimeException($firstError);
@@ -87,12 +94,14 @@ class VehicleVinstackZipUploadService
             }
 
             if ($user && $this->cloudinary->isConfigured()) {
-                [$cloudinaryUploaded, $cloudinaryFailed] = $this->uploadEntriesToCloudinary(
-                    $vehicle,
-                    $stage,
-                    $entries,
-                    $user,
-                );
+                if ($cloudinaryUploaded === 0 && $cloudinaryFailed === []) {
+                    [$cloudinaryUploaded, $cloudinaryFailed] = $this->uploadEntriesToCloudinary(
+                        $vehicle,
+                        $stage,
+                        $entries,
+                        $user,
+                    );
+                }
 
                 if ($cloudinaryUploaded > 0) {
                     Log::info('vehicle.zip_upload.cloudinary_fallback', [
