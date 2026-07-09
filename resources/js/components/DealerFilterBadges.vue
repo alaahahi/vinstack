@@ -76,17 +76,17 @@ defineEmits(['select']);
     display: inline-flex;
     align-items: center;
     gap: 0.35rem;
-    padding: 0.25rem 0.65rem;
+    padding: 0.18rem 0.55rem;
     border-radius: 999px;
     border: 1px solid var(--admin-border, rgba(22, 163, 74, 0.2));
     background: var(--admin-surface);
     color: var(--vs-text-secondary);
-    font-size: 0.78rem;
+    font-size: 0.74rem;
     font-weight: 500;
-    line-height: 1.4;
+    line-height: 1.35;
     cursor: pointer;
     transition: background 0.12s ease, border-color 0.12s ease, color 0.12s ease;
-    min-height: 32px;
+    min-height: 1.65rem;
 }
 
 .dealer-badge:hover {

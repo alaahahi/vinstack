@@ -17,41 +17,58 @@
                 />
             </template>
             <template #filters>
-                <IconField>
-                    <InputIcon class="pi pi-search" />
-                    <InputText
-                        v-model="search"
-                        :placeholder="t('vehicles.searchPlaceholder')"
-                        :disabled="loadingMore"
-                        @keyup.enter="resetAndLoad"
+                <div class="vehicles-filters">
+                    <div class="vehicles-filters__row">
+                        <IconField class="vehicles-filters__search">
+                            <InputIcon class="pi pi-search" />
+                            <InputText
+                                v-model="search"
+                                size="small"
+                                :placeholder="t('vehicles.searchPlaceholder')"
+                                :disabled="loadingMore"
+                                @keyup.enter="resetAndLoad"
+                            />
+                        </IconField>
+                        <Select
+                            v-model="statusFilter"
+                            class="vehicles-filters__select"
+                            size="small"
+                            :options="statusOptions"
+                            option-label="label"
+                            option-value="value"
+                            :placeholder="t('vehicles.statusFilter')"
+                            show-clear
+                            @change="resetAndLoad"
+                        />
+                        <Select
+                            v-model="sourceFilter"
+                            class="vehicles-filters__select"
+                            size="small"
+                            :options="sourceOptions"
+                            option-label="label"
+                            option-value="value"
+                            :placeholder="t('vehicles.sourceFilter')"
+                            show-clear
+                            @change="resetAndLoad"
+                        />
+                        <Button
+                            icon="pi pi-refresh"
+                            :label="t('actions.refresh')"
+                            size="small"
+                            outlined
+                            :loading="loading"
+                            @click="resetAndLoad"
+                        />
+                    </div>
+                    <DealerFilterBadges
+                        class="vehicles-filters__dealers"
+                        :dealers="dealerSummary"
+                        :selected-id="dealerFilter"
+                        count-key="vehicles_count"
+                        :total-count="dealerFilter ? null : total"
+                        @select="onDealerBadgeSelect"
                     />
-                </IconField>
-                <Select
-                    v-model="statusFilter"
-                    :options="statusOptions"
-                    option-label="label"
-                    option-value="value"
-                    :placeholder="t('vehicles.statusFilter')"
-                    show-clear
-                    @change="resetAndLoad"
-                />
-                <Select
-                    v-model="sourceFilter"
-                    :options="sourceOptions"
-                    option-label="label"
-                    option-value="value"
-                    :placeholder="t('vehicles.sourceFilter')"
-                    show-clear
-                    @change="resetAndLoad"
-                />
-                <Button icon="pi pi-refresh" :label="t('actions.refresh')" outlined :loading="loading" @click="resetAndLoad" />
-                <DealerFilterBadges
-                    :dealers="dealerSummary"
-                    :selected-id="dealerFilter"
-                    count-key="vehicles_count"
-                    :total-count="dealerFilter ? null : total"
-                    @select="onDealerBadgeSelect"
-                />
+                </div>
             </template>
         </AdminPageHeader>
 
@@ -131,10 +148,7 @@
                 >
                     <template #option="{ option }">
                         <div class="assign-option">
-                            <div class="assign-option__title">{{ option.user_name || option.company_name }}</div>
-                            <div v-if="option.company_name && option.company_name !== option.user_name" class="assign-option__sub">
-                                {{ option.company_name }}
-                            </div>
+                            <div class="assign-option__title">{{ option.assign_label }}</div>
                             <div v-if="option.phone" class="assign-option__meta">{{ option.phone }}</div>
                         </div>
                     </template>
@@ -227,9 +241,7 @@ const dealersForAssign = computed(() => dealers.value.map((dealer) => {
     const userName = dealer.user?.name?.trim() || '';
     const companyName = dealer.company_name?.trim() || '';
     const phone = dealer.phone?.trim() || '';
-    const assignLabel = userName && companyName && userName !== companyName
-        ? `${userName} - ${companyName}`
-        : (userName || companyName || '—');
+    const assignLabel = userName || companyName || '—';
 
     return {
         ...dealer,
@@ -536,6 +548,60 @@ onUnmounted(() => {
 </script>
 
 <style scoped>
+.vehicles-filters {
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.vehicles-filters__row {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.4rem;
+    width: 100%;
+}
+
+.vehicles-filters__search {
+    flex: 1 1 12rem;
+    min-width: 10rem;
+    max-width: 18rem;
+}
+
+.vehicles-filters__select {
+    flex: 0 0 auto;
+    width: 8.75rem;
+    max-width: 100%;
+}
+
+.vehicles-filters__dealers {
+    width: 100%;
+    padding-top: 0.45rem;
+    border-top: 1px solid var(--admin-border);
+}
+
+.vehicles-filters__dealers :deep(.dealer-badges) {
+    width: 100%;
+    margin-top: 0;
+}
+
+@media (max-width: 640px) {
+    .vehicles-filters__row {
+        gap: 0.35rem;
+    }
+
+    .vehicles-filters__search {
+        flex: 1 1 100%;
+        max-width: none;
+    }
+
+    .vehicles-filters__select {
+        flex: 1 1 calc(50% - 0.2rem);
+        width: auto;
+    }
+}
+
 .w-full {
     width: 100%;
 }

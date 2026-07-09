@@ -85,7 +85,7 @@ const resolvedCountLabel = computed(() => props.countLabel || t('vehicles.countL
     flex-wrap: wrap;
     align-items: center;
     gap: 0.5rem;
-    padding: 0.75rem 1rem;
+    padding: 0.55rem 0.85rem;
     background: var(--admin-surface);
     border: 1px solid var(--admin-border);
     border-radius: var(--admin-radius-sm);
@@ -95,6 +95,18 @@ const resolvedCountLabel = computed(() => props.countLabel || t('vehicles.countL
     flex: 1;
     min-width: min(100%, 200px);
     max-width: 280px;
+}
+
+.admin-page-header__filters :deep(.p-select) {
+    flex: 0 1 auto;
+}
+
+.admin-page-header__filters :deep(.p-select .p-select-label) {
+    font-size: 0.8rem;
+}
+
+.admin-page-header__filters :deep(.p-inputtext) {
+    font-size: 0.82rem;
 }
 
 @media (max-width: 640px) {

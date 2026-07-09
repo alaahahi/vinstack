@@ -122,9 +122,6 @@
             </span>
             <div v-if="dealerDisplayName" class="dealer-tag">
                 <span class="dealer-tag__name">{{ dealerDisplayName }}</span>
-                <span v-if="dealerCompanyName && dealerCompanyName !== dealerDisplayName" class="dealer-tag__sub">
-                    {{ dealerCompanyName }}
-                </span>
                 <button
                     type="button"
                     class="dealer-tag__remove"
@@ -293,9 +290,12 @@ const titleStatus = computed(() => vehicleTitleStatus(props.vehicle, t));
 const purchaseDate = computed(() => vehiclePurchaseDate(props.vehicle));
 const arrivedDate = computed(() => vehicleArrivedDate(props.vehicle));
 const enteredBy = computed(() => vehicleEnteredBy(props.vehicle, t));
-const dealerUserName = computed(() => props.vehicle.active_assignment?.dealer?.user?.name?.trim() ?? '');
-const dealerCompanyName = computed(() => props.vehicle.active_assignment?.dealer?.company_name?.trim() ?? '');
-const dealerDisplayName = computed(() => dealerUserName.value || dealerCompanyName.value || null);
+const dealerDisplayName = computed(() => {
+    const userName = props.vehicle.active_assignment?.dealer?.user?.name?.trim() ?? '';
+    const companyName = props.vehicle.active_assignment?.dealer?.company_name?.trim() ?? '';
+
+    return userName || companyName || null;
+});
 const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.vehicle));
 </script>
 

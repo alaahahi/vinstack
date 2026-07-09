@@ -64,6 +64,17 @@
                         <span>{{ dealer.phone }}</span>
                     </div>
                     <Button
+                        icon="pi pi-whatsapp"
+                        :label="t('dealers.sendWhatsApp')"
+                        severity="secondary"
+                        outlined
+                        size="small"
+                        :disabled="!canSendDealerNotification(dealer)"
+                        :title="dealerNotificationHint(dealer)"
+                        :loading="sendingNotificationDealerId === dealer.id"
+                        @click="openNotifyDialog(dealer)"
+                    />
+                    <Button
                         icon="pi pi-external-link"
                         :label="t('dealers.openDashboard')"
                         severity="secondary"
@@ -119,6 +130,43 @@
                 </li>
             </ul>
         </section>
+
+        <Dialog
+            v-model:visible="showNotify"
+            :header="t('dealerNotifications.sendTitle')"
+            modal
+            style="width: min(520px, 100vw)"
+        >
+            <p v-if="notifyDealer" class="notify-dialog__sub">
+                {{ t('dealerNotifications.sendSub') }}
+            </p>
+            <p v-if="notifyDealer" class="notify-dialog__dealer">
+                <strong>{{ notifyDealer.company_name }}</strong>
+                <span dir="ltr">{{ notifyDealer.phone || '—' }}</span>
+            </p>
+            <div class="field">
+                <label for="notify-message" class="vs-form-label">{{ t('dealerNotifications.message') }}</label>
+                <Textarea
+                    id="notify-message"
+                    v-model="notifyMessage"
+                    rows="5"
+                    class="w-full"
+                    :placeholder="t('dealerNotifications.messagePlaceholder')"
+                    auto-resize
+                />
+            </div>
+            <template #footer>
+                <Button :label="t('actions.cancel')" text @click="showNotify = false" />
+                <Button
+                    :label="t('dealerNotifications.sendNow')"
+                    icon="pi pi-whatsapp"
+                    class="btn-cta"
+                    :loading="sendingNotification"
+                    :disabled="!canSubmitNotification"
+                    @click="sendDealerNotification"
+                />
+            </template>
+        </Dialog>
 
         <Dialog v-model:visible="showForm" :header="t('dealers.createHeader')" modal style="width: min(480px, 100vw)">
             <div class="form-grid">
@@ -199,6 +247,7 @@ import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
+import Textarea from 'primevue/textarea';
 import Select from 'primevue/select';
 import ProgressSpinner from 'primevue/progressspinner';
 import AdminPageHeader from '../../components/AdminPageHeader.vue';
@@ -226,6 +275,12 @@ const loadingRecoveryDealerId = ref(null);
 const deletingDealerId = ref(null);
 const copyingDealerId = ref(null);
 const savingLocaleDealerId = ref(null);
+const sendingNotificationDealerId = ref(null);
+const sendingNotification = ref(false);
+const showNotify = ref(false);
+const notifyDealer = ref(null);
+const notifyMessage = ref('');
+const waConfigured = ref(false);
 const loginUrl = ref('');
 let pollTimer = null;
 
@@ -236,6 +291,12 @@ const notificationLocaleOptions = computed(() => [
         label: entry.nativeName,
     })),
 ]);
+
+const canSubmitNotification = computed(() =>
+    Boolean(notifyDealer.value?.id)
+    && notifyMessage.value.trim().length > 0
+    && waConfigured.value,
+);
 
 const form = reactive({
     name: '',
@@ -326,6 +387,69 @@ function formatArchivedAt(iso) {
         }).format(new Date(iso));
     } catch {
         return iso;
+    }
+}
+
+function canSendDealerNotification(dealer) {
+    return waConfigured.value && Boolean(dealer?.phone?.trim());
+}
+
+function dealerNotificationHint(dealer) {
+    if (!dealer?.phone?.trim()) {
+        return t('dealers.noPhoneForNotification');
+    }
+
+    if (!waConfigured.value) {
+        return t('dealers.waNotConfigured');
+    }
+
+    return t('dealerNotifications.sendSub');
+}
+
+function openNotifyDialog(dealer) {
+    notifyDealer.value = dealer;
+    notifyMessage.value = '';
+    showNotify.value = true;
+}
+
+async function loadWaSettings() {
+    try {
+        const { data } = await api.get('/admin/wa-queue/settings');
+        waConfigured.value = Boolean(data.data?.configured);
+    } catch {
+        waConfigured.value = false;
+    }
+}
+
+async function sendDealerNotification() {
+    if (!canSubmitNotification.value || !notifyDealer.value?.id) {
+        return;
+    }
+
+    sendingNotification.value = true;
+    sendingNotificationDealerId.value = notifyDealer.value.id;
+
+    try {
+        const { data } = await api.post('/admin/dealer-notifications/send', {
+            dealer_id: notifyDealer.value.id,
+            message: notifyMessage.value.trim(),
+        });
+
+        toast.add({ severity: 'success', summary: data.message, life: 4000 });
+        showNotify.value = false;
+        notifyMessage.value = '';
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: e.response?.data?.message || t('dealerNotifications.sendFailed'),
+            detail: e.response?.data?.errors
+                ? Object.values(e.response.data.errors).flat().join(' · ')
+                : undefined,
+            life: 6000,
+        });
+    } finally {
+        sendingNotification.value = false;
+        sendingNotificationDealerId.value = null;
     }
 }
 
@@ -581,6 +705,7 @@ async function saveEdit() {
 
 onMounted(() => {
     load();
+    loadWaSettings();
     pollTimer = setInterval(() => load({ silent: true }), ADMIN_POLL_MS);
 });
 
@@ -772,5 +897,30 @@ onUnmounted(() => {
 
 .w-full {
     width: 100%;
+}
+
+.notify-dialog__sub {
+    margin: 0 0 0.65rem;
+    font-size: 0.85rem;
+    color: var(--vs-text-muted);
+    line-height: 1.45;
+}
+
+.notify-dialog__dealer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.75rem;
+    margin: 0 0 1rem;
+    padding: 0.65rem 0.85rem;
+    border: 1px solid var(--admin-border);
+    border-radius: var(--admin-radius-sm);
+    background: var(--admin-surface);
+    font-size: 0.88rem;
+    color: var(--vs-text-secondary);
+}
+
+.notify-dialog__dealer strong {
+    color: var(--vs-text);
 }
 </style>
