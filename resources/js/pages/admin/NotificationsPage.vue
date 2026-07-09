@@ -410,8 +410,8 @@ onMounted(async () => {
 }
 
 .notif-card__icon--wa {
-    background: rgba(37, 211, 102, 0.14);
-    color: #128c7e;
+    background: color-mix(in srgb, #25d366 18%, var(--vs-surface-elevated));
+    color: #34d399;
 }
 
 .notif-card__icon--send {
@@ -420,8 +420,8 @@ onMounted(async () => {
 }
 
 .notif-card__icon--log {
-    background: rgba(59, 130, 246, 0.12);
-    color: #2563eb;
+    background: color-mix(in srgb, #3b82f6 16%, var(--vs-surface-elevated));
+    color: #60a5fa;
 }
 
 .notif-card__titles {
@@ -518,15 +518,15 @@ onMounted(async () => {
 }
 
 .connection-result--ok {
-    background: #ecfdf5;
-    color: #166534;
-    border: 1px solid #bbf7d0;
+    background: var(--vs-alert-success-bg);
+    color: var(--vs-alert-success-fg);
+    border: 1px solid var(--vs-alert-success-border);
 }
 
 .connection-result--error {
-    background: #fef2f2;
-    color: #991b1b;
-    border: 1px solid #fecaca;
+    background: var(--vs-alert-danger-bg);
+    color: var(--vs-alert-danger-fg);
+    border: 1px solid var(--vs-alert-danger-border);
 }
 
 /* ── Senders ── */
@@ -562,7 +562,8 @@ onMounted(async () => {
 }
 
 .sender-card--online {
-    border-color: #bbf7d0;
+    border-color: var(--vs-alert-success-border);
+    background: color-mix(in srgb, var(--vs-alert-success-bg) 65%, var(--vs-surface));
 }
 
 .dealer-option {
@@ -616,12 +617,13 @@ onMounted(async () => {
     padding: 1rem 1.15rem;
     border: 1px solid var(--vs-border);
     border-radius: 10px;
-    background: var(--vs-surface);
+    background: var(--vs-log-surface);
+    color: var(--vs-text);
 }
 
 .log-item--failed {
-    border-color: #fecaca;
-    background: #fffbfb;
+    border-color: var(--vs-alert-danger-border);
+    background: var(--vs-log-surface-failed);
 }
 
 .log-item__top {
@@ -632,11 +634,21 @@ onMounted(async () => {
     margin-bottom: 0.5rem;
 }
 
+.log-item__top strong {
+    color: var(--text-primary, var(--vs-text));
+    font-weight: 700;
+}
+
 .log-item__message {
     margin: 0 0 0.6rem;
     white-space: pre-wrap;
     line-height: 1.5;
     font-size: 0.88rem;
+    color: var(--vs-text-secondary);
+}
+
+.log-item--failed .log-item__message {
+    color: var(--vs-text);
 }
 
 .log-item__meta {
@@ -655,7 +667,20 @@ onMounted(async () => {
 
 .log-item__meta i {
     font-size: 0.7rem;
-    opacity: 0.7;
+    color: var(--vs-text-subtle);
+    opacity: 1;
+}
+
+.log-item :deep(.p-tag.p-tag-danger) {
+    background: var(--vs-alert-danger-bg);
+    color: var(--vs-alert-danger-fg);
+    border: 1px solid var(--vs-alert-danger-border);
+}
+
+.log-item :deep(.p-tag.p-tag-success) {
+    background: var(--vs-alert-success-bg);
+    color: var(--vs-alert-success-fg);
+    border: 1px solid var(--vs-alert-success-border);
 }
 
 @media (max-width: 768px) {

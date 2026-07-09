@@ -76,6 +76,15 @@
     --status-transit-bg: #fff7ed;
     --status-transit-fg: #ea580c;
 
+    --vs-alert-success-bg: #ecfdf5;
+    --vs-alert-success-fg: #166534;
+    --vs-alert-success-border: #bbf7d0;
+    --vs-alert-danger-bg: #fef2f2;
+    --vs-alert-danger-fg: #991b1b;
+    --vs-alert-danger-border: #fecaca;
+    --vs-log-surface: var(--vs-surface);
+    --vs-log-surface-failed: #fffbfb;
+
     --admin-sidebar-bg: #0f1419;
     --admin-sidebar-border: rgba(255, 255, 255, 0.06);
     --admin-sidebar-text: #e4e4e7;
@@ -210,6 +219,15 @@
     --status-new-fg: #86efac;
     --status-transit-bg: rgba(234, 88, 12, 0.2);
     --status-transit-fg: #fdba74;
+
+    --vs-alert-success-bg: rgba(22, 101, 52, 0.28);
+    --vs-alert-success-fg: #bbf7d0;
+    --vs-alert-success-border: rgba(74, 222, 128, 0.35);
+    --vs-alert-danger-bg: rgba(127, 29, 29, 0.38);
+    --vs-alert-danger-fg: #fecaca;
+    --vs-alert-danger-border: rgba(248, 113, 113, 0.42);
+    --vs-log-surface: #2a2a32;
+    --vs-log-surface-failed: rgba(69, 10, 10, 0.55);
 
     --admin-sidebar-bg: #050608;
     --admin-sidebar-border: rgba(255, 255, 255, 0.08);

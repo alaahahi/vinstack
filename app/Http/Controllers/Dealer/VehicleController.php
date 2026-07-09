@@ -47,7 +47,7 @@ class VehicleController extends Controller
 
         $vehicles = $query
             ->with('uploadedImages')
-            ->newestFirst()
+            ->orderByDesc('id')
             ->paginate(
                 perPage: min((int) $request->input('per_page', 15), 100),
                 page: (int) $request->input('page', 1),

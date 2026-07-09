@@ -34,6 +34,10 @@ class VehicleVinstackZipUploadServiceTest extends TestCase
             ->with($vehicle)
             ->willReturn(['1HGBH41JXMN109186']);
         $gallery->expects($this->once())
+            ->method('usesLiveGalleryApi')
+            ->with($vehicle)
+            ->willReturn(true);
+        $gallery->expects($this->once())
             ->method('uploadStageImage')
             ->with(
                 $vehicle,
@@ -81,6 +85,7 @@ class VehicleVinstackZipUploadServiceTest extends TestCase
 
         $gallery = $this->createMock(VinstackGalleryService::class);
         $gallery->method('resolveGalleryIdentifiers')->willReturn(['1HGBH41JXMN109186']);
+        $gallery->method('usesLiveGalleryApi')->willReturn(true);
 
         $service = $this->makeService($gallery);
         $zip = $this->makeZipWithFiles([

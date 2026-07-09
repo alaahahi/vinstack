@@ -53,7 +53,34 @@ class VehicleVinstackZipUploadService
         }
 
         try {
-            [$vinstackUploaded, $vinstackFailed] = $this->uploadEntriesToVinstack($vehicle, $stage, $entries);
+            $vinstackUploaded = 0;
+            $vinstackFailed = [];
+
+            if ($this->gallery->usesLiveGalleryApi($vehicle)) {
+                [$vinstackUploaded, $vinstackFailed] = $this->uploadEntriesToVinstack($vehicle, $stage, $entries);
+            } elseif ($user && $this->cloudinary->isConfigured()) {
+                [$cloudinaryUploaded, $cloudinaryFailed] = $this->uploadEntriesToCloudinary(
+                    $vehicle,
+                    $stage,
+                    $entries,
+                    $user,
+                );
+
+                if ($cloudinaryUploaded > 0) {
+                    Log::info('vehicle.zip_upload.cloudinary_direct', [
+                        'vehicle_id' => $vehicle->id,
+                        'stage' => $stage,
+                        'uploaded' => $cloudinaryUploaded,
+                        'failed' => count($cloudinaryFailed),
+                    ]);
+
+                    return $this->buildResult($vehicle, $cloudinaryUploaded, $cloudinaryFailed, 'cloudinary');
+                }
+
+                $firstError = $cloudinaryFailed[0]['error'] ?? 'cloudinary_upload_failed';
+
+                throw new RuntimeException($firstError);
+            }
 
             if ($vinstackUploaded > 0) {
                 return $this->buildResult($vehicle, $vinstackUploaded, $vinstackFailed, 'vinstack');
@@ -73,7 +100,7 @@ class VehicleVinstackZipUploadService
                         'stage' => $stage,
                         'uploaded' => $cloudinaryUploaded,
                         'failed' => count($cloudinaryFailed),
-                        'vinstack_error' => $vinstackFailed[0]['error'] ?? null,
+                        'vinstack_error' => $this->sanitizeErrorMessage($vinstackFailed[0]['error'] ?? ''),
                     ]);
 
                     return $this->buildResult($vehicle, $cloudinaryUploaded, $cloudinaryFailed, 'cloudinary');
@@ -84,7 +111,7 @@ class VehicleVinstackZipUploadService
                 $failed = $vinstackFailed;
             }
 
-            $firstError = $failed[0]['error'] ?? 'vinstack_upload_failed';
+            $firstError = $this->sanitizeErrorMessage($failed[0]['error'] ?? 'vinstack_upload_failed');
 
             Log::warning('vehicle.zip_upload.failed', [
                 'vehicle_id' => $vehicle->id,
@@ -308,6 +335,27 @@ class VehicleVinstackZipUploadService
 
         $message = trim($e->getMessage());
 
-        return $message !== '' ? $message : 'vinstack_upload_failed';
+        return $this->sanitizeErrorMessage($message !== '' ? $message : 'vinstack_upload_failed');
+    }
+
+    protected function sanitizeErrorMessage(string $message): string
+    {
+        if (str_contains($message, '<!DOCTYPE') || str_contains($message, '<html')) {
+            if (preg_match('/<pre>(.*?)<\/pre>/is', $message, $match) === 1) {
+                return trim(html_entity_decode(strip_tags($match[1])));
+            }
+
+            if (preg_match('/Gallery API error \((\d+)\)/', $message, $match) === 1) {
+                return 'Gallery API error ('.$match[1].'): endpoint not found';
+            }
+
+            return 'Gallery API error: invalid response';
+        }
+
+        if (strlen($message) > 220) {
+            return substr($message, 0, 220).'…';
+        }
+
+        return $message;
     }
 }
