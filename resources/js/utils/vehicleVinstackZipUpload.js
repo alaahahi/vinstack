@@ -38,14 +38,27 @@ export function formatVinstackZipUploadError(error) {
  * @param {number|string} vehicleId
  * @param {'terminal'|'pickup'|'destination'} stage
  * @param {File} zipFile
+ * @param {(percent: number) => void} [onProgress]
  */
-export async function uploadVehicleZipImages(vehicleId, stage, zipFile) {
+export async function uploadVehicleZipImages(vehicleId, stage, zipFile, onProgress) {
     const form = new FormData();
     form.append('stage', stage);
     form.append('zip', zipFile, zipFile.name);
 
     try {
-        const { data } = await api.post(`/admin/vehicles/${vehicleId}/images/zip`, form);
+        const { data } = await api.post(`/admin/vehicles/${vehicleId}/images/zip`, form, {
+            onUploadProgress: (event) => {
+                if (onProgress && event.total) {
+                    onProgress(Math.round((event.loaded * 100) / event.total));
+                } else if (onProgress && event.loaded) {
+                    onProgress(99);
+                }
+            },
+        });
+
+        if (onProgress) {
+            onProgress(100);
+        }
 
         return data;
     } catch (error) {

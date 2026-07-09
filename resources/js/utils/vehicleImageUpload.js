@@ -15,6 +15,28 @@ export async function uploadVehicleImages(vehicleId, stage, files) {
     return data;
 }
 
+/**
+ * @param {number|string} vehicleId
+ * @param {string} stage
+ * @param {File} file
+ * @param {(percent: number) => void} [onProgress]
+ */
+export async function uploadSingleVehicleImage(vehicleId, stage, file, onProgress) {
+    const form = new FormData();
+    form.append('stage', stage);
+    form.append('images[]', file);
+
+    const { data } = await api.post(`/admin/vehicles/${vehicleId}/images`, form, {
+        onUploadProgress: (event) => {
+            if (onProgress && event.total) {
+                onProgress(Math.round((event.loaded * 100) / event.total));
+            }
+        },
+    });
+
+    return data;
+}
+
 export async function deleteVehicleImage(vehicleId, imageId) {
     const { data } = await api.delete(`/admin/vehicles/${vehicleId}/images/${imageId}`);
 

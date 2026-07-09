@@ -84,8 +84,8 @@
                     <Button
                         icon="pi pi-upload"
                         label="رفع صور جديدة"
-                        :loading="uploadingStage === stage.key"
-                        :disabled="zipUploadingStage === stage.key"
+                        :loading="isStageImagesUploading(stage.key)"
+                        :disabled="isStageUploading(stage.key)"
                         class="upload-btn btn-add"
                         @click="triggerUpload(stage.key)"
                     />
@@ -93,18 +93,33 @@
                         icon="pi pi-file-import"
                         label="رفع ملف مضغوط"
                         severity="secondary"
-                        :loading="zipUploadingStage === stage.key"
-                        :disabled="uploadingStage === stage.key"
+                        :loading="isStageZipUploading(stage.key)"
+                        :disabled="isStageUploading(stage.key)"
                         class="upload-btn upload-btn--zip"
                         @click="triggerZipUpload(stage.key)"
                     />
-                    <span
-                        v-if="zipUploadingStage === stage.key"
-                        class="zip-upload-progress"
-                    >
-                        <i class="pi pi-spin pi-spinner" />
-                        جاري رفع ZIP إلى Vinstack…
-                    </span>
+
+                    <div v-if="stageUploadJob(stage.key)" class="stage-upload-progress">
+                        <div class="stage-upload-progress__top">
+                            <span>
+                                <i class="pi pi-spin pi-spinner" />
+                                {{ stageUploadJob(stage.key).message }}
+                            </span>
+                            <strong>{{ stageUploadJob(stage.key).progress }}%</strong>
+                        </div>
+                        <div class="stage-upload-progress__track">
+                            <div
+                                class="stage-upload-progress__fill"
+                                :style="{ width: `${stageUploadJob(stage.key).progress}%` }"
+                            />
+                        </div>
+                        <p
+                            v-if="stageUploadJob(stage.key).type === 'images'"
+                            class="stage-upload-progress__count"
+                        >
+                            {{ stageUploadJob(stage.key).completed }} / {{ stageUploadJob(stage.key).total }} صورة
+                        </p>
+                    </div>
                 </div>
 
                 <div v-if="stageUrls(stage.key).length" class="stage-thumbs">
@@ -183,13 +198,14 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
 import Button from 'primevue/button';
 import ProgressSpinner from 'primevue/progressspinner';
 import VehicleImageGallery from './VehicleImageGallery.vue';
 import VehicleGalleryLightbox from './VehicleGalleryLightbox.vue';
+import { useVehicleUploadStore } from '../stores/vehicleUpload';
 import {
     GALLERY_STAGES,
     vehicleGalleryByStage,
@@ -203,7 +219,6 @@ import {
     isLocalUploadedUrl,
     localImageIdForUrl,
     reorderVehicleGallery,
-    uploadVehicleImages,
 } from '../utils/vehicleImageUpload';
 import {
     fetchLiveVehicleGallery,
@@ -212,7 +227,6 @@ import {
 } from '../utils/vehicleGalleryLive';
 import {
     isZipFile,
-    uploadVehicleZipImages,
 } from '../utils/vehicleVinstackZipUpload';
 
 const props = defineProps({
@@ -239,13 +253,12 @@ const emit = defineEmits(['updated']);
 
 const toast = useToast();
 const confirm = useConfirm();
+const uploadStore = useVehicleUploadStore();
 
 const THUMB_DRAG_MIME = 'application/x-vinstack-thumb';
 
 const zoomVisible = ref(false);
 const zoomStartUrl = ref(null);
-const uploadingStage = ref(null);
-const zipUploadingStage = ref(null);
 const deletingId = ref(null);
 const fileInputs = ref({});
 const zipInputs = ref({});
@@ -260,6 +273,29 @@ const orderOverrides = ref({});
 const dragThumb = ref(null);
 const dragOverThumb = ref(null);
 const reorderingStage = ref(null);
+let unsubscribeUpload = null;
+
+function stageUploadJob(stageKey) {
+    return uploadStore.activeJobs.find(
+        (job) => job.vehicleId === props.vehicle?.id && job.stage === stageKey,
+    ) ?? null;
+}
+
+function isStageUploading(stageKey) {
+    return Boolean(stageUploadJob(stageKey));
+}
+
+function isStageZipUploading(stageKey) {
+    const job = stageUploadJob(stageKey);
+
+    return Boolean(job?.type === 'zip');
+}
+
+function isStageImagesUploading(stageKey) {
+    const job = stageUploadJob(stageKey);
+
+    return Boolean(job?.type === 'images');
+}
 
 const GALLERY_ERROR_MESSAGES = {
     gallery_token_missing: 'توكن المعرض غير مضبوط — أضف Gallery Token في الإعدادات أو استخدم توكن المزامنة.',
@@ -322,7 +358,55 @@ function onCompactGalleryUpdated(galleryPayload, vehicleId) {
     emit('updated', displayVehicle.value);
 }
 
-onMounted(loadLiveGallery);
+onMounted(() => {
+    loadLiveGallery();
+    bindUploadSubscription();
+});
+
+watch(
+    () => props.vehicle?.id,
+    () => {
+        bindUploadSubscription();
+    },
+);
+
+onBeforeUnmount(() => {
+    unsubscribeUpload?.();
+});
+
+function bindUploadSubscription() {
+    unsubscribeUpload?.();
+
+    if (! props.vehicle?.id) {
+        return;
+    }
+
+    unsubscribeUpload = uploadStore.subscribe(props.vehicle.id, handleBackgroundUploadUpdate);
+}
+
+function handleBackgroundUploadUpdate(payload) {
+    if (payload.type === 'zip' && payload.gallery) {
+        displayVehicle.value = mergeGalleryIntoVehicle(props.vehicle, payload.gallery);
+        galleryFresh.value = Boolean(payload.gallery.gallery_fresh);
+        galleryTokenExpired.value = Boolean(payload.gallery.gallery_token_expired);
+        galleryError.value = payload.gallery.gallery_error ?? null;
+        galleryNewImagesCount.value = Number(payload.gallery.gallery_new_images_count ?? payload.result?.data?.uploaded ?? 0);
+        emit('updated', displayVehicle.value);
+
+        return;
+    }
+
+    if (payload.vehicle) {
+        displayVehicle.value = mergeGalleryIntoVehicle(props.vehicle, {
+            uploaded_images: payload.vehicle.uploaded_images,
+            images_by_stage: payload.vehicle.images_by_stage,
+            images: payload.vehicle.images,
+            gallery_fresh: true,
+        });
+        emit('updated', payload.vehicle);
+        loadLiveGallery();
+    }
+}
 
 watch(
     () => [props.vehicle?.id, props.vehicle?.vin],
@@ -581,75 +665,43 @@ async function onZipSelected(stageKey, event) {
 }
 
 async function uploadZipFile(stageKey, zipFile) {
-    if (! zipFile || ! props.vehicle?.id) {
+    if (! zipFile || ! props.vehicle?.id || uploadStore.isStageBusy(props.vehicle.id, stageKey)) {
         return;
     }
 
-    zipUploadingStage.value = stageKey;
+    uploadStore.enqueueZip({
+        vehicleId: props.vehicle.id,
+        vehicleLabel: label.value,
+        stage: stageKey,
+        zipFile,
+    });
 
-    try {
-        const result = await uploadVehicleZipImages(props.vehicle.id, stageKey, zipFile);
-        const galleryPayload = result.data?.gallery;
-
-        if (galleryPayload) {
-            displayVehicle.value = mergeGalleryIntoVehicle(props.vehicle, galleryPayload);
-            galleryFresh.value = Boolean(galleryPayload.gallery_fresh);
-            galleryTokenExpired.value = Boolean(galleryPayload.gallery_token_expired);
-            galleryError.value = galleryPayload.gallery_error ?? null;
-            galleryNewImagesCount.value = Number(galleryPayload.gallery_new_images_count ?? result.data?.uploaded ?? 0);
-            emit('updated', displayVehicle.value);
-        } else {
-            await loadLiveGallery();
-        }
-
-        toast.add({
-            severity: 'success',
-            summary: 'تم رفع ZIP',
-            detail: result.message || 'تم رفع الصور إلى Vinstack وتحديث المعرض',
-            life: 4500,
-        });
-    } catch (e) {
-        toast.add({
-            severity: 'error',
-            summary: 'فشل رفع ZIP',
-            detail: e.message || 'تعذّر رفع ملف ZIP إلى Vinstack',
-            life: 5000,
-        });
-    } finally {
-        zipUploadingStage.value = null;
-    }
+    toast.add({
+        severity: 'info',
+        summary: 'بدأ رفع ZIP',
+        detail: 'يمكنك إغلاق النافذة — الرفع يستمر في الخلفية',
+        life: 3500,
+    });
 }
 
 async function uploadFiles(stageKey, files) {
-    if (! files.length || ! props.vehicle?.id) {
+    if (! files.length || ! props.vehicle?.id || uploadStore.isStageBusy(props.vehicle.id, stageKey)) {
         return;
     }
 
-    uploadingStage.value = stageKey;
+    uploadStore.enqueueImages({
+        vehicleId: props.vehicle.id,
+        vehicleLabel: label.value,
+        stage: stageKey,
+        files,
+    });
 
-    try {
-        const result = await uploadVehicleImages(props.vehicle.id, stageKey, files);
-        const vehiclePayload = result.data?.vehicle ?? result.data;
-
-        emit('updated', vehiclePayload);
-        await loadLiveGallery();
-
-        toast.add({
-            severity: 'success',
-            summary: 'تم الرفع',
-            detail: result.message || 'تم رفع الصور بنجاح وتحديث المعرض',
-            life: 3500,
-        });
-    } catch (e) {
-        toast.add({
-            severity: 'error',
-            summary: 'فشل الرفع',
-            detail: e.response?.data?.message || 'تعذر رفع الصور',
-            life: 4000,
-        });
-    } finally {
-        uploadingStage.value = null;
-    }
+    toast.add({
+        severity: 'info',
+        summary: 'بدأ رفع الصور',
+        detail: `جاري رفع ${files.length} صورة — يمكنك إغلاق النافذة`,
+        life: 3500,
+    });
 }
 
 function confirmRemoveUploaded(url) {
@@ -1010,6 +1062,48 @@ function openZoom(url) {
     gap: 0.4rem;
     font-size: 0.78rem;
     color: var(--status-terminal-fg);
+}
+
+.stage-upload-progress {
+    padding: 0.65rem 0.75rem;
+    border-radius: 12px;
+    border: 1px solid color-mix(in srgb, var(--admin-accent, #3b82f6) 24%, var(--vs-border));
+    background: color-mix(in srgb, var(--admin-accent, #3b82f6) 8%, var(--vs-surface-elevated));
+}
+
+.stage-upload-progress__top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.78rem;
+    color: var(--status-terminal-fg);
+}
+
+.stage-upload-progress__top strong {
+    font-size: 0.82rem;
+    color: var(--admin-accent, #3b82f6);
+}
+
+.stage-upload-progress__track {
+    height: 7px;
+    margin-top: 0.5rem;
+    border-radius: 999px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--vs-border) 70%, transparent);
+}
+
+.stage-upload-progress__fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #60a5fa, var(--admin-accent, #3b82f6));
+    transition: width 0.25s ease;
+}
+
+.stage-upload-progress__count {
+    margin: 0.4rem 0 0;
+    font-size: 0.72rem;
+    color: var(--text-muted, var(--vs-text-muted));
 }
 
 .file-input {
