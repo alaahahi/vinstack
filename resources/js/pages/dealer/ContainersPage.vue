@@ -13,6 +13,8 @@
             :loading="loading"
             :tracking-available="trackingAvailable"
             :show-invoice="false"
+            direct-image-gallery
+            api-prefix="/dealer"
             :empty-text="t('containers.dealer.empty')"
             :empty-action-label="t('actions.viewMyVehicles')"
             @track="openTracking"

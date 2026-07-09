@@ -38,6 +38,8 @@
                 :tracking-available="trackingAvailable"
                 :show-invoice="showInvoice"
                 :show-zip-upload="showZipUpload"
+                :direct-image-gallery="directImageGallery"
+                :api-prefix="apiPrefix"
                 @track="$emit('track', $event)"
                 @show-cars="$emit('show-cars', $event)"
             />
@@ -91,6 +93,14 @@ const props = defineProps({
     showZipUpload: {
         type: Boolean,
         default: false,
+    },
+    directImageGallery: {
+        type: Boolean,
+        default: false,
+    },
+    apiPrefix: {
+        type: String,
+        default: '/admin',
     },
     emptyActionLabel: {
         type: String,

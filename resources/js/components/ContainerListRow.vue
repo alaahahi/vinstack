@@ -9,23 +9,29 @@
                 :class="{
                     empty: !hasThumbnail,
                     clickable: hasImages,
+                    'thumb-btn--loading': galleryLoading,
                 }"
-                :disabled="!hasImages"
+                :disabled="!hasImages || galleryLoading"
                 :title="imageTitle"
                 :aria-label="imageTitle"
+                :aria-busy="galleryLoading"
                 @click="openGallery"
             >
                 <img
-                    v-if="thumbnailUrl"
+                    v-if="thumbnailUrl && !galleryLoading"
                     :src="thumbnailUrl"
                     :alt="t('containers.containerImages')"
                     class="thumb-img"
                     loading="lazy"
+                    decoding="async"
                 />
+                <span v-else-if="galleryLoading" class="thumb-loading" aria-hidden="true">
+                    <ProgressSpinner style="width: 1.25rem; height: 1.25rem" />
+                </span>
                 <span v-else class="thumb-empty">
                     <i class="pi pi-image" />
                 </span>
-                <span v-if="showCountBadge" class="count-badge">{{ imageCount }}</span>
+                <span v-if="showCountBadge && !galleryLoading" class="count-badge">{{ imageCount }}</span>
             </button>
         </div>
 
@@ -246,6 +252,12 @@
 
     </div>
 
+    <ContainerGalleryLightbox
+        v-if="directImageGallery"
+        v-model:visible="galleryVisible"
+        :images="galleryImages"
+        :start-index="galleryStartIndex"
+    />
 </template>
 
 
@@ -256,12 +268,18 @@ import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import Button from 'primevue/button';
+import ProgressSpinner from 'primevue/progressspinner';
+import ContainerGalleryLightbox from './ContainerGalleryLightbox.vue';
 import {
     containerRefKey,
     extractZipImagesForContainer,
     applyCloudinaryContainerPayload,
 } from '../utils/containerZipImages';
-import { uploadContainerImagesToCloud, formatCloudinaryUploadError } from '../utils/containerCloudinaryUpload';
+import {
+    fetchContainerCloudImages,
+    formatCloudinaryUploadError,
+    uploadContainerImagesToCloud,
+} from '../utils/containerCloudinaryUpload';
 
 import {
 
@@ -319,6 +337,22 @@ const props = defineProps({
 
     },
 
+    directImageGallery: {
+
+        type: Boolean,
+
+        default: false,
+
+    },
+
+    apiPrefix: {
+
+        type: String,
+
+        default: '/admin',
+
+    },
+
 });
 
 
@@ -329,6 +363,10 @@ const { t } = useI18n();
 const toast = useToast();
 const zipInputRef = ref(null);
 const zipLoading = ref(false);
+const galleryVisible = ref(false);
+const galleryImages = ref([]);
+const galleryStartIndex = ref(0);
+const galleryLoading = ref(false);
 
 
 
@@ -385,19 +423,68 @@ const hasImages = computed(() => imageCount.value > 0);
 const showCountBadge = computed(() => imageCount.value > 1);
 
 const imageTitle = computed(() => {
+    if (galleryLoading.value) {
+        return t('containers.openingGallery');
+    }
+
     if (hasImages.value) {
-        return t('containers.showImages', { count: imageCount.value });
+        return props.directImageGallery
+            ? t('containers.openGalleryDirect', { count: imageCount.value })
+            : t('containers.showImages', { count: imageCount.value });
     }
 
     return t('containers.noImages');
 });
 
-function openGallery() {
-    if (! hasImages.value) {
+const directImageGallery = computed(() => props.directImageGallery);
+
+async function openGallery() {
+    if (! hasImages.value || galleryLoading.value) {
         return;
     }
 
-    emit('show-cars', props.container);
+    if (! props.directImageGallery) {
+        emit('show-cars', props.container);
+
+        return;
+    }
+
+    const containerRef = refs.value.container || refs.value.booking;
+
+    if (! containerRef) {
+        return;
+    }
+
+    galleryLoading.value = true;
+
+    try {
+        const payload = await fetchContainerCloudImages(containerRef, props.apiPrefix);
+        const images = payload?.images ?? [];
+
+        if (! images.length) {
+            toast.add({
+                severity: 'warn',
+                summary: t('containers.noImages'),
+                detail: t('containers.galleryEmpty'),
+                life: 3500,
+            });
+
+            return;
+        }
+
+        galleryImages.value = images;
+        galleryStartIndex.value = 0;
+        galleryVisible.value = true;
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || t('containers.galleryLoadFailed'),
+            life: 4500,
+        });
+    } finally {
+        galleryLoading.value = false;
+    }
 }
 
 function triggerZipUpload() {
@@ -542,17 +629,29 @@ async function onZipSelected(event) {
 }
 
 .thumb-btn.clickable {
-
     cursor: pointer;
-
 }
 
-.thumb-btn.clickable:hover:not(:disabled) {
-
+.thumb-btn.clickable:hover {
     box-shadow: 0 4px 12px rgb(0 0 0 / 12%);
-
     transform: translateY(-1px);
+}
 
+.thumb-btn.clickable:active {
+    transform: translateY(0);
+}
+
+.thumb-btn--loading {
+    cursor: wait;
+}
+
+.thumb-loading {
+    width: 100%;
+    height: 100%;
+    min-height: 42px;
+    display: grid;
+    place-items: center;
+    background: var(--vs-surface-elevated, #fafafa);
 }
 
 .thumb-btn.empty {
