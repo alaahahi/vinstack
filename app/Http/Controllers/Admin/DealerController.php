@@ -25,7 +25,7 @@ class DealerController extends Controller
         $dealers = Dealer::query()
             ->withCount('activeAssignments as vehicles_count')
             ->with('user:id,name,email,phone,locale,locale_customized,last_seen_at,recovery_codes_archive,two_factor_confirmed_at')
-            ->orderBy('id')
+            ->orderByDesc('id')
             ->get()
             ->map(fn (Dealer $dealer) => $this->formatDealer($dealer));
 
@@ -41,7 +41,7 @@ class DealerController extends Controller
     {
         $dealers = Dealer::query()
             ->withCount('activeAssignments as vehicles_count')
-            ->orderBy('id')
+            ->orderByDesc('id')
             ->get(['id', 'company_name']);
 
         $data = $dealers->map(function (Dealer $dealer) use ($containers) {
