@@ -258,13 +258,64 @@
         :images="galleryImages"
         :start-index="galleryStartIndex"
     />
+
+    <Teleport to="body">
+        <div
+            v-if="galleryLoading"
+            class="container-gallery-load-overlay"
+            role="status"
+            aria-live="polite"
+            :aria-label="galleryLoadingTitle"
+        >
+            <div class="container-gallery-load-card">
+                <ProgressSpinner style="width: 2.25rem; height: 2.25rem" />
+                <p class="container-gallery-load-title">{{ galleryLoadingTitle }}</p>
+                <p
+                    v-if="galleryLoadPhase === 'preload' && galleryLoadProgress.total > 0"
+                    class="container-gallery-load-count"
+                >
+                    {{ t('containers.galleryLoadingProgress', {
+                        done: galleryLoadProgress.done,
+                        total: galleryLoadProgress.total,
+                    }) }}
+                </p>
+                <p
+                    v-if="galleryLoadPhase === 'preload' && galleryLoadProgress.remaining > 0"
+                    class="container-gallery-load-remaining"
+                >
+                    {{ t('containers.galleryLoadingRemaining', {
+                        count: galleryLoadProgress.remaining,
+                    }) }}
+                </p>
+                <div
+                    v-if="galleryLoadPhase === 'preload' && galleryLoadProgress.total > 0"
+                    class="container-gallery-load-track"
+                    role="progressbar"
+                    :aria-valuenow="galleryLoadProgress.percent"
+                    aria-valuemin="0"
+                    aria-valuemax="100"
+                >
+                    <div
+                        class="container-gallery-load-fill"
+                        :style="{ width: `${galleryLoadProgress.percent}%` }"
+                    />
+                </div>
+                <span
+                    v-if="galleryLoadPhase === 'preload' && galleryLoadProgress.total > 0"
+                    class="container-gallery-load-percent"
+                >
+                    {{ galleryLoadProgress.percent }}%
+                </span>
+            </div>
+        </div>
+    </Teleport>
 </template>
 
 
 
 <script setup>
 
-import { computed, ref } from 'vue';
+import { computed, onBeforeUnmount, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import Button from 'primevue/button';
@@ -280,6 +331,7 @@ import {
     formatCloudinaryUploadError,
     uploadContainerImagesToCloud,
 } from '../utils/containerCloudinaryUpload';
+import { preloadImageUrls } from '../utils/imagePreload';
 
 import {
 
@@ -367,6 +419,9 @@ const galleryVisible = ref(false);
 const galleryImages = ref([]);
 const galleryStartIndex = ref(0);
 const galleryLoading = ref(false);
+const galleryLoadPhase = ref(null);
+const galleryLoadProgress = ref({ done: 0, total: 0, percent: 0, remaining: 0 });
+let galleryAbortController = null;
 
 
 
@@ -424,7 +479,16 @@ const showCountBadge = computed(() => imageCount.value > 1);
 
 const imageTitle = computed(() => {
     if (galleryLoading.value) {
-        return t('containers.openingGallery');
+        if (galleryLoadPhase.value === 'preload' && galleryLoadProgress.value.total > 0) {
+            return t('containers.galleryLoadingProgress', {
+                done: galleryLoadProgress.value.done,
+                total: galleryLoadProgress.value.total,
+            });
+        }
+
+        return galleryLoadPhase.value === 'fetch'
+            ? t('containers.galleryLoadingList')
+            : t('containers.openingGallery');
     }
 
     if (hasImages.value) {
@@ -434,6 +498,18 @@ const imageTitle = computed(() => {
     }
 
     return t('containers.noImages');
+});
+
+const galleryLoadingTitle = computed(() => {
+    if (galleryLoadPhase.value === 'fetch') {
+        return t('containers.galleryLoadingList');
+    }
+
+    if (galleryLoadPhase.value === 'preload') {
+        return t('containers.openingGallery');
+    }
+
+    return t('containers.openingGallery');
 });
 
 const directImageGallery = computed(() => props.directImageGallery);
@@ -455,10 +531,21 @@ async function openGallery() {
         return;
     }
 
+    galleryAbortController?.abort();
+    galleryAbortController = new AbortController();
+    const { signal } = galleryAbortController;
+
     galleryLoading.value = true;
+    galleryLoadPhase.value = 'fetch';
+    galleryLoadProgress.value = { done: 0, total: 0, percent: 0, remaining: 0 };
 
     try {
         const payload = await fetchContainerCloudImages(containerRef, props.apiPrefix);
+
+        if (signal.aborted) {
+            return;
+        }
+
         const images = payload?.images ?? [];
 
         if (! images.length) {
@@ -472,10 +559,46 @@ async function openGallery() {
             return;
         }
 
+        const urls = images.map((image) => image.url).filter(Boolean);
+
+        galleryLoadPhase.value = 'preload';
+        galleryLoadProgress.value = {
+            done: 0,
+            total: urls.length,
+            percent: 0,
+            remaining: urls.length,
+        };
+
+        const result = await preloadImageUrls(urls, {
+            signal,
+            onProgress: (progress) => {
+                galleryLoadProgress.value = progress;
+            },
+        });
+
+        if (signal.aborted) {
+            return;
+        }
+
+        if (result.loaded === 0 && urls.length > 0) {
+            toast.add({
+                severity: 'error',
+                summary: t('common.error'),
+                detail: t('containers.galleryLoadFailed'),
+                life: 4500,
+            });
+
+            return;
+        }
+
         galleryImages.value = images;
         galleryStartIndex.value = 0;
         galleryVisible.value = true;
     } catch (e) {
+        if (signal.aborted) {
+            return;
+        }
+
         toast.add({
             severity: 'error',
             summary: t('common.error'),
@@ -483,9 +606,16 @@ async function openGallery() {
             life: 4500,
         });
     } finally {
-        galleryLoading.value = false;
+        if (! signal.aborted) {
+            galleryLoading.value = false;
+            galleryLoadPhase.value = null;
+        }
     }
 }
+
+onBeforeUnmount(() => {
+    galleryAbortController?.abort();
+});
 
 function triggerZipUpload() {
     zipInputRef.value?.click();
@@ -1149,7 +1279,81 @@ async function onZipSelected(event) {
 
 }
 
+.container-gallery-load-overlay {
+    position: fixed;
+    inset: 0;
+    z-index: 12000;
+    display: grid;
+    place-items: center;
+    padding: 1.25rem;
+    background: rgb(9 9 11 / 58%);
+    backdrop-filter: blur(6px);
+}
 
+.container-gallery-load-card {
+    width: min(22rem, 100%);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 1.35rem 1.25rem 1.1rem;
+    border-radius: 16px;
+    border: 1px solid var(--vs-border);
+    background: var(--admin-surface, #fff);
+    box-shadow: 0 18px 48px rgb(0 0 0 / 18%);
+    text-align: center;
+}
+
+.container-gallery-load-title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+    color: var(--vs-text);
+}
+
+.container-gallery-load-count {
+    margin: 0;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--vs-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.container-gallery-load-remaining {
+    margin: 0;
+    font-size: 0.8rem;
+    color: var(--vs-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.container-gallery-load-track {
+    width: 100%;
+    height: 8px;
+    margin-top: 0.15rem;
+    border-radius: 999px;
+    background: var(--vs-surface-elevated, #f4f4f5);
+    overflow: hidden;
+}
+
+.container-gallery-load-fill {
+    height: 100%;
+    border-radius: inherit;
+    background: linear-gradient(90deg, #2563eb 0%, #3b82f6 100%);
+    transition: width 0.18s ease-out;
+}
+
+.container-gallery-load-percent {
+    font-size: 0.78rem;
+    font-weight: 700;
+    color: #2563eb;
+    font-variant-numeric: tabular-nums;
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .container-gallery-load-fill {
+        transition: none;
+    }
+}
 
 @media (max-width: 1200px) {
 
