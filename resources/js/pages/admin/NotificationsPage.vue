@@ -50,6 +50,22 @@
                         </div>
                     </div>
 
+                    <div v-if="eventCatalog.length" class="events-panel">
+                        <div class="events-panel__head">
+                            <h3 class="events-panel__title">{{ t('dealerNotifications.eventsTitle') }}</h3>
+                            <p class="events-panel__sub">{{ t('dealerNotifications.eventsSub') }}</p>
+                        </div>
+                        <ul class="events-list">
+                            <li v-for="item in eventCatalog" :key="item.key" class="events-list__item">
+                                <div class="events-list__text">
+                                    <strong>{{ eventLabel(item.key) }}</strong>
+                                    <small>{{ item.key }}</small>
+                                </div>
+                                <ToggleSwitch v-model="form.dealer_notification_events[item.key]" />
+                            </li>
+                        </ul>
+                    </div>
+
                     <div v-if="connectionResult" class="connection-result" :class="connectionResult.ok ? 'connection-result--ok' : 'connection-result--error'">
                         <i class="pi" :class="connectionResult.ok ? 'pi-check-circle' : 'pi-times-circle'" />
                         <span>{{ connectionResult.message }}</span>
@@ -199,6 +215,7 @@
                             </div>
                             <p class="log-item__message">{{ row.message }}</p>
                             <div class="log-item__meta">
+                                <span v-if="row.event" class="log-item__event">{{ eventLabel(row.event) }}</span>
                                 <span dir="ltr"><i class="pi pi-phone" /> {{ row.phone }}</span>
                                 <span><i class="pi pi-clock" /> {{ formatDateTime(row.created_at) }}</span>
                                 <span v-if="row.author_name"><i class="pi pi-user" /> {{ row.author_name }}</span>
@@ -235,7 +252,9 @@ const form = reactive({
     wa_queue_base_url: '',
     wa_queue_sender_id: null,
     wa_queue_enabled: false,
+    dealer_notification_events: {},
 });
+const eventCatalog = ref([]);
 const sendForm = reactive({
     dealer_id: null,
     message: '',
@@ -280,6 +299,20 @@ watch(
     },
 );
 
+function eventLabel(key) {
+    if (!key) {
+        return '';
+    }
+
+    const i18nKey = `dealerNotifications.events.${key}`;
+
+    if (t(i18nKey) !== i18nKey) {
+        return t(i18nKey);
+    }
+
+    return key;
+}
+
 function statusLabel(row) {
     if (row.error_message) {
         return t('dealerNotifications.statusFailed');
@@ -296,6 +329,8 @@ async function loadSettings() {
     form.wa_queue_base_url = payload.wa_queue_base_url ?? '';
     form.wa_queue_sender_id = payload.wa_queue_sender_id ?? null;
     form.wa_queue_enabled = Boolean(payload.wa_queue_enabled);
+    eventCatalog.value = payload.dealer_notification_event_catalog ?? [];
+    form.dealer_notification_events = { ...(payload.dealer_notification_events ?? {}) };
 }
 
 async function loadDealers() {
@@ -322,9 +357,13 @@ async function saveSettings() {
             wa_queue_base_url: form.wa_queue_base_url || null,
             wa_queue_sender_id: form.wa_queue_sender_id || null,
             wa_queue_enabled: form.wa_queue_enabled,
+            dealer_notification_events: form.dealer_notification_events,
         });
 
         settings.value = data.data ?? settings.value;
+        if (data.data?.dealer_notification_events) {
+            form.dealer_notification_events = { ...data.data.dealer_notification_events };
+        }
         toast.add({ severity: 'success', summary: data.message || t('dealerNotifications.saved'), life: 3000 });
     } catch (e) {
         toast.add({
@@ -565,6 +604,79 @@ onMounted(async () => {
     color: var(--vs-text-muted);
     font-size: 0.78rem;
     line-height: 1.4;
+}
+
+.events-panel {
+    border: 1px solid var(--vs-border);
+    border-radius: 10px;
+    padding: 1rem 1.1rem;
+    background: color-mix(in srgb, var(--vs-surface-elevated) 88%, transparent);
+}
+
+.events-panel__head {
+    margin-bottom: 0.85rem;
+}
+
+.events-panel__title {
+    margin: 0;
+    font-size: 0.95rem;
+    font-weight: 600;
+}
+
+.events-panel__sub {
+    margin: 0.25rem 0 0;
+    font-size: 0.78rem;
+    color: var(--vs-text-muted);
+}
+
+.events-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+}
+
+.events-list__item {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.55rem 0;
+    border-top: 1px solid var(--vs-border);
+}
+
+.events-list__item:first-child {
+    border-top: none;
+    padding-top: 0;
+}
+
+.events-list__text {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.events-list__text strong {
+    font-size: 0.86rem;
+    font-weight: 600;
+}
+
+.events-list__text small {
+    font-size: 0.72rem;
+    color: var(--vs-text-muted);
+    direction: ltr;
+    text-align: start;
+}
+
+.log-item__event {
+    font-size: 0.75rem;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--admin-accent, #7c3aed) 12%, transparent);
+    color: var(--admin-accent, #7c3aed);
 }
 
 .w-full {

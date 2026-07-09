@@ -460,6 +460,16 @@ export default {
         saveFailed: 'تعذّر حفظ الإعدادات',
         testFailed: 'فشل فحص الربط',
         sendFailed: 'تعذّر إرسال الإشعار',
+        eventsTitle: 'الأحداث التلقائية',
+        eventsSub: 'فعّل أو عطّل إرسال واتساب لكل نوع حدث.',
+        events: {
+            'dealer.vehicle_assigned': 'إسناد سيارة للتاجر',
+            'dealer.vehicle_updated': 'تحديث حالة السيارة',
+            'dealer.vehicle_images_added': 'إضافة صور سيارة',
+            'dealer.container_images_added': 'إضافة صور كونتينر',
+            'dealer.login_credentials': 'بيانات دخول التاجر',
+            'dealer.manual_notification': 'إشعار يدوي',
+        },
     },
     chat: {
         titleAdmin: 'محادثة مع التاجر',

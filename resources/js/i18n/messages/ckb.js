@@ -460,6 +460,16 @@ export default {
         saveFailed: 'پاشەکەوتکردن سەرنەکەوت',
         testFailed: 'پشکنینی پەیوەندی سەرنەکەوت',
         sendFailed: 'ناردنی ئاگادارکردنەوە سەرنەکەوت',
+        eventsTitle: 'ڕووداوە خۆکارەکان',
+        eventsSub: 'چالاک یان ناچالاککردنی ناردنی واتساپ بۆ هەر جۆرە ڕووداوێک.',
+        events: {
+            'dealer.vehicle_assigned': 'دیاریکردنی ئۆتۆمبێل بۆ بازرگان',
+            'dealer.vehicle_updated': 'نوێکردنەوەی دۆخی ئۆتۆمبێل',
+            'dealer.vehicle_images_added': 'زیادکردنی وێنەی ئۆتۆمبێل',
+            'dealer.container_images_added': 'زیادکردنی وێنەی کۆنتەینەر',
+            'dealer.login_credentials': 'زانیاری چوونەژوورەوەی بازرگان',
+            'dealer.manual_notification': 'ئاگادارکردنەوەی دەستی',
+        },
     },
     chat: {
         titleAdmin: 'گفتوگۆ لەگەڵ بازرگان',

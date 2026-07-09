@@ -621,6 +621,16 @@ export default {
         saveFailed: 'Could not save settings',
         testFailed: 'Connection test failed',
         sendFailed: 'Could not send notification',
+        eventsTitle: 'Automatic events',
+        eventsSub: 'Enable or disable WhatsApp sends per event type.',
+        events: {
+            'dealer.vehicle_assigned': 'Vehicle assigned to dealer',
+            'dealer.vehicle_updated': 'Vehicle status updated',
+            'dealer.vehicle_images_added': 'Vehicle images added',
+            'dealer.container_images_added': 'Container images added',
+            'dealer.login_credentials': 'Dealer login credentials',
+            'dealer.manual_notification': 'Manual notification',
+        },
     },
     chat: {
         titleAdmin: 'Chat with dealer',
