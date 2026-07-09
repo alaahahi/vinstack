@@ -36,6 +36,90 @@ class DealerNotificationMessageBuilder
         return trim(implode("\n", $lines));
     }
 
+    public function vehicleUpdated(Dealer $dealer, Vehicle $vehicle, ?string $previousStatus, string $newStatus): string
+    {
+        $locale = $this->localeForDealer($dealer);
+        $company = trim((string) config('app.name', 'Vinstack'));
+        $title = $this->vehicleTitle($vehicle);
+
+        $lines = [
+            Lang::get('notifications.vehicle_updated.intro', ['company' => $company], $locale),
+            Lang::get('notifications.vehicle_updated.vehicle', ['value' => $title], $locale),
+        ];
+
+        $vin = trim((string) ($vehicle->vin ?? ''));
+
+        if ($vin !== '') {
+            $lines[] = Lang::get('notifications.vehicle_updated.vin', ['value' => $vin], $locale);
+        }
+
+        if ($previousStatus) {
+            $lines[] = Lang::get('notifications.vehicle_updated.change', [
+                'previous' => $previousStatus,
+                'next' => $newStatus,
+            ], $locale);
+        } else {
+            $lines[] = Lang::get('notifications.vehicle_updated.change', [
+                'previous' => '—',
+                'next' => $newStatus,
+            ], $locale);
+        }
+
+        return trim(implode("\n", $lines));
+    }
+
+    public function vehicleImagesAdded(Dealer $dealer, Vehicle $vehicle, int $count, ?string $stage = null): string
+    {
+        $locale = $this->localeForDealer($dealer);
+        $company = trim((string) config('app.name', 'Vinstack'));
+        $title = $this->vehicleTitle($vehicle);
+
+        $lines = [
+            Lang::get('notifications.vehicle_images_added.intro', ['company' => $company], $locale),
+            Lang::get('notifications.vehicle_images_added.vehicle', ['value' => $title], $locale),
+            Lang::get('notifications.vehicle_images_added.count', ['count' => $count], $locale),
+        ];
+
+        $vin = trim((string) ($vehicle->vin ?? ''));
+
+        if ($vin !== '') {
+            $lines[] = Lang::get('notifications.vehicle_images_added.vin', ['value' => $vin], $locale);
+        }
+
+        if ($stage) {
+            $lines[] = Lang::get('notifications.vehicle_images_added.stage', ['stage' => $stage], $locale);
+        }
+
+        return trim(implode("\n", $lines));
+    }
+
+    public function containerImagesAdded(Dealer $dealer, string $containerNumber, int $count): string
+    {
+        $locale = $this->localeForDealer($dealer);
+        $company = trim((string) config('app.name', 'Vinstack'));
+
+        return trim(implode("\n", [
+            Lang::get('notifications.container_images_added.intro', ['company' => $company], $locale),
+            Lang::get('notifications.container_images_added.container', ['value' => $containerNumber], $locale),
+            Lang::get('notifications.container_images_added.count', ['count' => $count], $locale),
+        ]));
+    }
+
+    protected function vehicleTitle(Vehicle $vehicle): string
+    {
+        $parts = array_filter([
+            trim((string) $vehicle->make),
+            trim((string) $vehicle->model),
+            $vehicle->year ? (string) $vehicle->year : null,
+        ]);
+
+        if ($parts !== []) {
+            return implode(' ', $parts);
+        }
+
+        return trim((string) ($vehicle->vin ?? '')) ?: 'Vehicle';
+    }
+
     public function loginCredentials(Dealer $dealer, string $email, string $password, string $loginUrl): string
     {
         $locale = $this->localeForDealer($dealer);

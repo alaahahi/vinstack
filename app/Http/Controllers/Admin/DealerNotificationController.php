@@ -9,6 +9,7 @@ use App\Models\Dealer;
 use App\Models\VinstackSetting;
 use App\Services\DealerNotificationService;
 use App\Services\WaQueueService;
+use App\Support\DealerNotificationEvents;
 use Illuminate\Http\JsonResponse;
 
 class DealerNotificationController extends Controller
@@ -23,6 +24,7 @@ class DealerNotificationController extends Controller
     public function settings(WaQueueService $waQueue): JsonResponse
     {
         $settings = $waQueue->settings();
+        $events = DealerNotificationEvents::normalize($settings->dealer_notification_events);
 
         return response()->json([
             'data' => [
@@ -30,6 +32,8 @@ class DealerNotificationController extends Controller
                 'wa_queue_sender_id' => $settings->wa_queue_sender_id,
                 'wa_queue_enabled' => (bool) $settings->wa_queue_enabled,
                 'configured' => $waQueue->isConfigured(),
+                'dealer_notification_events' => $events,
+                'dealer_notification_event_catalog' => DealerNotificationEvents::catalog(),
             ],
         ]);
     }
@@ -45,14 +49,21 @@ class DealerNotificationController extends Controller
             $data['wa_queue_base_url'] = null;
         }
 
+        if (array_key_exists('dealer_notification_events', $data)) {
+            $data['dealer_notification_events'] = DealerNotificationEvents::normalize($data['dealer_notification_events']);
+        }
+
         $settings->update($data);
+        $settings = $settings->fresh();
 
         return response()->json([
             'data' => [
-                'wa_queue_base_url' => $settings->fresh()->wa_queue_base_url,
+                'wa_queue_base_url' => $settings->wa_queue_base_url,
                 'wa_queue_sender_id' => $settings->wa_queue_sender_id,
                 'wa_queue_enabled' => (bool) $settings->wa_queue_enabled,
                 'configured' => $waQueue->isConfigured(),
+                'dealer_notification_events' => DealerNotificationEvents::normalize($settings->dealer_notification_events),
+                'dealer_notification_event_catalog' => DealerNotificationEvents::catalog(),
             ],
             'message' => 'تم حفظ إعدادات WA Queue.',
         ]);

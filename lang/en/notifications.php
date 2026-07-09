@@ -21,4 +21,22 @@ return [
         'password' => 'Password: :value',
         'url' => 'Login URL: :value',
     ],
+    'vehicle_updated' => [
+        'intro' => 'Vehicle status update at :company',
+        'vehicle' => 'Vehicle: :value',
+        'vin' => 'VIN: :value',
+        'change' => 'Change: :previous → :next',
+    ],
+    'vehicle_images_added' => [
+        'intro' => 'New photos were added to your vehicle at :company',
+        'vehicle' => 'Vehicle: :value',
+        'vin' => 'VIN: :value',
+        'count' => 'Photos: :count',
+        'stage' => 'Stage: :stage',
+    ],
+    'container_images_added' => [
+        'intro' => 'New photos were added to your container at :company',
+        'container' => 'Container: :value',
+        'count' => 'Photos: :count',
+    ],
 ];

@@ -7,6 +7,8 @@ use App\Http\Requests\Admin\UploadContainerImagesRequest;
 use App\Models\ContainerImage;
 use App\Services\CloudinaryService;
 use App\Services\ContainerImageService;
+use App\Services\ContainerService;
+use App\Services\DealerNotificationService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Log;
 
@@ -34,6 +36,8 @@ class ContainerImageController extends Controller
         string $container,
         ContainerImageService $images,
         CloudinaryService $cloudinary,
+        ContainerService $containers,
+        DealerNotificationService $notifications,
     ): JsonResponse {
         if (! $cloudinary->isConfigured()) {
             return response()->json([
@@ -92,6 +96,15 @@ class ContainerImageController extends Controller
         }
 
         $message = $this->uploadMessage($uploaded, $failed);
+
+        if ($uploaded > 0) {
+            $notifications->notifyContainerImagesAdded(
+                $images->normalizeContainerNumber($container),
+                $uploaded,
+                $containers->dealersForContainer($container),
+                $request->user(),
+            );
+        }
 
         if ($uploaded === 0) {
             Log::warning('Container image upload finished with zero successes', [

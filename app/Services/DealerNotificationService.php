@@ -6,6 +6,8 @@ use App\Models\Dealer;
 use App\Models\DealerNotificationLog;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Models\VinstackSetting;
+use App\Support\DealerNotificationEvents;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Str;
 
@@ -42,12 +44,166 @@ class DealerNotificationService
             dealer: $dealer,
             message: $message,
             source: 'assignment',
-            event: 'dealer.vehicle_assigned',
+            event: DealerNotificationEvents::VEHICLE_ASSIGNED,
             uniqueKey: $uniqueKey,
             author: $author,
             vehicleId: $vehicle->id,
             locale: $locale,
         );
+    }
+
+    /**
+     * @return array{ok: bool, message: string, log?: array<string, mixed>, status?: int|null, errors?: array<string, mixed>|null, skipped?: bool}
+     */
+    public function notifyVehicleUpdated(
+        Vehicle $vehicle,
+        ?string $previousStatus,
+        string $newStatus,
+        ?User $author = null,
+        string $source = 'sync',
+    ): array {
+        $dealer = $this->dealerForVehicle($vehicle);
+
+        if ($dealer === null) {
+            return [
+                'ok' => false,
+                'message' => 'السيارة غير مسندة لتاجر.',
+                'skipped' => true,
+            ];
+        }
+
+        $message = $this->messages->vehicleUpdated($dealer, $vehicle, $previousStatus, $newStatus);
+        $uniqueKey = 'vehicle-update-'.$vehicle->id.'-'.md5($previousStatus.'|'.$newStatus).'-'.now()->timestamp;
+
+        return $this->dispatchToDealer(
+            dealer: $dealer,
+            message: $message,
+            source: $source,
+            event: DealerNotificationEvents::VEHICLE_UPDATED,
+            uniqueKey: $uniqueKey,
+            author: $author,
+            vehicleId: $vehicle->id,
+            locale: $this->messages->localeForDealer($dealer),
+        );
+    }
+
+    /**
+     * @return array{ok: bool, message: string, log?: array<string, mixed>, status?: int|null, errors?: array<string, mixed>|null, skipped?: bool}
+     */
+    public function notifyVehicleImagesAdded(
+        Vehicle $vehicle,
+        int $count,
+        ?string $stage = null,
+        ?User $author = null,
+    ): array {
+        if ($count < 1) {
+            return [
+                'ok' => false,
+                'message' => 'لا توجد صور لإرسال إشعار عنها.',
+                'skipped' => true,
+            ];
+        }
+
+        $dealer = $this->dealerForVehicle($vehicle);
+
+        if ($dealer === null) {
+            return [
+                'ok' => false,
+                'message' => 'السيارة غير مسندة لتاجر.',
+                'skipped' => true,
+            ];
+        }
+
+        $message = $this->messages->vehicleImagesAdded($dealer, $vehicle, $count, $stage);
+        $uniqueKey = 'vehicle-images-'.$vehicle->id.'-'.$count.'-'.now()->timestamp.'-'.Str::random(4);
+
+        return $this->dispatchToDealer(
+            dealer: $dealer,
+            message: $message,
+            source: 'gallery',
+            event: DealerNotificationEvents::VEHICLE_IMAGES_ADDED,
+            uniqueKey: $uniqueKey,
+            author: $author,
+            vehicleId: $vehicle->id,
+            locale: $this->messages->localeForDealer($dealer),
+        );
+    }
+
+    /**
+     * @return array{ok: bool, message: string, sent?: int, failed?: int, logs?: list<array<string, mixed>>, errors?: list<array<string, mixed>>, skipped?: bool}
+     */
+    public function notifyContainerImagesAdded(
+        string $containerNumber,
+        int $count,
+        iterable $dealers,
+        ?User $author = null,
+    ): array {
+        if ($count < 1) {
+            return [
+                'ok' => false,
+                'message' => 'لا توجد صور لإرسال إشعار عنها.',
+                'skipped' => true,
+            ];
+        }
+
+        $uniqueDealers = collect($dealers)
+            ->filter(fn ($dealer) => $dealer instanceof Dealer)
+            ->unique('id')
+            ->values();
+
+        if ($uniqueDealers->isEmpty()) {
+            return [
+                'ok' => false,
+                'message' => 'لا يوجد تجار مرتبطون بهذا الكونتينر.',
+                'skipped' => true,
+            ];
+        }
+
+        $sent = 0;
+        $failed = 0;
+        $logs = [];
+        $errors = [];
+
+        foreach ($uniqueDealers as $dealer) {
+            $message = $this->messages->containerImagesAdded($dealer, $containerNumber, $count);
+            $uniqueKey = 'container-images-'.$containerNumber.'-dealer-'.$dealer->id.'-'.now()->timestamp;
+
+            $result = $this->dispatchToDealer(
+                dealer: $dealer,
+                message: $message,
+                source: 'container_gallery',
+                event: DealerNotificationEvents::CONTAINER_IMAGES_ADDED,
+                uniqueKey: $uniqueKey,
+                author: $author,
+                locale: $this->messages->localeForDealer($dealer),
+            );
+
+            if ($result['ok']) {
+                $sent++;
+
+                if (isset($result['log'])) {
+                    $logs[] = $result['log'];
+                }
+            } else {
+                $failed++;
+                $errors[] = [
+                    'dealer_id' => $dealer->id,
+                    'dealer_name' => $dealer->company_name,
+                    'message' => $result['message'],
+                ];
+            }
+        }
+
+        return [
+            'ok' => $sent > 0,
+            'message' => $failed === 0
+                ? "تم إرسال إشعار صور الكونتينر إلى {$sent} تاجر."
+                : "تم الإرسال إلى {$sent} تاجر، وفشل {$failed}.",
+            'sent' => $sent,
+            'failed' => $failed,
+            'logs' => $logs,
+            'errors' => $errors,
+        ];
     }
 
     /**
@@ -70,7 +226,7 @@ class DealerNotificationService
             dealer: $dealer,
             message: $trimmed,
             source: 'manual',
-            event: 'dealer.manual_notification',
+            event: DealerNotificationEvents::MANUAL_NOTIFICATION,
             uniqueKey: $uniqueKey,
             author: $author,
             locale: $this->messages->localeForDealer($dealer),
@@ -164,7 +320,7 @@ class DealerNotificationService
             dealer: $dealer,
             message: $message,
             source: 'system',
-            event: 'dealer.login_credentials',
+            event: DealerNotificationEvents::LOGIN_CREDENTIALS,
             uniqueKey: $uniqueKey,
             author: $author,
             locale: $this->messages->localeForDealer($dealer),
@@ -184,6 +340,14 @@ class DealerNotificationService
         ?int $vehicleId = null,
         ?string $locale = null,
     ): array {
+        if (! $this->isEventEnabled($event)) {
+            return [
+                'ok' => false,
+                'message' => 'هذا النوع من الإشعارات معطّل في الإعدادات.',
+                'skipped' => true,
+            ];
+        }
+
         $phone = $dealer->phone;
 
         if (! filled($phone)) {
@@ -226,6 +390,21 @@ class DealerNotificationService
             'errors' => $result['errors'] ?? null,
             'log' => $this->serialize($log->fresh(['dealer:id,company_name,phone', 'author:id,name'])),
         ];
+    }
+
+    protected function isEventEnabled(string $event): bool
+    {
+        $settings = VinstackSetting::current();
+        $events = DealerNotificationEvents::normalize($settings->dealer_notification_events);
+
+        return (bool) ($events[$event] ?? true);
+    }
+
+    protected function dealerForVehicle(Vehicle $vehicle): ?Dealer
+    {
+        $vehicle->loadMissing('activeAssignment.dealer');
+
+        return $vehicle->activeAssignment?->dealer;
     }
 
     /**

@@ -4,6 +4,7 @@ namespace App\Actions;
 
 use App\Enums\VehicleSource;
 use App\Models\Vehicle;
+use App\Services\DealerNotificationService;
 use App\Services\VehicleStatusNotificationService;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
@@ -14,6 +15,7 @@ class UpdateManualVehicleAction
     public function __construct(
         protected CreateManualVehicleAction $creator,
         protected VehicleStatusNotificationService $statusNotifications,
+        protected DealerNotificationService $dealerNotifications,
     ) {}
 
     /**
@@ -71,12 +73,21 @@ class UpdateManualVehicleAction
 
         $vehicle = $vehicle->fresh();
 
-        $this->statusNotifications->recordFromRawDataChange(
+        $statusChange = $this->statusNotifications->recordFromRawDataChange(
             $vehicle,
             $existingRaw,
             is_array($vehicle->raw_data) ? $vehicle->raw_data : [],
             'admin',
         );
+
+        if ($statusChange !== null) {
+            $this->dealerNotifications->notifyVehicleUpdated(
+                $vehicle,
+                $statusChange->previous_status,
+                (string) $statusChange->new_status,
+                source: 'admin',
+            );
+        }
 
         return $vehicle;
 

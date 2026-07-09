@@ -26,6 +26,7 @@ class VinstackSetting extends Model
         'wa_queue_base_url',
         'wa_queue_sender_id',
         'wa_queue_enabled',
+        'dealer_notification_events',
     ];
 
     protected function casts(): array
@@ -41,6 +42,7 @@ class VinstackSetting extends Model
             'last_auto_sync_at' => 'datetime',
             'vehicle_options' => 'array',
             'wa_queue_enabled' => 'boolean',
+            'dealer_notification_events' => 'array',
         ];
     }
 

@@ -21,4 +21,22 @@ return [
         'password' => 'وشەی نهێنی: :value',
         'url' => 'بەستەری چوونەژوورەوە: :value',
     ],
+    'vehicle_updated' => [
+        'intro' => 'نوێکردنەوەی دۆخی ئۆتۆمبێلەکەتان لە :company',
+        'vehicle' => 'ئۆتۆمبێل: :value',
+        'vin' => 'ژمارەی شاسی: :value',
+        'change' => 'گۆڕان: :previous ← :next',
+    ],
+    'vehicle_images_added' => [
+        'intro' => 'وێنەی نوێ زیادکرا بۆ ئۆتۆمبێلەکەتان لە :company',
+        'vehicle' => 'ئۆتۆمبێل: :value',
+        'vin' => 'ژمارەی شاسی: :value',
+        'count' => 'ژمارەی وێنە: :count',
+        'stage' => 'قۆناغ: :stage',
+    ],
+    'container_images_added' => [
+        'intro' => 'وێنەی نوێ زیادکرا بۆ کۆنتەینەرەکەتان لە :company',
+        'container' => 'کۆنتەینەر: :value',
+        'count' => 'ژمارەی وێنە: :count',
+    ],
 ];

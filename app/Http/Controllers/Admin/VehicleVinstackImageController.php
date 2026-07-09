@@ -6,6 +6,7 @@ use App\Exceptions\GalleryTokenExpiredException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreVehicleZipImagesRequest;
 use App\Models\Vehicle;
+use App\Services\DealerNotificationService;
 use App\Services\VehicleVinstackZipUploadService;
 use Illuminate\Http\JsonResponse;
 use RuntimeException;
@@ -16,6 +17,7 @@ class VehicleVinstackImageController extends Controller
         StoreVehicleZipImagesRequest $request,
         Vehicle $vehicle,
         VehicleVinstackZipUploadService $zipUploads,
+        DealerNotificationService $notifications,
     ): JsonResponse {
         /** @var \Illuminate\Http\UploadedFile $zip */
         $zip = $request->file('zip');
@@ -36,6 +38,15 @@ class VehicleVinstackImageController extends Controller
         $uploaded = (int) ($result['uploaded'] ?? 0);
         $failed = $result['failed'] ?? [];
         $mode = $result['mode'] ?? 'vinstack';
+
+        if ($uploaded > 0) {
+            $notifications->notifyVehicleImagesAdded(
+                $vehicle,
+                $uploaded,
+                $stage,
+                $request->user(),
+            );
+        }
 
         return response()->json([
             'data' => $result,

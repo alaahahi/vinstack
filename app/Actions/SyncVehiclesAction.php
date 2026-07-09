@@ -7,6 +7,7 @@ use App\Enums\VehicleStatus;
 use App\Models\Vehicle;
 use App\Models\VinstackSetting;
 use App\Services\VinstackService;
+use App\Services\DealerNotificationService;
 use App\Services\VehicleStatusNotificationService;
 use App\Support\VehicleGalleryMerger;
 use App\Support\VehicleImageStages;
@@ -18,6 +19,7 @@ class SyncVehiclesAction
     public function __construct(
         protected VinstackService $vinstack,
         protected VehicleStatusNotificationService $statusNotifications,
+        protected DealerNotificationService $dealerNotifications,
     ) {}
 
     /**
@@ -61,12 +63,21 @@ class SyncVehiclesAction
                 $previousRaw = is_array($vehicle->raw_data) ? $vehicle->raw_data : [];
                 $merged = VehicleGalleryMerger::mergeSyncPayload($vehicle, $payload);
                 $vehicle->update($merged);
-                $this->statusNotifications->recordFromRawDataChange(
+                $statusChange = $this->statusNotifications->recordFromRawDataChange(
                     $vehicle,
                     $previousRaw,
                     is_array($merged['raw_data'] ?? null) ? $merged['raw_data'] : [],
                     'sync',
                 );
+
+                if ($statusChange !== null) {
+                    $this->dealerNotifications->notifyVehicleUpdated(
+                        $vehicle,
+                        $statusChange->previous_status,
+                        (string) $statusChange->new_status,
+                        source: 'sync',
+                    );
+                }
                 $updated++;
 
                 continue;

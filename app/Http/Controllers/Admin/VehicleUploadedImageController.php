@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreVehicleUploadedImagesRequest;
 use App\Models\Vehicle;
 use App\Models\VehicleUploadedImage;
+use App\Services\DealerNotificationService;
 use App\Services\VehicleDetailService;
 use App\Services\VehicleUploadedImageService;
 use Illuminate\Http\JsonResponse;
@@ -17,16 +18,27 @@ class VehicleUploadedImageController extends Controller
         Vehicle $vehicle,
         VehicleUploadedImageService $uploads,
         VehicleDetailService $details,
+        DealerNotificationService $notifications,
     ): JsonResponse {
         /** @var list<\Illuminate\Http\UploadedFile> $files */
         $files = $request->file('images', []);
+        $stage = $request->string('stage')->toString();
 
         $created = $uploads->storeMany(
             $vehicle,
-            $request->string('stage')->toString(),
+            $stage,
             $files,
             $request->user(),
         );
+
+        if (count($created) > 0) {
+            $notifications->notifyVehicleImagesAdded(
+                $vehicle,
+                count($created),
+                $stage,
+                $request->user(),
+            );
+        }
 
         return response()->json([
             'data' => [

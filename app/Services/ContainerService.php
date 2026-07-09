@@ -6,6 +6,7 @@ use App\Models\ContainerImage;
 use App\Models\Dealer;
 use App\Models\Vehicle;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
@@ -339,6 +340,30 @@ class ContainerService
         }
 
         return array_values(array_filter($autos, fn ($item) => is_array($item)));
+    }
+
+    /**
+     * @return Collection<int, Dealer>
+     */
+    public function dealersForContainer(string $container): Collection
+    {
+        $number = $this->normalizeContainerNumber($container);
+
+        if ($number === null || $number === '') {
+            return collect();
+        }
+
+        $vehicles = $this->queryVehiclesInContainer($number, null, null);
+
+        return collect($vehicles)
+            ->map(function (Vehicle $vehicle) {
+                $vehicle->loadMissing('activeAssignment.dealer');
+
+                return $vehicle->activeAssignment?->dealer;
+            })
+            ->filter(fn ($dealer) => $dealer instanceof Dealer)
+            ->unique('id')
+            ->values();
     }
 
     /**
