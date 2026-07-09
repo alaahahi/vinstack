@@ -610,6 +610,8 @@ export default {
         message: 'Message',
         messagePlaceholder: 'Write the WhatsApp notification...',
         sendNow: 'Send via WhatsApp',
+        sendToAll: 'Send to all dealers',
+        sendToAllNow: 'Send to all via WhatsApp',
         logTitle: 'Sent notifications log',
         logSub: 'Recent dealer messages sent through WA Queue.',
         logEmpty: 'No notifications sent yet.',

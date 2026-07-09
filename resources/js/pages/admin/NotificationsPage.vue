@@ -212,10 +212,11 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import Button from 'primevue/button';
+import Checkbox from 'primevue/checkbox';
 import InputText from 'primevue/inputtext';
 import InputNumber from 'primevue/inputnumber';
 import Textarea from 'primevue/textarea';
@@ -238,6 +239,7 @@ const form = reactive({
 const sendForm = reactive({
     dealer_id: null,
     message: '',
+    send_to_all: false,
 });
 const dealers = ref([]);
 const logs = ref([]);
@@ -247,10 +249,35 @@ const testing = ref(false);
 const sending = ref(false);
 const loadingLog = ref(false);
 
-const canSend = computed(() =>
-    Boolean(sendForm.dealer_id)
-    && sendForm.message.trim().length > 0
-    && settings.value.configured,
+const dealersWithPhoneCount = computed(() =>
+    dealers.value.filter((dealer) => dealer.has_phone).length,
+);
+
+const canSend = computed(() => {
+    if (!settings.value.configured || sendForm.message.trim().length === 0) {
+        return false;
+    }
+
+    if (sendForm.send_to_all) {
+        return dealersWithPhoneCount.value > 0;
+    }
+
+    return Boolean(sendForm.dealer_id);
+});
+
+const sendButtonLabel = computed(() =>
+    sendForm.send_to_all
+        ? t('dealerNotifications.sendToAllNow')
+        : t('dealerNotifications.sendNow'),
+);
+
+watch(
+    () => sendForm.send_to_all,
+    (sendToAll) => {
+        if (sendToAll) {
+            sendForm.dealer_id = null;
+        }
+    },
 );
 
 function statusLabel(row) {
@@ -346,15 +373,27 @@ async function sendNotification() {
     sending.value = true;
 
     try {
-        const { data } = await api.post('/admin/dealer-notifications/send', {
-            dealer_id: sendForm.dealer_id,
+        const payload = {
             message: sendForm.message.trim(),
-        });
+            send_to_all: sendForm.send_to_all,
+        };
 
-        toast.add({ severity: 'success', summary: data.message, life: 4000 });
+        if (!sendForm.send_to_all) {
+            payload.dealer_id = sendForm.dealer_id;
+        }
+
+        const { data } = await api.post('/admin/dealer-notifications/send', payload);
+
+        toast.add({
+            severity: data.failed > 0 && data.sent > 0 ? 'warn' : 'success',
+            summary: data.message,
+            life: 5000,
+        });
         sendForm.message = '';
 
-        if (data.data) {
+        if (Array.isArray(data.data) && data.data.length) {
+            logs.value = [...data.data, ...logs.value];
+        } else if (data.data) {
             logs.value = [data.data, ...logs.value];
         } else {
             await loadLog();
@@ -487,8 +526,28 @@ onMounted(async () => {
 }
 
 .field-grid--send {
-    grid-template-columns: minmax(220px, 1fr) 2fr;
+    grid-template-columns: minmax(200px, 1fr) 2fr;
     align-items: start;
+}
+
+.send-select {
+    max-width: 14rem;
+}
+
+.send-all-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    margin-top: 0.45rem;
+    font-size: 0.82rem;
+    color: var(--vs-text-secondary);
+    cursor: pointer;
+    user-select: none;
+}
+
+.send-all-toggle small {
+    color: var(--vs-text-muted);
+    font-size: 0.75rem;
 }
 
 .field--toggle {

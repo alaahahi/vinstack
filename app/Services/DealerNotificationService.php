@@ -136,6 +136,9 @@ class DealerNotificationService
     }
 
     /**
+     * @return array{ok: bool, message: string, log?: array<string, mixed>, status?: int|null, errors?: array<string, mixed>|null}
+     */
+    public function sendLoginCredentials(Dealer $dealer, string $password, ?User $author = null): array
     {
         $dealer->loadMissing('user');
 

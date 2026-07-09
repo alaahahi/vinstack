@@ -449,6 +449,8 @@ export default {
         message: 'نص الرسالة',
         messagePlaceholder: 'اكتب إشعار الواتساب...',
         sendNow: 'إرسال عبر الواتساب',
+        sendToAll: 'إرسال لجميع التجار',
+        sendToAllNow: 'إرسال للجميع عبر الواتساب',
         logTitle: 'سجل الإشعارات المرسلة',
         logSub: 'آخر الرسائل المرسلة للتجار عبر WA Queue.',
         logEmpty: 'لا توجد إشعارات مرسلة بعد.',
