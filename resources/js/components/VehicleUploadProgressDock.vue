@@ -423,6 +423,21 @@ function etaText(job) {
     background: color-mix(in srgb, #dc2626 8%, var(--vs-surface));
 }
 
+.upload-dock__icon-btn--small {
+    width: 26px;
+    height: 26px;
+    border-radius: 8px;
+}
+
+.upload-dock--failed .upload-dock__icon {
+    background: color-mix(in srgb, #dc2626 12%, transparent);
+    color: #dc2626;
+}
+
+.upload-dock--failed .upload-dock__compact-percent {
+    color: #dc2626;
+}
+
 .upload-dock__compact-percent {
     font-size: 0.82rem;
     font-weight: 800;

@@ -3,9 +3,11 @@
 namespace App\Services;
 
 use App\Exceptions\GalleryTokenExpiredException;
+use App\Models\User;
 use App\Models\Vehicle;
 use App\Support\VehicleImageStages;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 use ZipArchive;
 
@@ -20,17 +22,22 @@ class VehicleVinstackZipUploadService
 
     public function __construct(
         protected VinstackGalleryService $gallery,
+        protected VehicleUploadedImageService $uploadedImages,
+        protected CloudinaryService $cloudinary,
     ) {}
 
     /**
      * @return array{
      *     uploaded: int,
      *     failed: list<array{name: string, error: string}>,
-     *     gallery: array<string, mixed>
+     *     gallery: array<string, mixed>,
+     *     mode: 'vinstack'|'cloudinary'
      * }
      */
-    public function uploadZip(Vehicle $vehicle, string $stage, UploadedFile $zip): array
+    public function uploadZip(Vehicle $vehicle, string $stage, UploadedFile $zip, ?User $user = null): array
     {
+        @set_time_limit(600);
+
         if (! in_array($stage, VehicleImageStages::STAGES, true)) {
             throw new RuntimeException('invalid_stage');
         }
@@ -45,6 +52,65 @@ class VehicleVinstackZipUploadService
             throw new RuntimeException('zip_no_images');
         }
 
+        try {
+            [$vinstackUploaded, $vinstackFailed] = $this->uploadEntriesToVinstack($vehicle, $stage, $entries);
+
+            if ($vinstackUploaded > 0) {
+                return $this->buildResult($vehicle, $vinstackUploaded, $vinstackFailed, 'vinstack');
+            }
+
+            if ($user && $this->cloudinary->isConfigured()) {
+                [$cloudinaryUploaded, $cloudinaryFailed] = $this->uploadEntriesToCloudinary(
+                    $vehicle,
+                    $stage,
+                    $entries,
+                    $user,
+                );
+
+                if ($cloudinaryUploaded > 0) {
+                    Log::info('vehicle.zip_upload.cloudinary_fallback', [
+                        'vehicle_id' => $vehicle->id,
+                        'stage' => $stage,
+                        'uploaded' => $cloudinaryUploaded,
+                        'failed' => count($cloudinaryFailed),
+                        'vinstack_error' => $vinstackFailed[0]['error'] ?? null,
+                    ]);
+
+                    return $this->buildResult($vehicle, $cloudinaryUploaded, $cloudinaryFailed, 'cloudinary');
+                }
+
+                $failed = $cloudinaryFailed;
+            } else {
+                $failed = $vinstackFailed;
+            }
+
+            $firstError = $failed[0]['error'] ?? 'vinstack_upload_failed';
+
+            Log::warning('vehicle.zip_upload.failed', [
+                'vehicle_id' => $vehicle->id,
+                'vin' => $vehicle->vin,
+                'stage' => $stage,
+                'image_count' => count($entries),
+                'error' => $firstError,
+                'cloudinary_configured' => $this->cloudinary->isConfigured(),
+            ]);
+
+            if (! $this->cloudinary->isConfigured()) {
+                throw new RuntimeException($firstError.'|cloudinary_not_configured');
+            }
+
+            throw new RuntimeException($firstError);
+        } finally {
+            $this->cleanupEntries($entries);
+        }
+    }
+
+    /**
+     * @param  list<array{name: string, path: string}>  $entries
+     * @return array{0: int, 1: list<array{name: string, error: string}>}
+     */
+    protected function uploadEntriesToVinstack(Vehicle $vehicle, string $stage, array $entries): array
+    {
         $uploaded = 0;
         $failed = [];
 
@@ -57,24 +123,65 @@ class VehicleVinstackZipUploadService
                     'name' => $entry['name'],
                     'error' => $this->humanizeUploadError($e),
                 ];
-            } finally {
-                if (is_file($entry['path'])) {
-                    @unlink($entry['path']);
-                }
             }
         }
 
-        if ($uploaded === 0) {
-            throw new RuntimeException(
-                $failed[0]['error'] ?? 'vinstack_upload_failed',
-            );
+        return [$uploaded, $failed];
+    }
+
+    /**
+     * @param  list<array{name: string, path: string}>  $entries
+     * @return array{0: int, 1: list<array{name: string, error: string}>}
+     */
+    protected function uploadEntriesToCloudinary(Vehicle $vehicle, string $stage, array $entries, User $user): array
+    {
+        $uploaded = 0;
+        $failed = [];
+
+        foreach ($entries as $entry) {
+            try {
+                $this->uploadedImages->storeFromPath($vehicle, $stage, $entry['path'], $entry['name'], $user);
+                $uploaded++;
+            } catch (\Throwable $e) {
+                $failed[] = [
+                    'name' => $entry['name'],
+                    'error' => trim($e->getMessage()) ?: 'cloudinary_upload_failed',
+                ];
+            }
         }
 
+        return [$uploaded, $failed];
+    }
+
+    /**
+     * @param  list<array{name: string, error: string}>  $failed
+     * @return array{
+     *     uploaded: int,
+     *     failed: list<array{name: string, error: string}>,
+     *     gallery: array<string, mixed>,
+     *     mode: 'vinstack'|'cloudinary'
+     * }
+     */
+    protected function buildResult(Vehicle $vehicle, int $uploaded, array $failed, string $mode): array
+    {
         return [
             'uploaded' => $uploaded,
             'failed' => $failed,
             'gallery' => $this->gallery->buildGalleryPayload($vehicle->fresh() ?? $vehicle),
+            'mode' => $mode,
         ];
+    }
+
+    /**
+     * @param  list<array{name: string, path: string}>  $entries
+     */
+    protected function cleanupEntries(array $entries): void
+    {
+        foreach ($entries as $entry) {
+            if (is_file($entry['path'])) {
+                @unlink($entry['path']);
+            }
+        }
     }
 
     /**

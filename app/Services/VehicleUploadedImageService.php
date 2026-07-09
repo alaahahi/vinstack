@@ -96,6 +96,22 @@ class VehicleUploadedImageService
 
 
     /**
+     * @return array<string, mixed>
+     */
+    public function storeFromPath(Vehicle $vehicle, string $stage, string $path, string $originalName, User $user): array
+    {
+        if (! is_file($path) || ! is_readable($path)) {
+            throw new \RuntimeException('upload_file_unreadable');
+        }
+
+        $file = new UploadedFile($path, $originalName, null, null, true);
+
+        return $this->storeOne($vehicle, $stage, $file, $user);
+    }
+
+
+
+    /**
 
      * @return array<string, mixed>
 
