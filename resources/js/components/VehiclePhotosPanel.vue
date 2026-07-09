@@ -585,17 +585,6 @@ async function uploadZipFile(stageKey, zipFile) {
         return;
     }
 
-    if (! vehicleUsesLiveGallery(props.vehicle)) {
-        toast.add({
-            severity: 'warn',
-            summary: 'غير متاح',
-            detail: 'رفع ZIP إلى Vinstack متاح لسيارات المزامنة فقط',
-            life: 4000,
-        });
-
-        return;
-    }
-
     zipUploadingStage.value = stageKey;
 
     try {

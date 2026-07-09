@@ -80,6 +80,42 @@ class DealerNotificationService
     /**
      * @return array{ok: bool, message: string, log?: array<string, mixed>, status?: int|null, errors?: array<string, mixed>|null}
      */
+    public function sendLoginCredentials(Dealer $dealer, string $password, ?User $author = null): array
+    {
+        $dealer->loadMissing('user');
+
+        $identifier = trim((string) ($dealer->phone ?: $dealer->user?->email ?: ''));
+
+        if ($identifier === '') {
+            return [
+                'ok' => false,
+                'message' => 'لا توجد بيانات دخول يمكن إرسالها للتاجر.',
+            ];
+        }
+
+        $message = $this->messages->loginCredentials(
+            $dealer,
+            $identifier,
+            $password,
+            rtrim(config('app.url', url('/')), '/').'/login',
+        );
+
+        $uniqueKey = 'dealer-login-'.$dealer->id.'-'.now()->timestamp;
+
+        return $this->dispatchToDealer(
+            dealer: $dealer,
+            message: $message,
+            source: 'system',
+            event: 'dealer.login_credentials',
+            uniqueKey: $uniqueKey,
+            author: $author,
+            locale: $this->messages->localeForDealer($dealer),
+        );
+    }
+
+    /**
+     * @return array{ok: bool, message: string, log?: array<string, mixed>, status?: int|null, errors?: array<string, mixed>|null}
+     */
     protected function dispatchToDealer(
         Dealer $dealer,
         string $message,

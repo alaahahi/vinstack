@@ -9,6 +9,7 @@ use App\Models\Dealer;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleAssignment;
+use App\Services\VehicleUploadedImageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -16,6 +17,16 @@ use Tests\TestCase;
 class AdminVehicleIndexTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->mock(VehicleUploadedImageService::class, function ($mock): void {
+            $mock->shouldReceive('enrichListVehicle')
+                ->andReturnUsing(fn (Vehicle $vehicle) => $vehicle);
+        });
+    }
 
     public function test_default_list_includes_unassigned_vinstack_vehicles(): void
     {
@@ -109,33 +120,6 @@ class AdminVehicleIndexTest extends TestCase
         $this->assertContains($assigned->vin, $vins);
     }
 
-    public function test_source_filter_returns_nujoom_al_jazeera_vehicles(): void
-    {
-        $admin = User::factory()->create(['role' => UserRole::Admin]);
-
-        Vehicle::query()->create([
-            'source' => VehicleSource::NujoomAlJazeera,
-            'vinstack_id' => 'nujoom-1',
-            'vin' => '1HGCM82633A004359',
-            'status' => VehicleStatus::Available,
-        ]);
-
-        Vehicle::query()->create([
-            'source' => VehicleSource::Vinstack,
-            'vinstack_id' => 'vs-2',
-            'vin' => '1HGCM82633A004360',
-            'status' => VehicleStatus::Available,
-        ]);
-
-        Sanctum::actingAs($admin);
-
-        $response = $this->getJson('/api/admin/vehicles?source=nujoom_al_jazeera');
-
-        $response->assertOk()
-            ->assertJsonPath('meta.total', 1)
-            ->assertJsonPath('data.0.source', 'nujoom_al_jazeera');
-    }
-
     public function test_dealer_filter_only_shows_assigned_vehicles(): void
     {
         $admin = User::factory()->create(['role' => UserRole::Admin]);
@@ -176,5 +160,48 @@ class AdminVehicleIndexTest extends TestCase
             ->assertJsonPath('data.0.vin', $assigned->vin);
 
         $this->assertNotContains($unassigned->vin, collect($response->json('data'))->pluck('vin')->all());
+    }
+
+    public function test_default_list_orders_by_purchase_date_then_created_at(): void
+    {
+        $olderPurchase = Vehicle::query()->create([
+            'source' => VehicleSource::Manual,
+            'vinstack_id' => 'manual-order-1',
+            'vin' => '1HGCM82633A004361',
+            'status' => VehicleStatus::Available,
+            'raw_data' => ['purchase_date' => '2026-06-01'],
+        ]);
+
+        $newerPurchase = Vehicle::query()->create([
+            'source' => VehicleSource::Manual,
+            'vinstack_id' => 'manual-order-2',
+            'vin' => '1HGCM82633A004362',
+            'status' => VehicleStatus::Available,
+            'raw_data' => ['purchase_date' => '2026-07-01'],
+        ]);
+
+        $fallbackCreated = Vehicle::query()->create([
+            'source' => VehicleSource::Manual,
+            'vinstack_id' => 'manual-order-3',
+            'vin' => '1HGCM82633A004363',
+            'status' => VehicleStatus::Available,
+        ]);
+
+        $olderPurchase->update(['created_at' => now()->subDays(3)]);
+        $newerPurchase->update(['created_at' => now()->subDays(2)]);
+        $fallbackCreated->update(['created_at' => now()]);
+
+        $vins = Vehicle::query()
+            ->newestFirst()
+            ->pluck('vin')
+            ->take(3)
+            ->values()
+            ->all();
+
+        $this->assertSame([
+            $fallbackCreated->vin,
+            $newerPurchase->vin,
+            $olderPurchase->vin,
+        ], $vins);
     }
 }

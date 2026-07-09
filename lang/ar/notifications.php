@@ -14,4 +14,10 @@ return [
             'status' => 'الحالة',
         ],
     ],
+    'login_credentials' => [
+        'intro' => 'تم إنشاء حسابكم في :company. بيانات الدخول:',
+        'username' => 'اسم المستخدم: :value',
+        'password' => 'كلمة المرور: :value',
+        'url' => 'رابط الدخول: :value',
+    ],
 ];

@@ -120,8 +120,11 @@
                 <span class="status-dot" />
                 {{ vehicle.status }}
             </span>
-            <div v-if="dealerName" class="dealer-tag">
-                <span class="dealer-tag__name">{{ dealerName }}</span>
+            <div v-if="dealerDisplayName" class="dealer-tag">
+                <span class="dealer-tag__name">{{ dealerDisplayName }}</span>
+                <span v-if="dealerCompanyName && dealerCompanyName !== dealerDisplayName" class="dealer-tag__sub">
+                    {{ dealerCompanyName }}
+                </span>
                 <button
                     type="button"
                     class="dealer-tag__remove"
@@ -290,7 +293,9 @@ const titleStatus = computed(() => vehicleTitleStatus(props.vehicle, t));
 const purchaseDate = computed(() => vehiclePurchaseDate(props.vehicle));
 const arrivedDate = computed(() => vehicleArrivedDate(props.vehicle));
 const enteredBy = computed(() => vehicleEnteredBy(props.vehicle, t));
-const dealerName = computed(() => props.vehicle.active_assignment?.dealer?.company_name ?? null);
+const dealerUserName = computed(() => props.vehicle.active_assignment?.dealer?.user?.name?.trim() ?? '');
+const dealerCompanyName = computed(() => props.vehicle.active_assignment?.dealer?.company_name?.trim() ?? '');
+const dealerDisplayName = computed(() => dealerUserName.value || dealerCompanyName.value || null);
 const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.vehicle));
 </script>
 
@@ -723,6 +728,7 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
 .dealer-tag {
     display: inline-flex;
     align-items: center;
+    flex-wrap: wrap;
     gap: 0.25rem;
     max-width: 100%;
     padding-block: 0.15rem;
@@ -739,6 +745,11 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     text-overflow: ellipsis;
     white-space: nowrap;
     max-width: 11rem;
+}
+
+.dealer-tag__sub {
+    font-size: 0.66rem;
+    color: var(--vs-text-muted);
 }
 
 .dealer-tag__remove {

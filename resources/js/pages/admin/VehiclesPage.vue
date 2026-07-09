@@ -22,6 +22,7 @@
                     <InputText
                         v-model="search"
                         :placeholder="t('vehicles.searchPlaceholder')"
+                        :disabled="loadingMore"
                         @keyup.enter="resetAndLoad"
                     />
                 </IconField>
@@ -111,15 +112,38 @@
 
         <NujoomImportDialog v-model:visible="nujoomImportVisible" @applied="resetAndLoad" />
 
-        <Dialog v-model:visible="assignVisible" :header="t('vehicles.assignDialog')" modal style="width: min(420px, 100vw)">
-            <Select
-                v-model="selectedDealerId"
-                :options="dealers"
-                option-label="company_name"
-                option-value="id"
-                :placeholder="t('vehicles.selectDealer')"
-                class="w-full"
-            />
+        <Dialog v-model:visible="assignVisible" :header="t('vehicles.assignDialog')" modal style="width: min(460px, 100vw)">
+            <div class="assign-dialog">
+                <div v-if="selectedVehicle" class="assign-dialog__vehicle">
+                    <div class="assign-dialog__label">{{ t('vehicles.assignDialog') }}</div>
+                    <div class="assign-dialog__title">{{ selectedVehicleLabel }}</div>
+                    <div v-if="selectedVehicle?.vin" class="assign-dialog__meta">{{ selectedVehicle.vin }}</div>
+                </div>
+                <Select
+                    v-model="selectedDealerId"
+                    :options="dealersForAssign"
+                    option-label="assign_label"
+                    option-value="id"
+                    :placeholder="t('vehicles.selectDealer')"
+                    filter
+                    :filter-fields="['assign_label', 'company_name', 'user_name', 'phone']"
+                    class="w-full"
+                >
+                    <template #option="{ option }">
+                        <div class="assign-option">
+                            <div class="assign-option__title">{{ option.user_name || option.company_name }}</div>
+                            <div v-if="option.company_name && option.company_name !== option.user_name" class="assign-option__sub">
+                                {{ option.company_name }}
+                            </div>
+                            <div v-if="option.phone" class="assign-option__meta">{{ option.phone }}</div>
+                        </div>
+                    </template>
+                    <template #value="{ value, placeholder }">
+                        <span v-if="value && selectedDealerOption">{{ selectedDealerOption.assign_label }}</span>
+                        <span v-else>{{ placeholder }}</span>
+                    </template>
+                </Select>
+            </div>
             <template #footer>
                 <Button :label="t('actions.cancel')" text @click="assignVisible = false" />
                 <Button :label="t('actions.confirm')" class="btn-assign" :loading="assigning" @click="confirmAssign" />
@@ -129,7 +153,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
@@ -170,6 +194,9 @@ const perPage = ref(50);
 const total = ref(0);
 const hasMore = ref(false);
 const trackingAvailable = ref(false);
+const searchDebounceMs = 350;
+let searchDebounceTimer = null;
+let activeFetchToken = 0;
 
 const manualFormVisible = ref(false);
 const editingVehicle = ref(null);
@@ -196,6 +223,35 @@ const sourceOptions = computed(() => [
 ]);
 
 const assigning = ref(false);
+const dealersForAssign = computed(() => dealers.value.map((dealer) => {
+    const userName = dealer.user?.name?.trim() || '';
+    const companyName = dealer.company_name?.trim() || '';
+    const phone = dealer.phone?.trim() || '';
+    const assignLabel = userName && companyName && userName !== companyName
+        ? `${userName} - ${companyName}`
+        : (userName || companyName || '—');
+
+    return {
+        ...dealer,
+        user_name: userName,
+        phone,
+        assign_label: assignLabel,
+    };
+}));
+const selectedDealerOption = computed(() =>
+    dealersForAssign.value.find((dealer) => dealer.id === selectedDealerId.value) ?? null,
+);
+const selectedVehicleLabel = computed(() => {
+    if (! selectedVehicle.value) {
+        return '';
+    }
+
+    return [
+        selectedVehicle.value.year,
+        selectedVehicle.value.make,
+        selectedVehicle.value.model,
+    ].filter(Boolean).join(' ') || selectedVehicle.value.vin || `#${selectedVehicle.value.id}`;
+});
 
 function listParams(nextPage = page.value) {
     const dealerId = dealerFilter.value;
@@ -222,6 +278,7 @@ async function loadDealers() {
 
 async function fetchPage(nextPage, append = false) {
     const isFirstPage = nextPage === 1 && ! append;
+    const fetchToken = ++activeFetchToken;
 
     if (isFirstPage) {
         loading.value = true;
@@ -233,6 +290,11 @@ async function fetchPage(nextPage, append = false) {
         const { data } = await api.get('/admin/vehicles', {
             params: listParams(nextPage),
         });
+
+        if (fetchToken !== activeFetchToken) {
+            return;
+        }
+
         const rows = data.data ?? [];
 
         vehicles.value = append ? [...vehicles.value, ...rows] : rows;
@@ -241,8 +303,10 @@ async function fetchPage(nextPage, append = false) {
         trackingAvailable.value = Boolean(data.tracking_available);
         page.value = nextPage;
     } finally {
-        loading.value = false;
-        loadingMore.value = false;
+        if (fetchToken === activeFetchToken) {
+            loading.value = false;
+            loadingMore.value = false;
+        }
     }
 }
 
@@ -263,6 +327,16 @@ async function loadMore() {
 function onDealerBadgeSelect(dealerId) {
     dealerFilter.value = dealerId;
     resetAndLoad();
+}
+
+function scheduleSearchLoad() {
+    if (searchDebounceTimer) {
+        clearTimeout(searchDebounceTimer);
+    }
+
+    searchDebounceTimer = window.setTimeout(() => {
+        resetAndLoad();
+    }, searchDebounceMs);
 }
 
 function openCreateManual() {
@@ -389,7 +463,9 @@ async function confirmAssign() {
 }
 
 function confirmUnassign(vehicle) {
-    const dealerName = vehicle.active_assignment?.dealer?.company_name ?? t('common.dealer');
+    const dealerName = vehicle.active_assignment?.dealer?.user?.name
+        ?? vehicle.active_assignment?.dealer?.company_name
+        ?? t('common.dealer');
 
     confirm.require({
         message: t('vehicles.unassignConfirm', { dealer: dealerName }),
@@ -442,15 +518,73 @@ watch(() => route.query.vehicle, () => {
     openDetailFromQuery();
 });
 
+watch(search, () => {
+    scheduleSearchLoad();
+});
+
 onMounted(async () => {
     await loadDealers();
     await resetAndLoad();
     openDetailFromQuery();
+});
+
+onUnmounted(() => {
+    if (searchDebounceTimer) {
+        clearTimeout(searchDebounceTimer);
+    }
 });
 </script>
 
 <style scoped>
 .w-full {
     width: 100%;
+}
+
+.assign-dialog {
+    display: flex;
+    flex-direction: column;
+    gap: 0.9rem;
+}
+
+.assign-dialog__vehicle {
+    padding: 0.85rem 1rem;
+    border: 1px solid var(--vs-border);
+    border-radius: 14px;
+    background: var(--vs-surface-elevated);
+}
+
+.assign-dialog__label {
+    font-size: 0.76rem;
+    color: var(--vs-text-muted);
+    margin-bottom: 0.2rem;
+}
+
+.assign-dialog__title {
+    font-size: 1rem;
+    font-weight: 700;
+    color: var(--vs-text);
+}
+
+.assign-dialog__meta {
+    margin-top: 0.2rem;
+    font-size: 0.8rem;
+    color: var(--vs-text-secondary);
+}
+
+.assign-option {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.assign-option__title {
+    font-weight: 600;
+    color: var(--vs-text);
+}
+
+.assign-option__sub,
+.assign-option__meta {
+    font-size: 0.8rem;
+    color: var(--vs-text-muted);
 }
 </style>

@@ -91,7 +91,7 @@ class DealerNotificationController extends Controller
     public function dealers(): JsonResponse
     {
         $dealers = Dealer::query()
-            ->orderBy('company_name')
+            ->orderBy('id')
             ->get(['id', 'company_name', 'phone'])
             ->map(fn (Dealer $dealer) => [
                 'id' => $dealer->id,

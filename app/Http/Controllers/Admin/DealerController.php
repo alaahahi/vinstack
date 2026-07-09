@@ -9,6 +9,7 @@ use App\Http\Requests\Admin\UpdateDealerRequest;
 use App\Models\Dealer;
 use App\Models\User;
 use App\Services\ContainerService;
+use App\Services\DealerNotificationService;
 use App\Support\DealerPresence;
 use App\Support\RecoveryCodesArchive;
 use App\Support\SupportedLocale;
@@ -23,7 +24,7 @@ class DealerController extends Controller
         $dealers = Dealer::query()
             ->withCount('activeAssignments as vehicles_count')
             ->with('user:id,name,email,phone,locale,locale_customized,last_seen_at,recovery_codes_archive,two_factor_confirmed_at')
-            ->orderBy('company_name')
+            ->orderBy('id')
             ->get()
             ->map(fn (Dealer $dealer) => $this->formatDealer($dealer));
 
@@ -39,7 +40,7 @@ class DealerController extends Controller
     {
         $dealers = Dealer::query()
             ->withCount('activeAssignments as vehicles_count')
-            ->orderBy('company_name')
+            ->orderBy('id')
             ->get(['id', 'company_name']);
 
         $data = $dealers->map(function (Dealer $dealer) use ($containers) {
@@ -56,33 +57,48 @@ class DealerController extends Controller
         ]);
     }
 
-    public function store(StoreDealerRequest $request): JsonResponse
+    public function store(
+        StoreDealerRequest $request,
+        DealerNotificationService $dealerNotifications,
+    ): JsonResponse
     {
-        $user = User::query()->create([
-            'name' => $request->string('name'),
-            'email' => $request->string('email'),
-            'phone' => $request->input('phone'),
-            'password' => Hash::make($request->string('password')),
-            'role' => UserRole::Dealer,
-        ]);
+        $plainPassword = $request->string('password')->toString();
 
-        $dealer = Dealer::query()->create([
-            'user_id' => $user->id,
-            'company_name' => $request->string('company_name'),
-            'phone' => $request->input('phone'),
-            'login_password_encrypted' => $request->string('password')->toString(),
-        ]);
+        [$user, $dealer] = DB::transaction(function () use ($request, $plainPassword) {
+            $user = User::query()->create([
+                'name' => $request->string('name'),
+                'email' => $request->string('email'),
+                'phone' => $request->input('phone'),
+                'password' => Hash::make($plainPassword),
+                'role' => UserRole::Dealer,
+            ]);
+
+            $dealer = Dealer::query()->create([
+                'user_id' => $user->id,
+                'company_name' => $request->string('company_name'),
+                'phone' => $request->input('phone'),
+                'login_password_encrypted' => $plainPassword,
+            ]);
+
+            return [$user, $dealer];
+        });
 
         $dealer->load('user:id,name,email,phone,locale,locale_customized,last_seen_at,recovery_codes_archive,two_factor_confirmed_at');
 
         $formatted = $this->formatDealer($dealer);
+        $credentialsNotification = $dealerNotifications->sendLoginCredentials($dealer, $plainPassword);
 
         return response()->json([
             'data' => $formatted,
             'login_credentials' => [
                 'username' => $formatted['login_identifier'],
-                'password' => $request->string('password')->toString(),
+                'password' => $plainPassword,
                 'url' => $this->loginPageUrl(),
+            ],
+            'credentials_notification' => [
+                'ok' => $credentialsNotification['ok'],
+                'message' => $credentialsNotification['message'],
+                'status' => $credentialsNotification['status'] ?? null,
             ],
         ], 201);
     }

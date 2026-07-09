@@ -1,1 +1,0 @@
-import{am as l,af as c}from"./app-GZsMLjDt.js";function i(){const e=l(),{locale:o,availableLocales:a,direction:s,isRtl:t}=c(e);return{locale:o,availableLocales:a,direction:s,isRtl:t,setLocale:e.setLocale.bind(e)}}export{i as u};

@@ -61,12 +61,16 @@ class Vehicle extends Model
 
         if ($driver === 'sqlite') {
             return $query
-                ->orderByRaw("COALESCE(json_extract(raw_data, '$.created_at'), datetime(created_at)) DESC")
+                ->orderByRaw(
+                    "COALESCE(NULLIF(json_extract(raw_data, '$.purchase_date'), ''), NULLIF(json_extract(raw_data, '$.created_at'), ''), datetime(created_at)) DESC"
+                )
                 ->orderByDesc('id');
         }
 
         return $query
-            ->orderByRaw("COALESCE(JSON_UNQUOTE(JSON_EXTRACT(raw_data, '$.created_at')), created_at) DESC")
+            ->orderByRaw(
+                "COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(raw_data, '$.purchase_date')), ''), NULLIF(JSON_UNQUOTE(JSON_EXTRACT(raw_data, '$.created_at')), ''), created_at) DESC"
+            )
             ->orderByDesc('id');
     }
 }

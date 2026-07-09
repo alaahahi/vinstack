@@ -14,4 +14,10 @@ return [
             'status' => 'Status',
         ],
     ],
+    'login_credentials' => [
+        'intro' => 'Your account has been created at :company. Login details:',
+        'username' => 'Username: :value',
+        'password' => 'Password: :value',
+        'url' => 'Login URL: :value',
+    ],
 ];

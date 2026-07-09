@@ -207,7 +207,8 @@ export function vehicleAssignmentBadgeClass(vehicle) {
 }
 
 export function vehicleEnteredBy(vehicle, t = null) {
-    const dealer = vehicle?.active_assignment?.dealer?.company_name;
+    const dealer = vehicle?.active_assignment?.dealer?.user?.name
+        || vehicle?.active_assignment?.dealer?.company_name;
 
     if (dealer) {
         return dealer;

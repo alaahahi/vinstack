@@ -241,7 +241,7 @@ async function load({ silent = false } = {}) {
 
     try {
         const { data } = await api.get('/admin/dealers');
-        dealers.value = data.data;
+        dealers.value = [...(data.data ?? [])].sort((left, right) => Number(left.id) - Number(right.id));
         loginUrl.value = data.meta?.login_url || loginUrl.value;
     } finally {
         if (!silent) {
@@ -383,6 +383,22 @@ async function save() {
                 data.login_credentials?.password?.trim() || createdPassword?.trim() || '';
 
             await copyLoginInfo(created, passwordForCopy);
+
+            if (data.credentials_notification?.ok) {
+                toast.add({
+                    severity: 'success',
+                    summary: t('dealers.copied'),
+                    detail: data.credentials_notification.message,
+                    life: 3500,
+                });
+            } else if (data.credentials_notification?.message) {
+                toast.add({
+                    severity: 'warn',
+                    summary: t('common.error'),
+                    detail: data.credentials_notification.message,
+                    life: 4500,
+                });
+            }
         }
     } catch (e) {
         toast.add({

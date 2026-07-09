@@ -1,6 +1,6 @@
 import api from '../api/client';
 
-/** Gallery API — سيارات Vinstack المستوردة فقط (ليس يدوي). */
+/** Live gallery is fetched only for vehicles that support it. */
 export function vehicleUsesLiveGallery(vehicle) {
     return vehicle?.source === 'vinstack';
 }

@@ -27,7 +27,7 @@ class VehicleController extends Controller
     ): JsonResponse
     {
         $query = Vehicle::query()
-            ->with(['activeAssignment.dealer.user:id,name,email', 'uploadedImages']);
+            ->with(['activeAssignment.dealer.user:id,name,email,phone', 'uploadedImages']);
 
         $search = $request->string('search')->trim()->toString();
         if ($search !== '') {

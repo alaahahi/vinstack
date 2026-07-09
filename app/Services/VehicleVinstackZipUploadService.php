@@ -35,10 +35,6 @@ class VehicleVinstackZipUploadService
             throw new RuntimeException('invalid_stage');
         }
 
-        if (! $this->gallery->usesLiveGalleryApi($vehicle)) {
-            throw new RuntimeException('gallery_api_not_applicable');
-        }
-
         if ($this->gallery->resolveGalleryIdentifiers($vehicle) === []) {
             throw new RuntimeException('gallery_vehicle_id_missing');
         }
