@@ -29,7 +29,8 @@ class AdminDealerStoreTest extends TestCase
         $response->assertCreated()
             ->assertJsonPath('data.user.name', 'Dealer User')
             ->assertJsonPath('data.company_name', 'Showroom Name')
-            ->assertJsonPath('login_credentials.username', '07511077812')
+            ->assertJsonPath('login_credentials.email', 'dealer@example.com')
+            ->assertJsonPath('login_credentials.username', 'dealer@example.com')
             ->assertJsonPath('login_credentials.password', 'secret123')
             ->assertJsonPath('credentials_notification.ok', false)
             ->assertJsonPath('credentials_notification.message', 'WA Queue غير مفعّل — راجع إعدادات الإشعارات.');

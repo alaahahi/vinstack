@@ -78,24 +78,79 @@ class DealerNotificationService
     }
 
     /**
-     * @return array{ok: bool, message: string, log?: array<string, mixed>, status?: int|null, errors?: array<string, mixed>|null}
+     * @return array{ok: bool, message: string, sent?: int, failed?: int, logs?: list<array<string, mixed>>, errors?: list<array<string, mixed>>, log?: array<string, mixed>, status?: int|null, errors?: array<string, mixed>|null}
      */
-    public function sendLoginCredentials(Dealer $dealer, string $password, ?User $author = null): array
+    public function sendManualToAllDealers(string $message, ?User $author = null): array
+    {
+        $dealers = Dealer::query()
+            ->whereNotNull('phone')
+            ->where('phone', '!=', '')
+            ->orderByDesc('id')
+            ->get();
+
+        if ($dealers->isEmpty()) {
+            return [
+                'ok' => false,
+                'message' => 'لا يوجد تجار بأرقام هاتف مسجّلة.',
+                'sent' => 0,
+                'failed' => 0,
+                'logs' => [],
+                'errors' => [],
+            ];
+        }
+
+        $sent = 0;
+        $failed = 0;
+        $logs = [];
+        $errors = [];
+
+        foreach ($dealers as $dealer) {
+            $result = $this->sendManualToDealer($dealer, $message, $author);
+
+            if ($result['ok']) {
+                $sent++;
+
+                if (isset($result['log'])) {
+                    $logs[] = $result['log'];
+                }
+            } else {
+                $failed++;
+                $errors[] = [
+                    'dealer_id' => $dealer->id,
+                    'dealer_name' => $dealer->company_name,
+                    'message' => $result['message'],
+                ];
+            }
+        }
+
+        return [
+            'ok' => $sent > 0,
+            'message' => $failed === 0
+                ? "تم إرسال الإشعار إلى {$sent} تاجر."
+                : "تم الإرسال إلى {$sent} تاجر، وفشل {$failed}.",
+            'sent' => $sent,
+            'failed' => $failed,
+            'logs' => $logs,
+            'errors' => $errors,
+        ];
+    }
+
+    /**
     {
         $dealer->loadMissing('user');
 
-        $identifier = trim((string) ($dealer->phone ?: $dealer->user?->email ?: ''));
+        $email = trim((string) ($dealer->user?->email ?: ''));
 
-        if ($identifier === '') {
+        if ($email === '') {
             return [
                 'ok' => false,
-                'message' => 'لا توجد بيانات دخول يمكن إرسالها للتاجر.',
+                'message' => 'لا يوجد بريد إلكتروني يمكن إرسال بيانات الدخول إليه.',
             ];
         }
 
         $message = $this->messages->loginCredentials(
             $dealer,
-            $identifier,
+            $email,
             $password,
             rtrim(config('app.url', url('/')), '/').'/login',
         );

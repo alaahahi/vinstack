@@ -72,11 +72,28 @@ class DealerNotificationController extends Controller
         SendDealerNotificationRequest $request,
         DealerNotificationService $notifications,
     ): JsonResponse {
+        $message = $request->string('message')->toString();
+
+        if ($request->boolean('send_to_all')) {
+            $result = $notifications->sendManualToAllDealers(
+                $message,
+                $request->user(),
+            );
+
+            return response()->json([
+                'data' => $result['logs'] ?? [],
+                'message' => $result['message'],
+                'sent' => $result['sent'] ?? 0,
+                'failed' => $result['failed'] ?? 0,
+                'errors' => $result['errors'] ?? [],
+            ], $result['ok'] ? 201 : 422);
+        }
+
         $dealer = Dealer::query()->findOrFail($request->integer('dealer_id'));
 
         $result = $notifications->sendManualToDealer(
             $dealer,
-            $request->string('message')->toString(),
+            $message,
             $request->user(),
         );
 

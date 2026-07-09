@@ -15,8 +15,9 @@ return [
         ],
     ],
     'login_credentials' => [
+        'welcome' => 'بەخێربێیت بۆ :company!',
         'intro' => 'هەژمارەکەتان لە :company دروستکرا. زانیارییەکانی چوونەژوورەوە:',
-        'username' => 'ناوی بەکارهێنەر: :value',
+        'email' => 'ئیمەیڵ: :value',
         'password' => 'وشەی نهێنی: :value',
         'url' => 'بەستەری چوونەژوورەوە: :value',
     ],

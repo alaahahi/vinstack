@@ -15,8 +15,9 @@ return [
         ],
     ],
     'login_credentials' => [
+        'welcome' => 'مرحباً بكم في :company!',
         'intro' => 'تم إنشاء حسابكم في :company. بيانات الدخول:',
-        'username' => 'اسم المستخدم: :value',
+        'email' => 'البريد الإلكتروني: :value',
         'password' => 'كلمة المرور: :value',
         'url' => 'رابط الدخول: :value',
     ],

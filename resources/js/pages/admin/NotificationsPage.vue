@@ -116,8 +116,10 @@
                                 option-label="company_name"
                                 option-value="id"
                                 :placeholder="t('dealerNotifications.selectDealerPlaceholder')"
-                                class="w-full"
+                                class="w-full send-select"
+                                size="small"
                                 filter
+                                :disabled="sendForm.send_to_all"
                             >
                                 <template #option="{ option }">
                                     <div class="dealer-option">
@@ -126,6 +128,13 @@
                                     </div>
                                 </template>
                             </Select>
+                            <label class="send-all-toggle">
+                                <Checkbox v-model="sendForm.send_to_all" binary input-id="send-to-all" />
+                                <span>
+                                    {{ t('dealerNotifications.sendToAll') }}
+                                    <small v-if="dealersWithPhoneCount">({{ dealersWithPhoneCount }})</small>
+                                </span>
+                            </label>
                         </div>
                         <div class="field field--grow">
                             <label for="message-body" class="vs-form-label">{{ t('dealerNotifications.message') }}</label>
@@ -134,6 +143,7 @@
                                 v-model="sendForm.message"
                                 rows="4"
                                 class="w-full"
+                                size="small"
                                 :placeholder="t('dealerNotifications.messagePlaceholder')"
                                 auto-resize
                             />
@@ -143,8 +153,9 @@
 
                 <footer class="notif-card__footer">
                     <Button
-                        :label="t('dealerNotifications.sendNow')"
+                        :label="sendButtonLabel"
                         icon="pi pi-whatsapp"
+                        size="small"
                         :loading="sending"
                         :disabled="!canSend"
                         @click="sendNotification"

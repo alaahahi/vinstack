@@ -73,4 +73,31 @@ class DealerNotificationMessageBuilderTest extends TestCase
         $this->assertSame('en', SupportedLocale::forNotifications('en', true));
         $this->assertSame('ar', SupportedLocale::forNotifications('ar', true));
     }
+
+    public function test_login_credentials_message_uses_email_and_welcome(): void
+    {
+        $user = User::factory()->create([
+            'role' => UserRole::Dealer,
+            'email' => 'dealer@example.com',
+            'locale' => 'ar',
+            'locale_customized' => true,
+        ]);
+        $dealer = Dealer::query()->create([
+            'user_id' => $user->id,
+            'company_name' => 'Acme Motors',
+            'phone' => '07504781630',
+        ]);
+
+        $message = app(DealerNotificationMessageBuilder::class)->loginCredentials(
+            $dealer,
+            'dealer@example.com',
+            'secret123',
+            'https://vinstack.test/login',
+        );
+
+        $this->assertStringContainsString('مرحباً بكم في', $message);
+        $this->assertStringContainsString('البريد الإلكتروني: dealer@example.com', $message);
+        $this->assertStringNotContainsString('07504781630', $message);
+        $this->assertStringNotContainsString('اسم المستخدم', $message);
+    }
 }

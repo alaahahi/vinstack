@@ -36,14 +36,16 @@ class DealerNotificationMessageBuilder
         return trim(implode("\n", $lines));
     }
 
-    public function loginCredentials(Dealer $dealer, string $identifier, string $password, string $loginUrl): string
+    public function loginCredentials(Dealer $dealer, string $email, string $password, string $loginUrl): string
     {
         $locale = $this->localeForDealer($dealer);
         $company = trim((string) config('app.name', 'Vinstack'));
 
         return trim(implode("\n", [
+            Lang::get('notifications.login_credentials.welcome', ['company' => $company], $locale),
+            '',
             Lang::get('notifications.login_credentials.intro', ['company' => $company], $locale),
-            Lang::get('notifications.login_credentials.username', ['value' => $identifier], $locale),
+            Lang::get('notifications.login_credentials.email', ['value' => $email], $locale),
             Lang::get('notifications.login_credentials.password', ['value' => $password], $locale),
             Lang::get('notifications.login_credentials.url', ['value' => $loginUrl], $locale),
         ]));

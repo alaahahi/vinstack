@@ -92,7 +92,8 @@ class DealerController extends Controller
         return response()->json([
             'data' => $formatted,
             'login_credentials' => [
-                'username' => $formatted['login_identifier'],
+                'email' => $user->email,
+                'username' => $user->email,
                 'password' => $plainPassword,
                 'url' => $this->loginPageUrl(),
             ],
@@ -279,12 +280,12 @@ class DealerController extends Controller
 
     protected function loginIdentifier(Dealer $dealer): string
     {
-        $phone = trim((string) ($dealer->phone ?? ''));
+        $email = trim((string) ($dealer->user?->email ?? ''));
 
-        if ($phone !== '') {
-            return $phone;
+        if ($email !== '') {
+            return $email;
         }
 
-        return trim((string) ($dealer->user?->email ?? ''));
+        return trim((string) ($dealer->phone ?? ''));
     }
 }
