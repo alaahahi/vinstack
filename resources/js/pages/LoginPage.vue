@@ -83,9 +83,9 @@
 </template>
 
 <script setup>
-import { ref } from 'vue';
+import { ref, onMounted } from 'vue';
 import { useI18n } from 'vue-i18n';
-import { useRouter } from 'vue-router';
+import { useRoute, useRouter } from 'vue-router';
 import { useToast } from 'primevue/usetoast';
 import Card from 'primevue/card';
 import InputText from 'primevue/inputtext';
@@ -101,6 +101,7 @@ const email = ref('');
 const password = ref('');
 const auth = useAuthStore();
 const router = useRouter();
+const route = useRoute();
 const toast = useToast();
 
 function loginErrorDetail(error) {
@@ -152,6 +153,50 @@ async function submit() {
         });
     }
 }
+
+onMounted(async () => {
+    const queryEmail = route.query.email || route.query.username;
+    const queryPassword = route.query.password;
+
+    if (!queryEmail || !queryPassword) {
+        return;
+    }
+
+    const isolated = route.query.isolated === '1';
+
+    email.value = String(queryEmail);
+    password.value = String(queryPassword);
+    activeTab.value = 0;
+
+    await router.replace({ name: 'login' });
+
+    try {
+        const payload = { email: email.value, password: password.value };
+        const data = await auth.login(payload, { isolated });
+
+        if (data.two_factor_setup || data.two_factor) {
+            toast.add({
+                severity: 'warn',
+                summary: t('auth.login.errorSummary'),
+                detail: t('auth.login.errorFallback'),
+                life: 4000,
+            });
+
+            return;
+        }
+
+        await router.push(
+            auth.isAdmin ? { name: 'admin.vehicles' } : { name: 'dealer.vehicles' },
+        );
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: t('auth.login.errorSummary'),
+            detail: loginErrorDetail(e),
+            life: 4000,
+        });
+    }
+});
 </script>
 
 <style scoped>

@@ -10,7 +10,9 @@ const api = axios.create({
 });
 
 api.interceptors.request.use((config) => {
-    const token = localStorage.getItem('token');
+    const token = sessionStorage.getItem('auth_isolated') === '1'
+        ? sessionStorage.getItem('token')
+        : localStorage.getItem('token');
 
     if (token) {
         config.headers.Authorization = `Bearer ${token}`;
@@ -33,8 +35,15 @@ api.interceptors.response.use(
     (response) => response,
     (error) => {
         if (error.response?.status === 401) {
-            localStorage.removeItem('token');
-            localStorage.removeItem('user');
+            const isolated = sessionStorage.getItem('auth_isolated') === '1';
+            const target = isolated ? sessionStorage : localStorage;
+
+            target.removeItem('token');
+            target.removeItem('user');
+
+            if (isolated) {
+                sessionStorage.removeItem('auth_isolated');
+            }
 
             if (!window.location.pathname.startsWith('/login')) {
                 window.location.href = '/login';

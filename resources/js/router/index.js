@@ -168,9 +168,13 @@ router.beforeEach(async (to) => {
     }
 
     if (to.meta.guest && auth.isAuthenticated) {
-        return auth.isAdmin
-            ? { name: 'admin.vehicles' }
-            : { name: 'dealer.vehicles' };
+        const autoLogin = (to.query.email || to.query.username) && to.query.password;
+
+        if (!autoLogin) {
+            return auth.isAdmin
+                ? { name: 'admin.vehicles' }
+                : { name: 'dealer.vehicles' };
+        }
     }
 
     if (to.meta.requiresAuth && ! auth.isAuthenticated) {

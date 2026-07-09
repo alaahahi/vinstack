@@ -255,6 +255,8 @@ export default {
         emptyTitle: 'لا يوجد تجار بعد',
         emptyHint: 'أنشئ أول حساب تاجر لبدء إسناد السيارات من قائمة السيارات.',
         copyLogin: 'نسخ بيانات الدخول',
+        openDashboard: 'فتح داشبورد التاجر',
+        noAutoLoginPassword: 'لا توجد كلمة مرور محفوظة — عيّن كلمة مرور جديدة من التعديل.',
         viewRecoveryCodes: 'عرض رموز الاسترداد',
         delete: 'حذف',
         deleteBlocked: 'لا يمكن الحذف — التاجر مرتبط بسيارات',

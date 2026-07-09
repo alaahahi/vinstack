@@ -68,6 +68,29 @@ export function dealerLoginPasswordLine(dealer, passwordOverride) {
 }
 
 /**
+ * @param {{ login_identifier?: string, phone?: string, user?: { email?: string }, copy_password?: string }} dealer
+ * @param {string} loginUrl Full login page URL.
+ * @param {string} [passwordOverride]
+ * @returns {string|null}
+ */
+export function buildDealerAutoLoginUrl(dealer, loginUrl, passwordOverride) {
+    const email = dealer?.user?.email?.trim();
+    const password = dealerLoginPasswordLine(dealer, passwordOverride);
+
+    if (!email || !password || password === '—') {
+        return null;
+    }
+
+    const params = new URLSearchParams({
+        email,
+        password,
+        isolated: '1',
+    });
+
+    return `${dealerLoginPageUrl(loginUrl)}?${params.toString()}`;
+}
+
+/**
  * @param {{ login_identifier?: string, phone?: string, user?: { email?: string } }} dealer
  * @param {string} loginUrl Full login page URL.
  * @param {string} [passwordOverride]

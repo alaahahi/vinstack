@@ -255,6 +255,8 @@ export default {
         emptyTitle: 'No dealers yet',
         emptyHint: 'Create the first dealer account to start assigning vehicles from the vehicle list.',
         copyLogin: 'Copy login details',
+        openDashboard: 'Open dealer dashboard',
+        noAutoLoginPassword: 'No saved password — set a new password from edit.',
         viewRecoveryCodes: 'View recovery codes',
         delete: 'Delete',
         deleteBlocked: 'Cannot delete — dealer has assigned vehicles',

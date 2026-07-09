@@ -64,6 +64,16 @@
                         <span>{{ dealer.phone }}</span>
                     </div>
                     <Button
+                        icon="pi pi-external-link"
+                        :label="t('dealers.openDashboard')"
+                        severity="secondary"
+                        outlined
+                        size="small"
+                        :disabled="!canOpenDealerDashboard(dealer)"
+                        :title="canOpenDealerDashboard(dealer) ? '' : t('dealers.noAutoLoginPassword')"
+                        @click="openDealerDashboard(dealer)"
+                    />
+                    <Button
                         icon="pi pi-copy"
                         :label="t('dealers.copyLogin')"
                         severity="secondary"
@@ -196,7 +206,7 @@ import RecoveryCodesDialog from '../../components/RecoveryCodesDialog.vue';
 import api from '../../api/client';
 import { ADMIN_POLL_MS } from '../../constants/presence';
 import { SUPPORTED_LOCALES } from '../../constants/locales';
-import { formatDealerLoginCopy } from '../../utils/dealerLoginCopy';
+import { formatDealerLoginCopy, buildDealerAutoLoginUrl } from '../../utils/dealerLoginCopy';
 import { formatLastSeenLabel, isDealerOnline } from '../../utils/lastSeen';
 
 const { t } = useI18n();
@@ -321,6 +331,27 @@ function formatArchivedAt(iso) {
 
 function resolveLoginUrl(dealer) {
     return loginUrl.value || dealer.login_url || `${window.location.origin}/login`;
+}
+
+function canOpenDealerDashboard(dealer) {
+    return buildDealerAutoLoginUrl(dealer, resolveLoginUrl(dealer)) !== null;
+}
+
+function openDealerDashboard(dealer) {
+    const url = buildDealerAutoLoginUrl(dealer, resolveLoginUrl(dealer));
+
+    if (!url) {
+        toast.add({
+            severity: 'warn',
+            summary: t('dealers.noData'),
+            detail: t('dealers.noAutoLoginPassword'),
+            life: 4000,
+        });
+
+        return;
+    }
+
+    window.open(url, '_blank', 'noopener,noreferrer');
 }
 
 async function copyLoginInfo(dealer, passwordOverride) {
