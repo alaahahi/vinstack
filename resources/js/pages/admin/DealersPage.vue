@@ -50,6 +50,7 @@
                                     :options="notificationLocaleOptions"
                                     option-label="label"
                                     option-value="value"
+                                    size="small"
                                     class="locale-select"
                                     :disabled="savingLocaleDealerId === dealer.id"
                                     :loading="savingLocaleDealerId === dealer.id"
@@ -685,16 +686,28 @@ onUnmounted(() => {
 }
 
 .locale-select {
-    min-width: 9.5rem;
+    min-width: 7.5rem;
+    max-width: 8.75rem;
 }
 
 .locale-select :deep(.p-select) {
-    min-height: 2rem;
-    font-size: 0.78rem;
+    min-height: 1.65rem;
+    font-size: 0.68rem;
 }
 
 .locale-select :deep(.p-select-label) {
-    padding-block: 0.3rem;
+    padding: 0.2rem 0.45rem;
+    font-size: 0.68rem;
+    line-height: 1.2;
+}
+
+.locale-select :deep(.p-select-dropdown) {
+    width: 1.5rem;
+}
+
+.locale-select :deep(.p-select-dropdown .p-icon) {
+    width: 0.7rem;
+    height: 0.7rem;
 }
 
 .dealer-card__sep {

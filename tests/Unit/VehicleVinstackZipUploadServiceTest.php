@@ -5,6 +5,8 @@ namespace Tests\Unit;
 use App\Enums\VehicleSource;
 use App\Enums\VehicleStatus;
 use App\Models\Vehicle;
+use App\Services\CloudinaryService;
+use App\Services\VehicleUploadedImageService;
 use App\Services\VehicleVinstackZipUploadService;
 use App\Services\VinstackGalleryService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -53,7 +55,7 @@ class VehicleVinstackZipUploadServiceTest extends TestCase
                 ],
             ]);
 
-        $service = new VehicleVinstackZipUploadService($gallery);
+        $service = $this->makeService($gallery);
         $zip = $this->makeZipWithFiles([
             'terminal.jpg' => base64_decode(
                 'iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==',
@@ -65,6 +67,7 @@ class VehicleVinstackZipUploadServiceTest extends TestCase
 
         $this->assertSame(1, $result['uploaded']);
         $this->assertSame([], $result['failed']);
+        $this->assertSame('vinstack', $result['mode']);
     }
 
     public function test_extract_rejects_zip_without_images(): void
@@ -79,7 +82,7 @@ class VehicleVinstackZipUploadServiceTest extends TestCase
         $gallery = $this->createMock(VinstackGalleryService::class);
         $gallery->method('resolveGalleryIdentifiers')->willReturn(['1HGBH41JXMN109186']);
 
-        $service = new VehicleVinstackZipUploadService($gallery);
+        $service = $this->makeService($gallery);
         $zip = $this->makeZipWithFiles([
             'notes.txt' => 'not an image',
         ]);
@@ -88,6 +91,15 @@ class VehicleVinstackZipUploadServiceTest extends TestCase
         $this->expectExceptionMessage('zip_no_images');
 
         $service->uploadZip($vehicle, 'terminal', $zip);
+    }
+
+    protected function makeService(VinstackGalleryService $gallery): VehicleVinstackZipUploadService
+    {
+        $uploadedImages = $this->createMock(VehicleUploadedImageService::class);
+        $cloudinary = $this->createMock(CloudinaryService::class);
+        $cloudinary->method('isConfigured')->willReturn(false);
+
+        return new VehicleVinstackZipUploadService($gallery, $uploadedImages, $cloudinary);
     }
 
     /**
