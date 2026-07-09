@@ -4,28 +4,40 @@
             <aside
                 v-if="uploadStore.dockJobs.length"
                 class="upload-dock"
-                :class="{ 'upload-dock--active': uploadStore.hasActive }"
+                :class="{
+                    'upload-dock--active': uploadStore.hasActive,
+                    'upload-dock--minimized': !expanded,
+                    'upload-dock--failed': showCloseButton,
+                }"
                 aria-live="polite"
                 aria-label="تقدم رفع الصور"
             >
-                <header class="upload-dock__header">
-                    <div class="upload-dock__title-wrap">
+                <header class="upload-dock__header" :class="{ 'upload-dock__header--minimized': !expanded }">
+                    <button
+                        type="button"
+                        class="upload-dock__title-wrap upload-dock__title-btn"
+                        :disabled="expanded || showCloseButton"
+                        @click="expanded = true"
+                    >
                         <span class="upload-dock__icon" :class="{ 'upload-dock__icon--pulse': uploadStore.hasActive }">
-                            <i :class="uploadStore.hasActive ? 'pi pi-cloud-upload' : 'pi pi-check-circle'" />
+                            <i :class="headerIcon" />
                         </span>
-                        <div>
+                        <div class="upload-dock__title-block">
                             <h2 class="upload-dock__title">
-                                {{ uploadStore.hasActive ? 'جاري رفع الصور' : 'اكتمل الرفع' }}
+                                {{ headerTitle }}
                             </h2>
                             <p class="upload-dock__subtitle">
                                 {{ summaryText }}
                             </p>
                         </div>
-                    </div>
+                    </button>
 
                     <div class="upload-dock__actions">
+                        <span v-if="!expanded && primaryJob" class="upload-dock__compact-percent">
+                            {{ primaryJob.progress }}%
+                        </span>
                         <button
-                            v-if="finishedCount"
+                            v-if="finishedCount && expanded && !showCloseButton"
                             type="button"
                             class="upload-dock__ghost-btn"
                             @click="uploadStore.dismissAllFinished()"
@@ -35,44 +47,51 @@
                         <button
                             type="button"
                             class="upload-dock__icon-btn"
+                            :class="{ 'upload-dock__icon-btn--danger': showCloseButton }"
                             :aria-expanded="expanded"
-                            aria-label="توسيع أو طي"
-                            @click="expanded = !expanded"
+                            :aria-label="showCloseButton ? 'إغلاق' : (expanded ? 'تصغير' : 'توسيع')"
+                            @click="onHeaderAction"
                         >
-                            <i :class="expanded ? 'pi pi-chevron-down' : 'pi pi-chevron-up'" />
+                            <i :class="headerActionIcon" />
                         </button>
                     </div>
                 </header>
 
-                <div v-if="primaryJob" class="upload-dock__primary">
-                    <div class="upload-dock__primary-top">
-                        <div class="upload-dock__vehicle">
-                            <span class="upload-dock__vehicle-name">{{ primaryJob.vehicleLabel }}</span>
-                            <span class="upload-dock__stage-pill">{{ primaryJob.stageLabel }}</span>
+                <div v-show="expanded" class="upload-dock__body">
+                    <div v-if="primaryJob" class="upload-dock__primary">
+                        <div class="upload-dock__primary-top">
+                            <div class="upload-dock__vehicle">
+                                <span class="upload-dock__vehicle-name">{{ primaryJob.vehicleLabel }}</span>
+                                <span class="upload-dock__stage-pill">{{ primaryJob.stageLabel }}</span>
+                            </div>
+                            <span class="upload-dock__percent">{{ primaryJob.progress }}%</span>
                         </div>
-                        <span class="upload-dock__percent">{{ primaryJob.progress }}%</span>
+
+                        <div class="upload-dock__progress-track">
+                            <div
+                                class="upload-dock__progress-fill"
+                                :class="progressClass(primaryJob)"
+                                :style="{ width: `${primaryJob.progress}%` }"
+                            />
+                        </div>
+
+                        <div class="upload-dock__meta">
+                            <span class="upload-dock__message">{{ primaryJob.message }}</span>
+                            <span v-if="etaText(primaryJob)" class="upload-dock__eta">{{ etaText(primaryJob) }}</span>
+                        </div>
+
+                        <p v-if="primaryJob.error" class="upload-dock__error">
+                            <i class="pi pi-exclamation-circle" />
+                            {{ primaryJob.error }}
+                        </p>
+
+                        <p v-else-if="primaryJob.currentFileName && isActive(primaryJob)" class="upload-dock__file">
+                            <i class="pi pi-image" />
+                            {{ primaryJob.currentFileName }}
+                        </p>
                     </div>
 
-                    <div class="upload-dock__progress-track">
-                        <div
-                            class="upload-dock__progress-fill"
-                            :class="progressClass(primaryJob)"
-                            :style="{ width: `${primaryJob.progress}%` }"
-                        />
-                    </div>
-
-                    <div class="upload-dock__meta">
-                        <span class="upload-dock__message">{{ primaryJob.message }}</span>
-                        <span v-if="etaText(primaryJob)" class="upload-dock__eta">{{ etaText(primaryJob) }}</span>
-                    </div>
-
-                    <p v-if="primaryJob.currentFileName && isActive(primaryJob)" class="upload-dock__file">
-                        <i class="pi pi-image" />
-                        {{ primaryJob.currentFileName }}
-                    </p>
-                </div>
-
-                <div v-show="expanded && uploadStore.dockJobs.length > 1" class="upload-dock__list">
+                    <div v-if="uploadStore.dockJobs.length > 1" class="upload-dock__list">
                     <article
                         v-for="job in uploadStore.dockJobs"
                         :key="job.id"
@@ -114,6 +133,15 @@
 
                         <p v-if="job.error" class="upload-dock__item-error">{{ job.error }}</p>
                     </article>
+                    </div>
+                </div>
+
+                <div v-if="!expanded && primaryJob" class="upload-dock__mini-track">
+                    <div
+                        class="upload-dock__progress-fill"
+                        :class="progressClass(primaryJob)"
+                        :style="{ width: `${primaryJob.progress}%` }"
+                    />
                 </div>
             </aside>
         </Transition>
@@ -128,6 +156,50 @@ const uploadStore = useVehicleUploadStore();
 const expanded = ref(true);
 
 const primaryJob = computed(() => uploadStore.dockJobs[0] ?? null);
+
+const showCloseButton = computed(() => {
+    if (! primaryJob.value) {
+        return false;
+    }
+
+    if (primaryJob.value.status === 'failed') {
+        return true;
+    }
+
+    return ! uploadStore.hasActive && uploadStore.dockJobs.some((job) => job.status === 'failed');
+});
+
+const headerTitle = computed(() => {
+    if (primaryJob.value?.status === 'failed') {
+        return 'فشل الرفع';
+    }
+
+    if (uploadStore.hasActive) {
+        return 'جاري رفع الصور';
+    }
+
+    return 'اكتمل الرفع';
+});
+
+const headerIcon = computed(() => {
+    if (primaryJob.value?.status === 'failed') {
+        return 'pi pi-exclamation-triangle';
+    }
+
+    if (uploadStore.hasActive) {
+        return 'pi pi-cloud-upload';
+    }
+
+    return 'pi pi-check-circle';
+});
+
+const headerActionIcon = computed(() => {
+    if (showCloseButton.value) {
+        return 'pi pi-times';
+    }
+
+    return expanded.value ? 'pi pi-chevron-down' : 'pi pi-chevron-up';
+});
 
 const finishedCount = computed(() => uploadStore.dockJobs.filter(
     (job) => ['completed', 'failed'].includes(job.status),
@@ -151,13 +223,29 @@ const summaryText = computed(() => {
 });
 
 watch(
-    () => uploadStore.hasActive,
-    (active) => {
-        if (active) {
+    () => uploadStore.activeJobs.length,
+    (count, previous) => {
+        if (count > previous) {
             expanded.value = true;
         }
     },
 );
+
+function onHeaderAction() {
+    if (showCloseButton.value) {
+        if (primaryJob.value?.status === 'failed') {
+            uploadStore.dismissJob(primaryJob.value.id);
+        } else {
+            uploadStore.dismissAllFinished();
+        }
+
+        expanded.value = true;
+
+        return;
+    }
+
+    expanded.value = ! expanded.value;
+}
 
 function isActive(job) {
     return ['queued', 'uploading', 'processing', 'refreshing'].includes(job.status);
@@ -223,11 +311,23 @@ function etaText(job) {
     border-color: color-mix(in srgb, var(--admin-accent, #3b82f6) 38%, var(--vs-border));
 }
 
+.upload-dock--minimized {
+    padding: 0.75rem 0.9rem 0.8rem;
+}
+
+.upload-dock--failed {
+    border-color: color-mix(in srgb, #dc2626 32%, var(--vs-border));
+}
+
 .upload-dock__header {
     display: flex;
     align-items: flex-start;
     justify-content: space-between;
     gap: 0.75rem;
+    margin-bottom: 0;
+}
+
+.upload-dock__header:not(.upload-dock__header--minimized) {
     margin-bottom: 0.85rem;
 }
 
@@ -235,6 +335,23 @@ function etaText(job) {
     display: flex;
     align-items: center;
     gap: 0.7rem;
+    min-width: 0;
+    flex: 1;
+}
+
+.upload-dock__title-btn {
+    border: 0;
+    background: transparent;
+    padding: 0;
+    text-align: start;
+    cursor: pointer;
+}
+
+.upload-dock__title-btn:disabled {
+    cursor: default;
+}
+
+.upload-dock__title-block {
     min-width: 0;
 }
 
@@ -300,10 +417,36 @@ function etaText(job) {
     cursor: pointer;
 }
 
-.upload-dock__icon-btn--small {
-    width: 26px;
-    height: 26px;
-    border-radius: 8px;
+.upload-dock__icon-btn--danger {
+    border-color: color-mix(in srgb, #dc2626 35%, var(--vs-border));
+    color: #dc2626;
+    background: color-mix(in srgb, #dc2626 8%, var(--vs-surface));
+}
+
+.upload-dock__compact-percent {
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: var(--admin-accent, #3b82f6);
+    font-variant-numeric: tabular-nums;
+}
+
+.upload-dock__mini-track {
+    position: relative;
+    height: 5px;
+    margin-top: 0.55rem;
+    border-radius: 999px;
+    overflow: hidden;
+    background: color-mix(in srgb, var(--vs-border) 70%, transparent);
+}
+
+.upload-dock__error {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.35rem;
+    margin: 0.5rem 0 0;
+    font-size: 0.74rem;
+    color: #dc2626;
+    line-height: 1.4;
 }
 
 .upload-dock__primary-top {

@@ -73,4 +73,18 @@ class Vehicle extends Model
             )
             ->orderByDesc('id');
     }
+
+    public function scopeDealerNewestFirst(Builder $query, int $dealerId): Builder
+    {
+        return $query
+            ->orderByDesc(
+                VehicleAssignment::query()
+                    ->select('assigned_at')
+                    ->whereColumn('vehicle_assignments.vehicle_id', 'vehicles.id')
+                    ->where('dealer_id', $dealerId)
+                    ->where('is_active', true)
+                    ->limit(1)
+            )
+            ->orderByDesc('vehicles.id');
+    }
 }

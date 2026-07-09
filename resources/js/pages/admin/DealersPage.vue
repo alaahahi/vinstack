@@ -40,10 +40,22 @@
                                 <i :class="isDealerOnline(dealer) ? 'pi pi-circle-fill' : 'pi pi-clock'" />
                                 {{ presenceLabel(dealer) }}
                             </span>
-                            <span class="locale-badge" :title="t('dealers.notificationLocale')">
-                                <i class="pi pi-language" />
-                                {{ notificationLocaleLabel(dealer) }}
-                            </span>
+                            <label class="locale-select-wrap">
+                                <span class="locale-select-label">
+                                    <i class="pi pi-language" />
+                                    {{ t('dealers.notificationLocale') }}
+                                </span>
+                                <Select
+                                    :model-value="notificationLocaleValue(dealer)"
+                                    :options="notificationLocaleOptions"
+                                    option-label="label"
+                                    option-value="value"
+                                    class="locale-select"
+                                    :disabled="savingLocaleDealerId === dealer.id"
+                                    :loading="savingLocaleDealerId === dealer.id"
+                                    @update:model-value="(value) => updateNotificationLocale(dealer, value)"
+                                />
+                            </label>
                         </p>
                     </div>
                     <div v-if="dealer.phone" class="dealer-card__meta">
@@ -168,7 +180,7 @@
 </template>
 
 <script setup>
-import { onMounted, onUnmounted, reactive, ref } from 'vue';
+import { onMounted, onUnmounted, reactive, ref, computed } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useConfirm } from 'primevue/useconfirm';
 import { useToast } from 'primevue/usetoast';
@@ -176,6 +188,7 @@ import InputText from 'primevue/inputtext';
 import Password from 'primevue/password';
 import Button from 'primevue/button';
 import Dialog from 'primevue/dialog';
+import Select from 'primevue/select';
 import ProgressSpinner from 'primevue/progressspinner';
 import AdminPageHeader from '../../components/AdminPageHeader.vue';
 import RecoveryCodesDialog from '../../components/RecoveryCodesDialog.vue';
@@ -201,8 +214,17 @@ const recoverySubtitle = ref('');
 const loadingRecoveryDealerId = ref(null);
 const deletingDealerId = ref(null);
 const copyingDealerId = ref(null);
+const savingLocaleDealerId = ref(null);
 const loginUrl = ref('');
 let pollTimer = null;
+
+const notificationLocaleOptions = computed(() => [
+    { value: 'default', label: t('dealers.notificationLocaleDefault') },
+    ...SUPPORTED_LOCALES.map((entry) => ({
+        value: entry.code,
+        label: entry.nativeName,
+    })),
+]);
 
 const form = reactive({
     name: '',
@@ -223,15 +245,46 @@ function presenceLabel(dealer) {
     return isDealerOnline(dealer) ? t('dealers.online') : formatLastSeenLabel(dealer);
 }
 
-function notificationLocaleLabel(dealer) {
+function notificationLocaleValue(dealer) {
     if (! dealer.notification_locale_customized) {
-        return t('dealers.notificationLocaleDefault');
+        return 'default';
     }
 
-    const code = dealer.notification_locale || dealer.locale || 'ckb';
-    const definition = SUPPORTED_LOCALES.find((entry) => entry.code === code);
+    return dealer.notification_locale || dealer.locale || 'ckb';
+}
 
-    return definition?.nativeName || code;
+async function updateNotificationLocale(dealer, locale) {
+    if (! dealer?.id || notificationLocaleValue(dealer) === locale) {
+        return;
+    }
+
+    savingLocaleDealerId.value = dealer.id;
+
+    try {
+        const { data } = await api.patch(`/admin/dealers/${dealer.id}/notification-locale`, {
+            locale,
+        });
+        const index = dealers.value.findIndex((entry) => entry.id === dealer.id);
+
+        if (index !== -1) {
+            dealers.value[index] = data.data;
+        }
+
+        toast.add({
+            severity: 'success',
+            summary: t('dealers.notificationLocaleUpdated'),
+            life: 2500,
+        });
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || t('dealers.notificationLocaleUpdateFailed'),
+            life: 4000,
+        });
+    } finally {
+        savingLocaleDealerId.value = null;
+    }
 }
 
 async function load({ silent = false } = {}) {
@@ -615,20 +668,33 @@ onUnmounted(() => {
     border-color: var(--admin-border);
 }
 
-.locale-badge {
+.locale-select-wrap {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    flex-wrap: wrap;
+}
+
+.locale-select-label {
     display: inline-flex;
     align-items: center;
     gap: 0.3rem;
-    font-size: 0.76rem;
-    padding: 0.2rem 0.55rem;
-    border-radius: 999px;
-    color: var(--admin-accent, #7c3aed);
-    background: color-mix(in srgb, var(--admin-accent, #7c3aed) 10%, transparent);
-    border: 1px solid color-mix(in srgb, var(--admin-accent, #7c3aed) 22%, var(--vs-border));
+    font-size: 0.72rem;
+    font-weight: 600;
+    color: var(--vs-text-secondary);
 }
 
-.locale-badge i {
-    font-size: 0.72rem;
+.locale-select {
+    min-width: 9.5rem;
+}
+
+.locale-select :deep(.p-select) {
+    min-height: 2rem;
+    font-size: 0.78rem;
+}
+
+.locale-select :deep(.p-select-label) {
+    padding-block: 0.3rem;
 }
 
 .dealer-card__sep {

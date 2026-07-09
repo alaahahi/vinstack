@@ -274,6 +274,8 @@ export default {
         noData: 'لا توجد بيانات',
         notificationLocale: 'لغة الإشعارات',
         notificationLocaleDefault: 'کوردی (افتراضي)',
+        notificationLocaleUpdated: 'تم تحديث لغة الإشعارات',
+        notificationLocaleUpdateFailed: 'تعذّر تحديث لغة الإشعارات',
         noLoginData: 'لا يوجد هاتف أو بريد لنسخ بيانات الدخول.',
         copied: 'تم النسخ',
         copiedDetail: 'تم نسخ بيانات الدخول إلى الحافظة.',

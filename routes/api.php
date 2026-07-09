@@ -65,6 +65,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/dealers/summary', [DealerController::class, 'summary']);
         Route::post('/dealers', [DealerController::class, 'store']);
         Route::put('/dealers/{dealer}', [DealerController::class, 'update']);
+        Route::patch('/dealers/{dealer}/notification-locale', [DealerController::class, 'updateNotificationLocale']);
         Route::delete('/dealers/{dealer}', [DealerController::class, 'destroy']);
         Route::get('/dealers/{dealer}/recovery-codes', [DealerController::class, 'recoveryCodes']);
 

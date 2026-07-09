@@ -16,7 +16,7 @@ class DealerVehicleIndexTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_dealer_list_orders_by_purchase_date_then_created_at(): void
+    public function test_dealer_list_orders_by_assignment_date_newest_first(): void
     {
         $dealerUser = User::factory()->create(['role' => UserRole::Dealer]);
         $dealer = Dealer::query()->create([
@@ -24,57 +24,50 @@ class DealerVehicleIndexTest extends TestCase
             'company_name' => 'Dealer Test',
         ]);
 
-        $olderPurchase = Vehicle::query()->create([
+        $olderAssignment = Vehicle::query()->create([
             'source' => VehicleSource::Manual,
             'vinstack_id' => 'dealer-order-1',
             'vin' => '1HGCM82633A004371',
             'status' => VehicleStatus::Assigned,
-            'raw_data' => ['purchase_date' => '2026-06-01'],
+            'raw_data' => ['purchase_date' => '2026-07-01'],
         ]);
 
-        $newerPurchase = Vehicle::query()->create([
+        $newerAssignment = Vehicle::query()->create([
             'source' => VehicleSource::Manual,
             'vinstack_id' => 'dealer-order-2',
             'vin' => '1HGCM82633A004372',
             'status' => VehicleStatus::Assigned,
-            'raw_data' => ['purchase_date' => '2026-07-01'],
+            'raw_data' => ['purchase_date' => '2026-06-01'],
         ]);
 
-        $fallbackCreated = Vehicle::query()->create([
-            'source' => VehicleSource::Manual,
-            'vinstack_id' => 'dealer-order-3',
-            'vin' => '1HGCM82633A004373',
-            'status' => VehicleStatus::Assigned,
+        VehicleAssignment::query()->create([
+            'vehicle_id' => $olderAssignment->id,
+            'dealer_id' => $dealer->id,
+            'assigned_by' => $dealerUser->id,
+            'assigned_at' => now()->subDays(5),
+            'is_active' => true,
         ]);
 
-        $olderPurchase->update(['created_at' => now()->subDays(3)]);
-        $newerPurchase->update(['created_at' => now()->subDays(2)]);
-        $fallbackCreated->update(['created_at' => now()]);
-
-        foreach ([$olderPurchase, $newerPurchase, $fallbackCreated] as $vehicle) {
-            VehicleAssignment::query()->create([
-                'vehicle_id' => $vehicle->id,
-                'dealer_id' => $dealer->id,
-                'assigned_by' => $dealerUser->id,
-                'assigned_at' => now(),
-                'is_active' => true,
-            ]);
-        }
+        VehicleAssignment::query()->create([
+            'vehicle_id' => $newerAssignment->id,
+            'dealer_id' => $dealer->id,
+            'assigned_by' => $dealerUser->id,
+            'assigned_at' => now()->subDay(),
+            'is_active' => true,
+        ]);
 
         $vins = Vehicle::query()
             ->whereHas('assignments', function ($q) use ($dealer) {
                 $q->where('dealer_id', $dealer->id)->where('is_active', true);
             })
-            ->newestFirst()
+            ->dealerNewestFirst($dealer->id)
             ->pluck('vin')
-            ->take(3)
             ->values()
             ->all();
 
         $this->assertSame([
-            $fallbackCreated->vin,
-            $newerPurchase->vin,
-            $olderPurchase->vin,
+            $newerAssignment->vin,
+            $olderAssignment->vin,
         ], $vins);
     }
 }

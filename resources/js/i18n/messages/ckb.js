@@ -274,6 +274,8 @@ export default {
         noData: 'داتا نییە',
         notificationLocale: 'زمانی ئاگادارکردنەوە',
         notificationLocaleDefault: 'کوردی (بنەڕەتی)',
+        notificationLocaleUpdated: 'زمانی ئاگادارکردنەوە نوێکرایەوە',
+        notificationLocaleUpdateFailed: 'نەتوانرا زمانی ئاگادارکردنەوە نوێ بکرێتەوە',
         noLoginData: 'تەلەفۆن یان ئیمەیڵ نییە بۆ کۆپیکردن.',
         copied: 'کۆپیکرا',
         copiedDetail: 'زانیاری چوونەژوورەوە کۆپیکرا.',

@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Enums\UserRole;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreDealerRequest;
+use App\Http\Requests\Admin\UpdateDealerNotificationLocaleRequest;
 use App\Http\Requests\Admin\UpdateDealerRequest;
 use App\Models\Dealer;
 use App\Models\User;
@@ -144,6 +145,35 @@ class DealerController extends Controller
         return response()->json([
             'data' => $this->formatDealer($dealer),
             'message' => 'تم تحديث بيانات التاجر.',
+        ]);
+    }
+
+    public function updateNotificationLocale(
+        UpdateDealerNotificationLocaleRequest $request,
+        Dealer $dealer,
+    ): JsonResponse {
+        $user = $dealer->user;
+
+        if (! $user) {
+            abort(404, 'Dealer user not found.');
+        }
+
+        $locale = $request->string('locale')->toString();
+
+        if ($locale === 'default') {
+            $user->locale_customized = false;
+        } else {
+            $user->locale = SupportedLocale::normalize($locale);
+            $user->locale_customized = true;
+        }
+
+        $user->save();
+
+        $dealer->load('user:id,name,email,phone,locale,locale_customized,last_seen_at,recovery_codes_archive,two_factor_confirmed_at');
+
+        return response()->json([
+            'data' => $this->formatDealer($dealer),
+            'message' => 'تم تحديث لغة إشعارات التاجر.',
         ]);
     }
 

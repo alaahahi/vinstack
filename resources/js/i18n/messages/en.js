@@ -274,6 +274,8 @@ export default {
         noData: 'No data',
         notificationLocale: 'Notification language',
         notificationLocaleDefault: 'Kurdish (default)',
+        notificationLocaleUpdated: 'Notification language updated',
+        notificationLocaleUpdateFailed: 'Could not update notification language',
         noLoginData: 'No phone or email to copy login details.',
         copied: 'Copied',
         copiedDetail: 'Login details copied to clipboard.',
