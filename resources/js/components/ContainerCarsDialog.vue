@@ -49,36 +49,16 @@
             <Button
                 v-if="showZipUpload"
                 icon="pi pi-file-import"
-                label="اختيار ZIP"
+                label="رفع ZIP"
                 size="small"
                 outlined
                 :loading="zipLoading"
-                :disabled="loading || uploadProgress !== null"
+                :disabled="loading || containerUploadStore.isContainerBusy(containerKey)"
                 @click="triggerZipUpload"
             />
-            <Button
-                v-if="pendingZipImages?.length"
-                icon="pi pi-cloud-upload"
-                label="رفع إلى Cloudinary"
-                size="small"
-                :loading="zipLoading || uploadProgress !== null"
-                :disabled="loading"
-                @click="uploadPendingZip"
-            />
-            <Button
-                v-if="showZipUpload && apiRole === 'admin'"
-                icon="pi pi-cog"
-                label="فحص الإعدادات"
-                size="small"
-                severity="secondary"
-                outlined
-                :loading="settingsCheckLoading"
-                :disabled="loading || zipLoading"
-                @click="checkCloudinarySettings"
-            />
-            <span v-if="pendingZipImages?.length" class="zip-pending-count">
+            <span v-if="zipMeta?.count" class="zip-meta">
                 <i class="pi pi-images" />
-                {{ pendingZipImages.length }} صورة جاهزة للرفع
+                {{ zipMeta.count }} صورة في المعرض ({{ zipMeta.matched }} مطابقة)
             </span>
             <ContainerImageGallery
                 v-if="containerManageImages.length"
@@ -87,17 +67,6 @@
                 show-button
                 label="معرض الحاوية"
             />
-            <span v-else-if="zipMeta" class="zip-meta">
-                <i class="pi pi-images" />
-                {{ zipMeta.count }} صورة ({{ zipMeta.matched }} مطابقة)
-            </span>
-            <span v-if="settingsCheckResult" class="zip-settings-result" :class="settingsCheckResult.ok ? 'zip-settings-result--ok' : 'zip-settings-result--error'">
-                {{ settingsCheckResult.summary }}
-            </span>
-            <span v-if="uploadProgress !== null" class="zip-upload-progress">
-                <ProgressSpinner style="width: 1.1rem; height: 1.1rem" />
-                رفع إلى Cloudinary {{ uploadProgress }}%
-            </span>
         </div>
 
         <div v-if="loading" class="cars-dialog-loading">
@@ -339,10 +308,8 @@ import {
 import {
     deleteContainerCloudImage,
     fetchContainerCloudImages,
-    formatCloudinaryUploadError,
-    testCloudinaryConnection,
-    uploadContainerImagesToCloud,
 } from '../utils/containerCloudinaryUpload';
+import { useContainerUploadStore } from '../stores/containerUpload';
 
 const props = defineProps({
     visible: {
@@ -369,6 +336,7 @@ const emit = defineEmits(['update:visible']);
 const { t } = useI18n();
 const toast = useToast();
 const confirm = useConfirm();
+const containerUploadStore = useContainerUploadStore();
 
 const loading = ref(false);
 const error = ref(null);
@@ -376,10 +344,6 @@ const headerMeta = ref(null);
 const vehicleRows = ref([]);
 const zipInputRef = ref(null);
 const zipLoading = ref(false);
-const uploadProgress = ref(null);
-const pendingZipImages = ref(null);
-const settingsCheckLoading = ref(false);
-const settingsCheckResult = ref(null);
 const zipPayload = ref(null);
 const galleryVisible = ref(false);
 const galleryVehicle = ref(null);
@@ -656,7 +620,22 @@ function onShow() {
     headerMeta.value = props.container;
     vehicleRows.value = props.container?.vehicles ?? [];
     hydrateZipFromMemory();
+    bindContainerUploadListener();
     load();
+}
+
+let unsubscribeContainerUpload = null;
+
+function bindContainerUploadListener() {
+    unsubscribeContainerUpload?.();
+
+    unsubscribeContainerUpload = containerUploadStore.subscribe(containerKey.value, ({ payload }) => {
+        if (payload) {
+            zipPayload.value = payload;
+        }
+
+        loadCloudImages();
+    });
 }
 
 function onHide() {
@@ -664,24 +643,92 @@ function onHide() {
     galleryVisible.value = false;
     closeContainerGallery();
     containerManageVisible.value = false;
-    clearPendingZipImages();
-    settingsCheckResult.value = null;
 }
 
-function clearPendingZipImages() {
-    if (! pendingZipImages.value?.length) {
-        pendingZipImages.value = null;
-
-        return;
-    }
-
-    for (const image of pendingZipImages.value) {
+function revokeZipImageUrls(images) {
+    for (const image of images ?? []) {
         if (image.url?.startsWith('blob:')) {
             URL.revokeObjectURL(image.url);
         }
     }
+}
 
-    pendingZipImages.value = null;
+function requestUploadConfirmations(imageCount, existingCount) {
+    return new Promise((resolve) => {
+        const containerLabel = headerContainer.value;
+
+        const askFinal = () => {
+            confirm.require({
+                message: 'الرفع يتم في الخلفية ويمكنك إغلاق هذه النافذة أثناء المعالجة.',
+                header: 'تأكيد أخير',
+                icon: 'pi pi-info-circle',
+                rejectLabel: 'إلغاء',
+                acceptLabel: 'ابدأ الرفع',
+                accept: () => resolve(true),
+                reject: () => resolve(false),
+            });
+        };
+
+        confirm.require({
+            message: `تم العثور على ${imageCount} صورة في ملف ZIP.\nهل تريد رفعها إلى حاوية ${containerLabel}؟`,
+            header: 'تأكيد بدء الرفع',
+            icon: 'pi pi-cloud-upload',
+            rejectLabel: 'إلغاء',
+            acceptLabel: 'متابعة',
+            accept: () => {
+                if (existingCount > 0) {
+                    confirm.require({
+                        message: `يوجد حالياً ${existingCount} صورة في معرض هذه الحاوية.\nسيتم استبدالها بالصور الجديدة. هل أنت متأكد؟`,
+                        header: 'تأكيد الاستبدال',
+                        icon: 'pi pi-exclamation-triangle',
+                        rejectLabel: 'إلغاء',
+                        acceptLabel: 'نعم، استبدال',
+                        acceptClass: 'p-button-warning',
+                        accept: askFinal,
+                        reject: () => resolve(false),
+                    });
+
+                    return;
+                }
+
+                askFinal();
+            },
+            reject: () => resolve(false),
+        });
+    });
+}
+
+async function startContainerZipUpload(images) {
+    const ref = containerApiRef();
+
+    if (! ref || ! images?.length) {
+        return;
+    }
+
+    const existingCount = zipMeta.value?.count ?? 0;
+    const confirmed = await requestUploadConfirmations(images.length, existingCount);
+
+    if (! confirmed) {
+        revokeZipImageUrls(images);
+
+        return;
+    }
+
+    containerUploadStore.enqueueZip({
+        containerRef: ref,
+        containerLabel: headerContainer.value,
+        containerKey: containerKey.value,
+        images,
+        apiPrefix: apiPrefix.value,
+        replace: true,
+    });
+
+    toast.add({
+        severity: 'info',
+        summary: 'بدأ رفع ZIP',
+        detail: 'يمكنك إغلاق النافذة — الرفع يستمر في الخلفية',
+        life: 4000,
+    });
 }
 
 function triggerZipUpload() {
@@ -700,12 +747,9 @@ async function onZipSelected(event) {
     }
 
     zipLoading.value = true;
-    settingsCheckResult.value = null;
 
     try {
-        clearPendingZipImages();
         const extracted = await extractZipImagesForContainer(file, vehicleRows.value);
-        pendingZipImages.value = extracted.images;
 
         if (! extracted.images.length) {
             toast.add({
@@ -718,12 +762,7 @@ async function onZipSelected(event) {
             return;
         }
 
-        toast.add({
-            severity: 'info',
-            summary: 'تم تحليل ZIP',
-            detail: `${extracted.images.length} صورة جاهزة — اضغط «فحص الإعدادات» ثم «رفع إلى Cloudinary»`,
-            life: 5000,
-        });
+        await startContainerZipUpload(extracted.images);
     } catch (e) {
         toast.add({
             severity: 'error',
@@ -733,111 +772,6 @@ async function onZipSelected(event) {
         });
     } finally {
         zipLoading.value = false;
-    }
-}
-
-async function checkCloudinarySettings() {
-    settingsCheckLoading.value = true;
-    settingsCheckResult.value = null;
-
-    const readyCount = pendingZipImages.value?.length ?? 0;
-
-    try {
-        const result = await testCloudinaryConnection(apiPrefix.value);
-        const parts = [
-            result.configured === false ? 'غير مهيّأ' : `مهيّأ (${result.cloud_name || '—'})`,
-            result.test_upload === 'ok' ? 'اختبار الرفع: ناجح' : null,
-            result.test_upload === 'failed' ? `اختبار الرفع: ${result.test_upload_error}` : null,
-            readyCount ? `${readyCount} صورة جاهزة للرفع` : null,
-        ].filter(Boolean);
-
-        settingsCheckResult.value = {
-            ok: Boolean(result.ok),
-            summary: parts.join(' · '),
-        };
-
-        toast.add({
-            severity: result.ok ? 'success' : 'warn',
-            summary: 'فحص Cloudinary',
-            detail: parts.join(' · '),
-            life: 7000,
-        });
-    } catch (e) {
-        const detail = e.response?.data?.message
-            || e.response?.data?.data?.message
-            || e.message
-            || 'تحقق من إعدادات Cloudinary في صفحة الإعدادات';
-
-        settingsCheckResult.value = {
-            ok: false,
-            summary: readyCount
-                ? `${detail} · ${readyCount} صورة جاهزة للرفع`
-                : detail,
-        };
-
-        toast.add({
-            severity: 'warn',
-            summary: 'فحص Cloudinary',
-            detail: settingsCheckResult.value.summary,
-            life: 7000,
-        });
-    } finally {
-        settingsCheckLoading.value = false;
-    }
-}
-
-async function uploadPendingZip() {
-    if (! pendingZipImages.value?.length) {
-        return;
-    }
-
-    zipLoading.value = true;
-
-    try {
-        const ref = containerApiRef();
-        const images = pendingZipImages.value;
-
-        uploadProgress.value = 0;
-
-        const payload = await uploadContainerImagesToCloud({
-            containerRef: ref,
-            images,
-            apiPrefix: apiPrefix.value,
-            replace: true,
-            onProgress: ({ percent }) => {
-                uploadProgress.value = percent;
-            },
-        });
-
-        applyCloudinaryContainerPayload(containerKey.value, payload);
-        zipPayload.value = getContainerZipImages(containerKey.value);
-        clearPendingZipImages();
-
-        toast.add({
-            severity: 'success',
-            summary: 'تم رفع الصور إلى Cloudinary',
-            detail: `${payload.uploaded ?? payload.meta?.count ?? payload.images?.length ?? 0} صورة — ${payload.meta?.matched ?? Object.keys(payload.byVin ?? {}).length} مطابقة لشاصي`,
-            life: 5000,
-        });
-
-        window.setTimeout(() => {
-            toast.add({
-                severity: 'info',
-                summary: 'عرض الصور',
-                detail: 'اضغط «معرض الحاوية» أو أيقونة الشاحنة في عمود صور لعرض المعرض',
-                life: 7000,
-            });
-        }, 400);
-    } catch (e) {
-        toast.add({
-            severity: 'error',
-            summary: 'تعذّر رفع الصور',
-            detail: formatCloudinaryUploadError(e),
-            life: 8000,
-        });
-    } finally {
-        zipLoading.value = false;
-        uploadProgress.value = null;
     }
 }
 
@@ -856,6 +790,7 @@ onMounted(() => {
 
 onBeforeUnmount(() => {
     window.removeEventListener('keydown', onContainerGalleryKeydown);
+    unsubscribeContainerUpload?.();
 });
 </script>
 

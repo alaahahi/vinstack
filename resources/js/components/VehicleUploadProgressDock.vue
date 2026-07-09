@@ -151,8 +151,39 @@
 <script setup>
 import { computed, ref, watch } from 'vue';
 import { useVehicleUploadStore } from '../stores/vehicleUpload';
+import { useContainerUploadStore } from '../stores/containerUpload';
 
-const uploadStore = useVehicleUploadStore();
+const vehicleUploadStore = useVehicleUploadStore();
+const containerUploadStore = useContainerUploadStore();
+
+const uploadStore = {
+    get dockJobs() {
+        return [...vehicleUploadStore.dockJobs, ...containerUploadStore.dockJobs]
+            .sort((a, b) => (b.startedAt ?? 0) - (a.startedAt ?? 0));
+    },
+    get activeJobs() {
+        return [...vehicleUploadStore.activeJobs, ...containerUploadStore.activeJobs];
+    },
+    get hasActive() {
+        return vehicleUploadStore.hasActive || containerUploadStore.hasActive;
+    },
+    dismissJob(jobId) {
+        if (vehicleUploadStore.jobs.some((job) => job.id === jobId)) {
+            vehicleUploadStore.dismissJob(jobId);
+
+            return;
+        }
+
+        containerUploadStore.dismissJob(jobId);
+    },
+    dismissAllFinished() {
+        vehicleUploadStore.dismissAllFinished();
+        containerUploadStore.dismissAllFinished();
+    },
+    estimateEta(job) {
+        return vehicleUploadStore.estimateEta(job);
+    },
+};
 const expanded = ref(true);
 
 const primaryJob = computed(() => uploadStore.dockJobs[0] ?? null);

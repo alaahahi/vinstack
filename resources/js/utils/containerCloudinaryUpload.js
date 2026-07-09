@@ -17,6 +17,10 @@ const ALLOWED_EXTENSIONS = new Set(Object.keys(MIME_BY_EXT));
  * @returns {string}
  */
 export function formatCloudinaryUploadError(error) {
+    if (error?.code === 'ECONNABORTED' || /timeout/i.test(error?.message || '')) {
+        return 'انتهت مهلة الاتصال أثناء رفع صور الحاوية. حدّث الصفحة للتحقق أو أعد المحاولة.';
+    }
+
     const data = error?.response?.data;
 
     if (! data) {
