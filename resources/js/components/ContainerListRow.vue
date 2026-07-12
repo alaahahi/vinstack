@@ -41,8 +41,16 @@
 
                 <span class="ref-label">CNTR</span>
 
+                <RouterLink
+                    v-if="linkContainerDetail && containerDetailLink"
+                    :to="containerDetailLink"
+                    class="ref-value ref-value--link"
+                >
+                    {{ refs.container }}
+                </RouterLink>
+
                 <button
-                    v-if="refs.container"
+                    v-else-if="refs.container"
                     type="button"
                     class="ref-value ref-value--link"
                     @click="$emit('show-cars', container)"
@@ -138,6 +146,18 @@
 
         <div class="cell cell-vehicles">
 
+            <div v-if="showVehicleThumbs && vehicleCount" class="vehicle-thumbs">
+                <VehicleImageGallery
+                    v-for="(vehicle, idx) in previewVehicles"
+                    :key="vehicle.vin || vehicle.id || `vehicle-${idx}`"
+                    :vehicle="vehicle"
+                    variant="row"
+                    :api-mode="galleryApiMode"
+                    class="vehicle-thumb-item"
+                />
+                <span v-if="extraVehicleCount" class="vehicle-thumbs-more">+{{ extraVehicleCount }}</span>
+            </div>
+
             <button
                 type="button"
                 class="vehicle-count-badge"
@@ -231,7 +251,8 @@
                 class="zip-btn"
                 :aria-label="t('containers.uploadZip')"
                 :title="t('containers.uploadZip')"
-                :loading="zipLoading"
+                :loading="containerUploadStore.isContainerBusy(containerRowKey)"
+                :disabled="containerUploadStore.isContainerBusy(containerRowKey)"
                 @click="triggerZipUpload"
             />
 
@@ -258,84 +279,33 @@
         :images="galleryImages"
         :start-index="galleryStartIndex"
     />
-
-    <Teleport to="body">
-        <div
-            v-if="galleryLoading"
-            class="container-gallery-load-overlay"
-            role="status"
-            aria-live="polite"
-            :aria-label="galleryLoadingTitle"
-        >
-            <div class="container-gallery-load-card">
-                <ProgressSpinner style="width: 2.25rem; height: 2.25rem" />
-                <p class="container-gallery-load-title">{{ galleryLoadingTitle }}</p>
-                <p
-                    v-if="galleryLoadPhase === 'preload' && galleryLoadProgress.total > 0"
-                    class="container-gallery-load-count"
-                >
-                    {{ t('containers.galleryLoadingProgress', {
-                        done: galleryLoadProgress.done,
-                        total: galleryLoadProgress.total,
-                    }) }}
-                </p>
-                <p
-                    v-if="galleryLoadPhase === 'preload' && galleryLoadProgress.remaining > 0"
-                    class="container-gallery-load-remaining"
-                >
-                    {{ t('containers.galleryLoadingRemaining', {
-                        count: galleryLoadProgress.remaining,
-                    }) }}
-                </p>
-                <div
-                    v-if="galleryLoadPhase === 'preload' && galleryLoadProgress.total > 0"
-                    class="container-gallery-load-track"
-                    role="progressbar"
-                    :aria-valuenow="galleryLoadProgress.percent"
-                    aria-valuemin="0"
-                    aria-valuemax="100"
-                >
-                    <div
-                        class="container-gallery-load-fill"
-                        :style="{ width: `${galleryLoadProgress.percent}%` }"
-                    />
-                </div>
-                <span
-                    v-if="galleryLoadPhase === 'preload' && galleryLoadProgress.total > 0"
-                    class="container-gallery-load-percent"
-                >
-                    {{ galleryLoadProgress.percent }}%
-                </span>
-            </div>
-        </div>
-    </Teleport>
 </template>
 
 
 
 <script setup>
 
-import { computed, onBeforeUnmount, ref } from 'vue';
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue';
+import { RouterLink } from 'vue-router';
 import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import Button from 'primevue/button';
 import ProgressSpinner from 'primevue/progressspinner';
 import ContainerGalleryLightbox from './ContainerGalleryLightbox.vue';
+import VehicleImageGallery from './VehicleImageGallery.vue';
 import {
     containerRefKey,
-    extractZipImagesForContainer,
-    applyCloudinaryContainerPayload,
 } from '../utils/containerZipImages';
 import {
     fetchContainerCloudImages,
-    formatCloudinaryUploadError,
-    uploadContainerImagesToCloud,
 } from '../utils/containerCloudinaryUpload';
-import { preloadImageUrls } from '../utils/imagePreload';
+import { useContainerUploadStore } from '../stores/containerUpload';
 
 import {
 
     containerDestination,
+
+    containerDetailRoute,
 
     containerLineText,
 
@@ -405,6 +375,22 @@ const props = defineProps({
 
     },
 
+    linkContainerDetail: {
+
+        type: Boolean,
+
+        default: false,
+
+    },
+
+    showVehicleThumbs: {
+
+        type: Boolean,
+
+        default: false,
+
+    },
+
 });
 
 
@@ -413,15 +399,14 @@ const emit = defineEmits(['track', 'show-cars']);
 
 const { t } = useI18n();
 const toast = useToast();
+const containerUploadStore = useContainerUploadStore();
 const zipInputRef = ref(null);
-const zipLoading = ref(false);
 const galleryVisible = ref(false);
 const galleryImages = ref([]);
 const galleryStartIndex = ref(0);
 const galleryLoading = ref(false);
-const galleryLoadPhase = ref(null);
-const galleryLoadProgress = ref({ done: 0, total: 0, percent: 0, remaining: 0 });
 let galleryAbortController = null;
+let unsubscribeContainerUpload = null;
 
 
 
@@ -463,6 +448,26 @@ const trackingTitle = computed(() =>
 
 const vehicleCount = computed(() => props.container?.vehicles?.length ?? 0);
 
+const previewVehicles = computed(() => (props.container?.vehicles ?? []).slice(0, 4));
+
+const extraVehicleCount = computed(() => Math.max(vehicleCount.value - previewVehicles.value.length, 0));
+
+const containerDetailLink = computed(() => {
+    if (! props.linkContainerDetail) {
+        return null;
+    }
+
+    const role = props.apiPrefix === '/dealer' ? 'dealer' : 'admin';
+
+    return containerDetailRoute(props.container, role);
+});
+
+const galleryApiMode = computed(() => (props.apiPrefix === '/dealer' ? 'dealer' : 'admin'));
+
+const showVehicleThumbs = computed(() => props.showVehicleThumbs);
+
+const containerRowKey = computed(() => containerRefKey(props.container));
+
 const imageCount = computed(() => Number(props.container?.image_count ?? 0));
 
 const thumbnailUrl = computed(() => {
@@ -479,16 +484,7 @@ const showCountBadge = computed(() => imageCount.value > 1);
 
 const imageTitle = computed(() => {
     if (galleryLoading.value) {
-        if (galleryLoadPhase.value === 'preload' && galleryLoadProgress.value.total > 0) {
-            return t('containers.galleryLoadingProgress', {
-                done: galleryLoadProgress.value.done,
-                total: galleryLoadProgress.value.total,
-            });
-        }
-
-        return galleryLoadPhase.value === 'fetch'
-            ? t('containers.galleryLoadingList')
-            : t('containers.openingGallery');
+        return t('containers.galleryLoadingList');
     }
 
     if (hasImages.value) {
@@ -498,18 +494,6 @@ const imageTitle = computed(() => {
     }
 
     return t('containers.noImages');
-});
-
-const galleryLoadingTitle = computed(() => {
-    if (galleryLoadPhase.value === 'fetch') {
-        return t('containers.galleryLoadingList');
-    }
-
-    if (galleryLoadPhase.value === 'preload') {
-        return t('containers.openingGallery');
-    }
-
-    return t('containers.openingGallery');
 });
 
 const directImageGallery = computed(() => props.directImageGallery);
@@ -536,8 +520,6 @@ async function openGallery() {
     const { signal } = galleryAbortController;
 
     galleryLoading.value = true;
-    galleryLoadPhase.value = 'fetch';
-    galleryLoadProgress.value = { done: 0, total: 0, percent: 0, remaining: 0 };
 
     try {
         const payload = await fetchContainerCloudImages(containerRef, props.apiPrefix);
@@ -554,38 +536,6 @@ async function openGallery() {
                 summary: t('containers.noImages'),
                 detail: t('containers.galleryEmpty'),
                 life: 3500,
-            });
-
-            return;
-        }
-
-        const urls = images.map((image) => image.url).filter(Boolean);
-
-        galleryLoadPhase.value = 'preload';
-        galleryLoadProgress.value = {
-            done: 0,
-            total: urls.length,
-            percent: 0,
-            remaining: urls.length,
-        };
-
-        const result = await preloadImageUrls(urls, {
-            signal,
-            onProgress: (progress) => {
-                galleryLoadProgress.value = progress;
-            },
-        });
-
-        if (signal.aborted) {
-            return;
-        }
-
-        if (result.loaded === 0 && urls.length > 0) {
-            toast.add({
-                severity: 'error',
-                summary: t('common.error'),
-                detail: t('containers.galleryLoadFailed'),
-                life: 4500,
             });
 
             return;
@@ -608,13 +558,35 @@ async function openGallery() {
     } finally {
         if (! signal.aborted) {
             galleryLoading.value = false;
-            galleryLoadPhase.value = null;
         }
     }
 }
 
+function bindContainerUploadListener() {
+    unsubscribeContainerUpload?.();
+
+    const key = containerRefKey(props.container);
+
+    if (! key) {
+        return;
+    }
+
+    unsubscribeContainerUpload = containerUploadStore.subscribe(key, ({ payload }) => {
+        if (! payload) {
+            return;
+        }
+
+        const count = payload.meta?.count ?? payload.images?.length ?? 0;
+        props.container.image_count = count;
+        props.container.thumbnail_url = payload.images?.[0]?.url ?? null;
+    });
+}
+
+onMounted(bindContainerUploadListener);
+
 onBeforeUnmount(() => {
     galleryAbortController?.abort();
+    unsubscribeContainerUpload?.();
 });
 
 function triggerZipUpload() {
@@ -632,50 +604,40 @@ async function onZipSelected(event) {
         return;
     }
 
-    zipLoading.value = true;
+    const refs = containerRefs(props.container);
+    const containerRef = refs.container || refs.booking || '';
+    const containerKey = containerRefKey(props.container);
 
-    try {
-        const extracted = await extractZipImagesForContainer(file, props.container?.vehicles ?? []);
-        const refs = containerRefs(props.container);
-        const containerRef = refs.container || refs.booking || '';
-
-        const payload = await uploadContainerImagesToCloud({
-            containerRef,
-            images: extracted.images,
-            apiPrefix: '/admin',
-            replace: true,
-        });
-
-        applyCloudinaryContainerPayload(containerRefKey(props.container), payload);
-
-        const count = payload.meta?.count ?? payload.images?.length ?? 0;
-        props.container.image_count = count;
-        props.container.thumbnail_url = payload.images?.[0]?.url ?? null;
-
-        for (const image of extracted.images) {
-            if (image.url?.startsWith('blob:')) {
-                URL.revokeObjectURL(image.url);
-            }
-        }
-
-        toast.add({
-            severity: 'success',
-            summary: t('containers.zipUploadSuccess'),
-            detail: t('containers.zipUploadSuccessDetail', {
-                count: payload.meta?.count ?? payload.images?.length ?? 0,
-            }),
-            life: 4000,
-        });
-    } catch (e) {
-        toast.add({
-            severity: 'error',
-            summary: t('containers.zipUploadFailed'),
-            detail: formatCloudinaryUploadError(e),
-            life: 5000,
-        });
-    } finally {
-        zipLoading.value = false;
+    if (! containerRef || ! containerKey) {
+        return;
     }
+
+    if (containerUploadStore.isContainerBusy(containerKey)) {
+        toast.add({
+            severity: 'info',
+            summary: t('containers.zipUploadInProgress'),
+            detail: t('containers.zipUploadInProgressDetail'),
+            life: 3500,
+        });
+
+        return;
+    }
+
+    await containerUploadStore.enqueueZip({
+        containerRef,
+        containerLabel: containerRef,
+        containerKey,
+        zipFile: file,
+        apiPrefix: '/admin',
+        replace: true,
+    });
+
+    toast.add({
+        severity: 'info',
+        summary: t('containers.zipUploadStarted'),
+        detail: t('containers.zipUploadStartedDetail'),
+        life: 4000,
+    });
 }
 
 </script>
@@ -925,6 +887,90 @@ async function onZipSelected(event) {
 .ref-value--link:hover {
 
     text-decoration: underline;
+
+}
+
+.ref-value--link.router-link-active {
+
+    font-weight: 600;
+
+}
+
+
+
+.cell-vehicles {
+
+    display: flex;
+
+    flex-direction: column;
+
+    align-items: flex-start;
+
+    gap: 0.45rem;
+
+}
+
+.vehicle-thumbs {
+
+    display: flex;
+
+    flex-wrap: wrap;
+
+    align-items: center;
+
+    gap: 0.35rem;
+
+    max-width: 100%;
+
+}
+
+.vehicle-thumb-item :deep(.thumb-btn--row) {
+
+    width: 44px;
+
+    height: 33px;
+
+    border-radius: 6px;
+
+}
+
+.vehicle-thumb-item :deep(.count-badge--row) {
+
+    font-size: 9px;
+
+    min-width: 14px;
+
+    height: 14px;
+
+    line-height: 14px;
+
+}
+
+.vehicle-thumbs-more {
+
+    display: inline-flex;
+
+    align-items: center;
+
+    justify-content: center;
+
+    min-width: 28px;
+
+    height: 28px;
+
+    padding: 0 0.35rem;
+
+    border-radius: 6px;
+
+    background: var(--vs-surface-elevated);
+
+    border: 1px solid var(--vs-border);
+
+    color: var(--vs-text-muted);
+
+    font-size: 0.72rem;
+
+    font-weight: 600;
 
 }
 
@@ -1277,82 +1323,6 @@ async function onZipSelected(event) {
 
     color: var(--vs-text-subtle);
 
-}
-
-.container-gallery-load-overlay {
-    position: fixed;
-    inset: 0;
-    z-index: 12000;
-    display: grid;
-    place-items: center;
-    padding: 1.25rem;
-    background: rgb(9 9 11 / 58%);
-    backdrop-filter: blur(6px);
-}
-
-.container-gallery-load-card {
-    width: min(22rem, 100%);
-    display: flex;
-    flex-direction: column;
-    align-items: center;
-    gap: 0.65rem;
-    padding: 1.35rem 1.25rem 1.1rem;
-    border-radius: 16px;
-    border: 1px solid var(--vs-border);
-    background: var(--admin-surface, #fff);
-    box-shadow: 0 18px 48px rgb(0 0 0 / 18%);
-    text-align: center;
-}
-
-.container-gallery-load-title {
-    margin: 0;
-    font-size: 0.95rem;
-    font-weight: 600;
-    color: var(--vs-text);
-}
-
-.container-gallery-load-count {
-    margin: 0;
-    font-size: 0.88rem;
-    font-weight: 600;
-    color: var(--vs-text-secondary);
-    font-variant-numeric: tabular-nums;
-}
-
-.container-gallery-load-remaining {
-    margin: 0;
-    font-size: 0.8rem;
-    color: var(--vs-text-muted);
-    font-variant-numeric: tabular-nums;
-}
-
-.container-gallery-load-track {
-    width: 100%;
-    height: 8px;
-    margin-top: 0.15rem;
-    border-radius: 999px;
-    background: var(--vs-surface-elevated, #f4f4f5);
-    overflow: hidden;
-}
-
-.container-gallery-load-fill {
-    height: 100%;
-    border-radius: inherit;
-    background: linear-gradient(90deg, #2563eb 0%, #3b82f6 100%);
-    transition: width 0.18s ease-out;
-}
-
-.container-gallery-load-percent {
-    font-size: 0.78rem;
-    font-weight: 700;
-    color: #2563eb;
-    font-variant-numeric: tabular-nums;
-}
-
-@media (prefers-reduced-motion: reduce) {
-    .container-gallery-load-fill {
-        transition: none;
-    }
 }
 
 @media (max-width: 1200px) {

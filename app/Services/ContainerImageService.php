@@ -73,6 +73,95 @@ class ContainerImageService
     }
 
     /**
+     * @param  list<array{name: string, path: string}>  $entries
+     * @param  list<array{name?: string, vin?: ?string, lot?: ?string}>  $metadata
+     * @return array{images: list<array<string, mixed>>, byVin: array<string, list<string>>, unmatched: list<string>, meta: array<string, mixed>, uploaded: int, failed: list<array{index: int, name: string, error: string}>}
+     */
+    public function uploadFromPaths(string $container, array $entries, array $metadata, bool $replace = true): array
+    {
+        UploadLimits::extendExecutionTime();
+
+        if (! $this->cloudinary->isConfigured()) {
+            throw new \RuntimeException('Cloudinary is not configured.');
+        }
+
+        $number = $this->normalizeContainerNumber($container);
+
+        if ($number === '') {
+            throw new \RuntimeException('Container reference is required.');
+        }
+
+        if ($entries === []) {
+            throw new \RuntimeException('No image files found in ZIP archive.');
+        }
+
+        if ($replace) {
+            ContainerImage::query()->where('container_number', $number)->delete();
+        }
+
+        $config = $this->cloudinary->resolveConfig();
+        $folder = rtrim((string) ($config['folder'] ?? 'vinstack/containers'), '/').'/'.$number;
+        $failed = [];
+        $created = [];
+
+        foreach ($entries as $index => $entry) {
+            $path = (string) ($entry['path'] ?? '');
+            $meta = $metadata[$index] ?? [];
+            $name = (string) ($meta['name'] ?? $entry['name'] ?? "image-{$index}");
+            $vin = $this->normalizeVin($meta['vin'] ?? null);
+            $vehicleId = $this->resolveVehicleId($vin);
+
+            if ($path === '' || ! is_readable($path)) {
+                $failed[] = [
+                    'index' => $index,
+                    'name' => $name,
+                    'error' => 'Extracted image file is not readable.',
+                ];
+
+                continue;
+            }
+
+            try {
+                $upload = $this->cloudinary->upload($path, [
+                    'folder' => $folder,
+                    'public_id' => $this->publicIdFromFilename($name, $index),
+                ]);
+
+                $record = ContainerImage::query()->create([
+                    'container_number' => $number,
+                    'vehicle_id' => $vehicleId,
+                    'vin' => $vin,
+                    'original_name' => $name,
+                    'cloudinary_url' => $upload['url'],
+                    'public_id' => $upload['public_id'],
+                    'uploaded_at' => now(),
+                ]);
+
+                $created[] = $record;
+            } catch (\Throwable $e) {
+                Log::warning('Container ZIP image Cloudinary upload failed', [
+                    'container' => $number,
+                    'index' => $index,
+                    'name' => $name,
+                    'error' => $e->getMessage(),
+                ]);
+
+                $failed[] = [
+                    'index' => $index,
+                    'name' => $name,
+                    'error' => $e->getMessage(),
+                ];
+            }
+        }
+
+        $payload = $this->payloadForContainer($number);
+        $payload['uploaded'] = count($created);
+        $payload['failed'] = $failed;
+
+        return $payload;
+    }
+
+    /**
      * @param  list<UploadedFile>  $files
      * @param  list<array{name?: string, vin?: ?string, lot?: ?string}>  $metadata
      * @return array{images: list<array<string, mixed>>, byVin: array<string, list<string>>, unmatched: list<string>, meta: array<string, mixed>, uploaded: int, failed: list<array{index: int, name: string, error: string}>}

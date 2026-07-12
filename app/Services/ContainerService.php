@@ -74,9 +74,25 @@ class ContainerService
     }
 
     /**
+     * @param  array<string, mixed>  $container
+     */
+    protected function containerMatchesRef(array $container, string $needle): bool
+    {
+        foreach (['container_number', 'booking_number', 'seal_number'] as $field) {
+            $value = strtoupper(preg_replace('/\s+/', '', trim((string) ($container[$field] ?? ''))) ?? '');
+
+            if ($value !== '' && str_contains($value, $needle)) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @return list<array<string, mixed>>
      */
-    public function listForDealer(Dealer $dealer): array
+    public function listForDealer(Dealer $dealer, ?string $containerRef = null, ?string $chassis = null): array
     {
         $keys = $this->dealerMatchKeys($dealer);
         $items = $this->fetchNormalized();
@@ -92,7 +108,26 @@ class ContainerService
 
         $this->logDealerContainerEdgeCases($dealer, $keys, $items, $fromApi, $fromVehicles, $merged);
 
-        return $this->attachListImageSummaries($merged);
+        $items = $this->attachListImageSummaries($merged);
+        $items = $this->attachListVehicleThumbnails($items);
+
+        if ($containerRef !== null && trim($containerRef) !== '') {
+            $needle = strtoupper(preg_replace('/\s+/', '', trim($containerRef)) ?? '');
+            $items = array_values(array_filter(
+                $items,
+                fn (array $container) => $this->containerMatchesRef($container, $needle),
+            ));
+        }
+
+        if ($chassis !== null && trim($chassis) !== '') {
+            $needle = strtoupper(trim($chassis));
+            $items = array_values(array_filter(
+                $items,
+                fn (array $container) => $this->containerMatchesChassis($container, $needle),
+            ));
+        }
+
+        return $items;
     }
 
     public function trackingAvailable(): bool
@@ -1037,6 +1072,88 @@ class ContainerService
         }
 
         return $enriched;
+    }
+
+    /**
+     * Add vehicle thumbnail_url for list rows (dealer container previews).
+     *
+     * @param  list<array<string, mixed>>  $items
+     * @return list<array<string, mixed>>
+     */
+    protected function attachListVehicleThumbnails(array $items): array
+    {
+        if ($items === []) {
+            return $items;
+        }
+
+        $vins = [];
+
+        foreach ($items as $row) {
+            foreach ($row['vehicles'] ?? [] as $vehicle) {
+                if (! is_array($vehicle)) {
+                    continue;
+                }
+
+                $vin = $this->normalizeVin((string) ($vehicle['vin'] ?? ''));
+
+                if ($vin !== '') {
+                    $vins[] = $vin;
+                }
+            }
+        }
+
+        $vins = array_values(array_unique($vins));
+
+        if ($vins === []) {
+            return $items;
+        }
+
+        /** @var Collection<string, Vehicle> $byVin */
+        $byVin = Vehicle::query()
+            ->whereIn('vin', $vins)
+            ->get()
+            ->keyBy(fn (Vehicle $vehicle) => $this->normalizeVin((string) $vehicle->vin));
+
+        foreach ($items as $index => $row) {
+            $vehicles = $row['vehicles'] ?? [];
+
+            if (! is_array($vehicles) || $vehicles === []) {
+                continue;
+            }
+
+            foreach ($vehicles as $vehicleIndex => $vehicle) {
+                if (! is_array($vehicle)) {
+                    continue;
+                }
+
+                $vin = $this->normalizeVin((string) ($vehicle['vin'] ?? ''));
+                $dbVehicle = $vin !== '' ? $byVin->get($vin) : null;
+
+                if ($dbVehicle === null) {
+                    continue;
+                }
+
+                $enriched = $this->gallery->enrichListVehicle($dbVehicle);
+                $thumbnail = $enriched['thumbnail_url'] ?? null;
+                $images = is_array($enriched['images'] ?? null) ? $enriched['images'] : [];
+                $imagesByStage = is_array($enriched['images_by_stage'] ?? null) ? $enriched['images_by_stage'] : [];
+                $stageCount = 0;
+
+                foreach ($imagesByStage as $urls) {
+                    if (is_array($urls)) {
+                        $stageCount += count($urls);
+                    }
+                }
+
+                $vehicles[$vehicleIndex]['id'] = $dbVehicle->id;
+                $vehicles[$vehicleIndex]['thumbnail_url'] = is_string($thumbnail) && $thumbnail !== '' ? $thumbnail : null;
+                $vehicles[$vehicleIndex]['image_count'] = max(count($images), $stageCount);
+            }
+
+            $items[$index]['vehicles'] = $vehicles;
+        }
+
+        return $items;
     }
 
     /**

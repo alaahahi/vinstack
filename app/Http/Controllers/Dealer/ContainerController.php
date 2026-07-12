@@ -18,7 +18,11 @@ class ContainerController extends Controller
             abort(403, 'Dealer profile not found.');
         }
 
-        $data = $containers->listForDealer($dealer);
+        $data = $containers->listForDealer(
+            $dealer,
+            $request->string('container')->toString() ?: null,
+            $request->string('chassis')->toString() ?: null,
+        );
 
         return response()->json([
             'data' => $data,

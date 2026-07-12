@@ -107,6 +107,12 @@ const routes = [
                 meta: { titleKey: 'pages.dealer.vehicles.title' },
             },
             {
+                path: 'containers/:containerRef',
+                name: 'dealer.container',
+                component: () => import('../pages/dealer/ContainersPage.vue'),
+                meta: { titleKey: 'pages.dealer.containers.title' },
+            },
+            {
                 path: 'containers',
                 name: 'dealer.containers',
                 component: () => import('../pages/dealer/ContainersPage.vue'),

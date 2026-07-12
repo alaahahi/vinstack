@@ -13,6 +13,8 @@ export default {
         logout: 'Log out',
         close: 'Close',
         refresh: 'Refresh',
+        search: 'Search',
+        clearFilters: 'Clear filters',
         confirm: 'Confirm',
         save: 'Save',
         edit: 'Edit',
@@ -144,6 +146,7 @@ export default {
     containers: {
         countLabel: 'containers',
         searchChassis: 'Search by VIN...',
+        searchContainer: 'Search container / booking...',
         empty: 'No containers',
         columns: {
             images: 'Images',
@@ -184,6 +187,10 @@ export default {
             inTransit: 'In transit',
         },
         zipUploadSuccess: 'Images uploaded to Cloudinary',
+        zipUploadStarted: 'ZIP upload started',
+        zipUploadStartedDetail: 'Upload and processing continue in the background — track progress in the dock',
+        zipUploadInProgress: 'Upload in progress',
+        zipUploadInProgressDetail: 'Wait for the current upload to finish for this container',
         zipUploadSuccessDetail: '{count} image(s) — open vehicle list to view',
         zipUploadFailed: 'Image upload failed',
         tracking: {
@@ -227,6 +234,8 @@ export default {
             title: 'My containers',
             subtitle: 'Containers with your assigned vehicles — use track to follow the route',
             empty: 'No containers linked to your vehicles yet',
+            noSearchResults: 'No containers match your search',
+            containerNotFound: 'Container not found in your list',
             loadFailed: 'Failed to load containers',
         },
     },

@@ -50,6 +50,63 @@ export function containerRowKey(container, index = 0) {
         ?? `container-${index}`;
 }
 
+export function containerDetailRef(container) {
+    const refs = containerRefs(container);
+
+    return refs.container || refs.booking || null;
+}
+
+export function containerDetailRoute(container, role = 'dealer') {
+    const ref = containerDetailRef(container);
+
+    if (! ref) {
+        return null;
+    }
+
+    const name = role === 'dealer' ? 'dealer.container' : 'admin.container';
+
+    return {
+        name,
+        params: { containerRef: ref },
+    };
+}
+
+export function normalizeContainerSearchValue(value) {
+    return String(value || '').trim().toUpperCase().replace(/\s+/g, '');
+}
+
+export function containerMatchesSearch(container, { containerQuery = '', chassisQuery = '' } = {}) {
+    const containerNeedle = normalizeContainerSearchValue(containerQuery);
+
+    if (containerNeedle) {
+        const refs = containerRefs(container);
+        const values = [refs.container, refs.booking, refs.seal]
+            .filter(Boolean)
+            .map((entry) => normalizeContainerSearchValue(entry));
+
+        if (! values.some((entry) => entry.includes(containerNeedle))) {
+            return false;
+        }
+    }
+
+    const chassisNeedle = String(chassisQuery || '').trim().toUpperCase();
+
+    if (chassisNeedle) {
+        const vehicles = container?.vehicles ?? [];
+        const matched = vehicles.some((vehicle) => {
+            const vin = String(vehicle?.vin || '').toUpperCase();
+
+            return vin !== '' && vin.includes(chassisNeedle);
+        });
+
+        if (! matched) {
+            return false;
+        }
+    }
+
+    return true;
+}
+
 /** @returns {'released'|'arrived'|'loading'|'in_transit'} */
 export function containerListStatusKey(container) {
     if (container?.released) {

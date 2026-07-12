@@ -39,6 +39,8 @@
                 :show-invoice="showInvoice"
                 :show-zip-upload="showZipUpload"
                 :direct-image-gallery="directImageGallery"
+                :link-container-detail="linkContainerDetail"
+                :show-vehicle-thumbs="showVehicleThumbs"
                 :api-prefix="apiPrefix"
                 @track="$emit('track', $event)"
                 @show-cars="$emit('show-cars', $event)"
@@ -95,6 +97,14 @@ const props = defineProps({
         default: false,
     },
     directImageGallery: {
+        type: Boolean,
+        default: false,
+    },
+    linkContainerDetail: {
+        type: Boolean,
+        default: false,
+    },
+    showVehicleThumbs: {
         type: Boolean,
         default: false,
     },

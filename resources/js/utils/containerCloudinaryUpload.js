@@ -1,5 +1,5 @@
 import api from '../api/client';
-import { UPLOAD_TIMEOUT_MS } from '../constants/uploadTimeouts';
+import { UPLOAD_TIMEOUT_MS, ZIP_UPLOAD_TIMEOUT_MS } from '../constants/uploadTimeouts';
 
 const MIME_BY_EXT = {
     jpg: 'image/jpeg',
@@ -18,7 +18,7 @@ const ALLOWED_EXTENSIONS = new Set(Object.keys(MIME_BY_EXT));
  */
 export function formatCloudinaryUploadError(error) {
     if (error?.code === 'ECONNABORTED' || /timeout/i.test(error?.message || '')) {
-        return 'انتهت مهلة الاتصال أثناء رفع صور الحاوية. حدّث الصفحة للتحقق أو أعد المحاولة.';
+        return 'انتهت مهلة الاتصال أثناء رفع ملف ZIP. حدّث الصفحة للتحقق من النتيجة أو أعد المحاولة.';
     }
 
     const data = error?.response?.data;
@@ -48,6 +48,83 @@ export function formatCloudinaryUploadError(error) {
     }
 
     return message;
+}
+
+/**
+ * Upload a ZIP archive once — server extracts images and pushes to Cloudinary.
+ *
+ * @param {object} params
+ * @param {string} params.containerRef
+ * @param {File} params.zipFile
+ * @param {string} [params.apiPrefix='/admin']
+ * @param {boolean} [params.replace=true]
+ * @param {(progress: { percent: number, phase: 'upload'|'processing' }) => void} [params.onProgress]
+ */
+export async function uploadContainerZipToCloud({
+    containerRef,
+    zipFile,
+    apiPrefix = '/admin',
+    replace = true,
+    onProgress,
+}) {
+    if (! containerRef || ! zipFile) {
+        throw new Error('Container reference and ZIP file are required.');
+    }
+
+    const form = new FormData();
+    form.append('zip', zipFile, zipFile.name);
+    form.append('replace', replace ? '1' : '0');
+
+    onProgress?.({ percent: 0, phase: 'upload' });
+
+    let response;
+
+    try {
+        response = await api.post(
+            `${apiPrefix}/containers/${encodeURIComponent(containerRef)}/images/zip`,
+            form,
+            {
+                timeout: ZIP_UPLOAD_TIMEOUT_MS,
+                onUploadProgress: (event) => {
+                    if (! event.total) {
+                        return;
+                    }
+
+                    onProgress?.({
+                        percent: Math.round((event.loaded / event.total) * 100),
+                        phase: 'upload',
+                    });
+                },
+            },
+        );
+    } catch (error) {
+        error.message = formatCloudinaryUploadError(error);
+        throw error;
+    }
+
+    onProgress?.({ percent: 100, phase: 'processing' });
+
+    const payload = response.data?.data ?? null;
+
+    if (! payload) {
+        throw new Error('تعذّر معالجة ملف ZIP على الخادم.');
+    }
+
+    const uploaded = Number(payload.uploaded ?? 0);
+
+    if (uploaded === 0) {
+        const error = new Error(formatCloudinaryUploadError({
+            response: { data: response.data },
+        }));
+        error.response = response;
+        throw error;
+    }
+
+    return {
+        ...payload,
+        uploaded,
+        failed: payload.failed ?? response.data?.failed ?? [],
+    };
 }
 
 /**

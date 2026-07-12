@@ -2,7 +2,7 @@ import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import {
     formatCloudinaryUploadError,
-    uploadContainerImagesToCloud,
+    uploadContainerZipToCloud,
 } from '../utils/containerCloudinaryUpload';
 import { applyCloudinaryContainerPayload } from '../utils/containerZipImages';
 
@@ -10,6 +10,18 @@ const ACTIVE_STATUSES = ['queued', 'uploading', 'processing', 'refreshing'];
 
 function makeJobId() {
     return `container-upload-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
+}
+
+function formatZipSize(bytes) {
+    if (! bytes || bytes <= 0) {
+        return '';
+    }
+
+    if (bytes >= 1024 * 1024) {
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    return `${Math.round(bytes / 1024)} KB`;
 }
 
 export const useContainerUploadStore = defineStore('containerUpload', () => {
@@ -76,15 +88,16 @@ export const useContainerUploadStore = defineStore('containerUpload', () => {
         containerRef,
         containerLabel,
         containerKey,
-        images,
+        zipFile,
         apiPrefix = '/admin',
         replace = true,
     }) {
-        if (! containerRef || ! images?.length || ! containerKey) {
+        if (! containerRef || ! zipFile || ! containerKey) {
             return null;
         }
 
         const jobId = makeJobId();
+        const sizeLabel = formatZipSize(zipFile.size);
 
         jobs.value.unshift({
             id: jobId,
@@ -96,14 +109,16 @@ export const useContainerUploadStore = defineStore('containerUpload', () => {
             stageLabel: 'معرض الحاوية',
             type: 'zip',
             status: 'uploading',
-            total: images.length,
+            total: 0,
             completed: 0,
             failed: 0,
-            currentFileName: `${images.length} صورة`,
+            currentFileName: zipFile.name,
             progress: 0,
             fileProgress: 0,
             phase: 'upload',
-            message: `جاري رفع 0 من ${images.length}`,
+            message: sizeLabel
+                ? `جاري رفع ZIP (${sizeLabel})…`
+                : 'جاري رفع ملف ZIP…',
             error: null,
             dismissed: false,
             expanded: true,
@@ -112,19 +127,26 @@ export const useContainerUploadStore = defineStore('containerUpload', () => {
         });
 
         try {
-            const payload = await uploadContainerImagesToCloud({
+            const payload = await uploadContainerZipToCloud({
                 containerRef,
-                images,
+                zipFile,
                 apiPrefix,
                 replace,
-                onProgress: ({ percent, done, total }) => {
+                onProgress: ({ percent, phase }) => {
+                    if (phase === 'upload') {
+                        patchJob(jobId, {
+                            progress: Math.min(88, percent),
+                            message: `جاري رفع ZIP… ${percent}%`,
+                        });
+
+                        return;
+                    }
+
                     patchJob(jobId, {
-                        progress: Math.min(99, percent),
-                        completed: done,
-                        total,
-                        message: percent < 100
-                            ? `جاري رفع الصور… ${percent}%`
-                            : 'جاري حفظ المعرض…',
+                        status: 'processing',
+                        phase: 'processing',
+                        progress: Math.min(96, 90 + Math.round(percent / 10)),
+                        message: 'جاري استخراج الصور ورفعها على الخادم…',
                     });
                 },
             });
@@ -132,7 +154,7 @@ export const useContainerUploadStore = defineStore('containerUpload', () => {
             patchJob(jobId, {
                 status: 'refreshing',
                 phase: 'refresh',
-                progress: 95,
+                progress: 98,
                 message: 'جاري تحديث المعرض…',
             });
 
@@ -143,13 +165,14 @@ export const useContainerUploadStore = defineStore('containerUpload', () => {
                 payload: stored,
             });
 
-            const uploaded = Number(payload.uploaded ?? payload.images?.length ?? images.length);
+            const uploaded = Number(payload.uploaded ?? payload.images?.length ?? 0);
 
             patchJob(jobId, {
                 status: 'completed',
                 phase: 'done',
                 progress: 100,
                 completed: uploaded,
+                total: uploaded,
                 finishedAt: Date.now(),
                 message: `تم رفع ${uploaded} صورة إلى معرض الحاوية`,
             });
@@ -160,7 +183,7 @@ export const useContainerUploadStore = defineStore('containerUpload', () => {
                 progress: 100,
                 failed: 1,
                 finishedAt: Date.now(),
-                message: 'فشل رفع صور الحاوية',
+                message: 'فشل رفع ملف ZIP',
                 error: formatCloudinaryUploadError(error),
             });
         }

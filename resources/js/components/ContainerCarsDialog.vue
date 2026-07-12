@@ -52,7 +52,7 @@
                 label="رفع ZIP"
                 size="small"
                 outlined
-                :loading="zipLoading"
+                :loading="containerUploadStore.isContainerBusy(containerKey)"
                 :disabled="loading || containerUploadStore.isContainerBusy(containerKey)"
                 @click="triggerZipUpload"
             />
@@ -312,7 +312,6 @@ import {
     containerGalleryUrls,
     containerRefKey,
     containerZipMeta,
-    extractZipImagesForContainer,
     getContainerZipImages,
     mergeZipImagesIntoVehicle,
     applyCloudinaryContainerPayload,
@@ -345,7 +344,7 @@ const props = defineProps({
     },
 });
 
-const emit = defineEmits(['update:visible']);
+const emit = defineEmits(['update:visible', 'hide']);
 
 const { t } = useI18n();
 const toast = useToast();
@@ -357,7 +356,6 @@ const error = ref(null);
 const headerMeta = ref(null);
 const vehicleRows = ref([]);
 const zipInputRef = ref(null);
-const zipLoading = ref(false);
 const zipPayload = ref(null);
 const galleryVisible = ref(false);
 const galleryVehicle = ref(null);
@@ -662,23 +660,32 @@ function onHide() {
     galleryVisible.value = false;
     closeContainerGallery();
     containerManageVisible.value = false;
+    emit('hide');
 }
 
-function revokeZipImageUrls(images) {
-    for (const image of images ?? []) {
-        if (image.url?.startsWith('blob:')) {
-            URL.revokeObjectURL(image.url);
-        }
+function formatZipSize(bytes) {
+    if (! bytes || bytes <= 0) {
+        return '';
     }
+
+    if (bytes >= 1024 * 1024) {
+        return `${(bytes / (1024 * 1024)).toFixed(1)} MB`;
+    }
+
+    return `${Math.round(bytes / 1024)} KB`;
 }
 
-function requestUploadConfirmations(imageCount, existingCount) {
+function requestUploadConfirmations(zipFile, existingCount) {
     return new Promise((resolve) => {
         const containerLabel = headerContainer.value;
+        const sizeLabel = formatZipSize(zipFile?.size);
+        const fileLabel = sizeLabel
+            ? `${zipFile?.name} (${sizeLabel})`
+            : (zipFile?.name || 'ملف ZIP');
 
         const askFinal = () => {
             confirm.require({
-                message: 'الرفع يتم في الخلفية ويمكنك إغلاق هذه النافذة أثناء المعالجة.',
+                message: 'سيتم رفع الملف مرة واحدة إلى الخادم الذي يستخرج الصور ويرفعها. يمكنك إغلاق هذه النافذة أثناء المعالجة.',
                 header: 'تأكيد أخير',
                 icon: 'pi pi-info-circle',
                 rejectLabel: 'إلغاء',
@@ -689,7 +696,7 @@ function requestUploadConfirmations(imageCount, existingCount) {
         };
 
         confirm.require({
-            message: `تم العثور على ${imageCount} صورة في ملف ZIP.\nهل تريد رفعها إلى حاوية ${containerLabel}؟`,
+            message: `هل تريد رفع ${fileLabel} إلى حاوية ${containerLabel}؟`,
             header: 'تأكيد بدء الرفع',
             icon: 'pi pi-cloud-upload',
             rejectLabel: 'إلغاء',
@@ -717,19 +724,17 @@ function requestUploadConfirmations(imageCount, existingCount) {
     });
 }
 
-async function startContainerZipUpload(images) {
+async function startContainerZipUpload(zipFile) {
     const ref = containerApiRef();
 
-    if (! ref || ! images?.length) {
+    if (! ref || ! zipFile) {
         return;
     }
 
     const existingCount = zipMeta.value?.count ?? 0;
-    const confirmed = await requestUploadConfirmations(images.length, existingCount);
+    const confirmed = await requestUploadConfirmations(zipFile, existingCount);
 
     if (! confirmed) {
-        revokeZipImageUrls(images);
-
         return;
     }
 
@@ -737,7 +742,7 @@ async function startContainerZipUpload(images) {
         containerRef: ref,
         containerLabel: headerContainer.value,
         containerKey: containerKey.value,
-        images,
+        zipFile,
         apiPrefix: apiPrefix.value,
         replace: true,
     });
@@ -745,7 +750,7 @@ async function startContainerZipUpload(images) {
     toast.add({
         severity: 'info',
         summary: 'بدأ رفع ZIP',
-        detail: 'يمكنك إغلاق النافذة — الرفع يستمر في الخلفية',
+        detail: 'يمكنك إغلاق النافذة — الرفع والمعالجة يستمران في الخلفية',
         life: 4000,
     });
 }
@@ -765,33 +770,7 @@ async function onZipSelected(event) {
         return;
     }
 
-    zipLoading.value = true;
-
-    try {
-        const extracted = await extractZipImagesForContainer(file, vehicleRows.value);
-
-        if (! extracted.images.length) {
-            toast.add({
-                severity: 'warn',
-                summary: 'ملف ZIP فارغ',
-                detail: 'لم يُعثر على صور داخل الملف',
-                life: 4000,
-            });
-
-            return;
-        }
-
-        await startContainerZipUpload(extracted.images);
-    } catch (e) {
-        toast.add({
-            severity: 'error',
-            summary: 'تعذّر قراءة ZIP',
-            detail: e.message || 'تحقق من صحة الملف',
-            life: 5000,
-        });
-    } finally {
-        zipLoading.value = false;
-    }
+    await startContainerZipUpload(file);
 }
 
 watch(

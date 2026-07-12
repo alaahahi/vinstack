@@ -13,6 +13,8 @@ export default {
         logout: 'چوونەدەرەوە',
         close: 'داخستن',
         refresh: 'نوێکردنەوە',
+        search: 'گەڕان',
+        clearFilters: 'سڕینەوەی فلتەرەکان',
         confirm: 'پشتڕاستکردنەوە',
         save: 'پاشەکەوتکردن',
         edit: 'دەستکاری',
@@ -144,6 +146,7 @@ export default {
     containers: {
         countLabel: 'کۆنتەینەر',
         searchChassis: 'گەڕان بە ژمارەی شاسی...',
+        searchContainer: 'گەڕان بە کۆنتەینەر / حجز...',
         empty: 'هیچ کۆنتەینەرێک نییە',
         columns: {
             images: 'وێنەکان',
@@ -184,6 +187,10 @@ export default {
             inTransit: 'لە ڕێگادا',
         },
         zipUploadSuccess: 'وێنەکان بۆ Cloudinary بارکران',
+        zipUploadStarted: 'بارکردنی ZIP دەستی پێکرد',
+        zipUploadStartedDetail: 'بارکردن و پرۆسێسکردن لە پاشخانەدا بەردەوامە — لە شریتی خوارەوە بەدوادا بچۆ',
+        zipUploadInProgress: 'بارکردن بەردەوامە',
+        zipUploadInProgressDetail: 'چاوەڕێ بکە تا بارکردنی ئێستا بۆ ئەم کۆنتەینەرە تەواو بێت',
         zipUploadSuccessDetail: '{count} وێنە — لیستی ئۆتۆمبێلەکان بکەرەوە بۆ بینین',
         zipUploadFailed: 'بارکردنی وێنە سەرکەوتوو نەبوو',
         tracking: {
@@ -227,6 +234,8 @@ export default {
             title: 'کۆنتەینەرەکانم',
             subtitle: 'کۆنتەینەرەکانی ئۆتۆمبێلە دابەشکراوەکانت — دوگمەی بەدواداچوون بەکاربهێنە',
             empty: 'هیچ کۆنتەینەرێک بە ئۆتۆمبێلەکانتەوە نەبەستراوە',
+            noSearchResults: 'هیچ کۆنتەینەرێک لەگەڵ گەڕانەکە ناگونجێت',
+            containerNotFound: 'کۆنتەینەرەکە لە لیستەکەتدا نییە',
             loadFailed: 'نەتوانرا کۆنتەینەرەکان بهێنرێن',
         },
     },

@@ -13,6 +13,8 @@ export default {
         logout: 'تسجيل الخروج',
         close: 'إغلاق',
         refresh: 'تحديث',
+        search: 'بحث',
+        clearFilters: 'مسح الفلاتر',
         confirm: 'تأكيد',
         save: 'حفظ',
         edit: 'تعديل',
@@ -144,6 +146,7 @@ export default {
     containers: {
         countLabel: 'حاوية',
         searchChassis: 'بحث برقم الشاصي...',
+        searchContainer: 'بحث برقم الحاوية / الحجز...',
         empty: 'لا توجد حاويات',
         columns: {
             images: 'الصور',
@@ -184,6 +187,10 @@ export default {
             inTransit: 'في الطريق',
         },
         zipUploadSuccess: 'تم رفع الصور إلى Cloudinary',
+        zipUploadStarted: 'بدأ رفع ZIP',
+        zipUploadStartedDetail: 'الرفع والمعالجة يستمران في الخلفية — تابع التقدم من الشريط السفلي',
+        zipUploadInProgress: 'الرفع جارٍ',
+        zipUploadInProgressDetail: 'انتظر حتى ينتهي الرفع الحالي لهذه الحاوية',
         zipUploadSuccessDetail: '{count} صورة — افتح قائمة السيارات لعرضها',
         zipUploadFailed: 'تعذّر رفع الصور',
         tracking: {
@@ -227,6 +234,8 @@ export default {
             title: 'حاوياتي',
             subtitle: 'حاويات تحتوي على سياراتك المسندة — استخدم زر التتبع لمتابعة المسار',
             empty: 'لا توجد حاويات مرتبطة بسياراتك حالياً',
+            noSearchResults: 'لا توجد حاويات تطابق البحث',
+            containerNotFound: 'الحاوية غير موجودة في قائمتك',
             loadFailed: 'تعذّر جلب الحاويات',
         },
     },
