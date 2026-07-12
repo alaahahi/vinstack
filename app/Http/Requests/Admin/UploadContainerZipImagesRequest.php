@@ -19,6 +19,7 @@ class UploadContainerZipImagesRequest extends FormRequest
                 'required',
                 'file',
                 'mimes:zip',
+                'mimetypes:application/zip,application/x-zip-compressed,multipart/x-zip,application/octet-stream',
                 'max:'.ContainerZipUploadService::MAX_ZIP_KILOBYTES,
             ],
             'replace' => ['sometimes', 'boolean'],

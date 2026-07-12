@@ -42,21 +42,30 @@
             <input
                 ref="zipInputRef"
                 type="file"
-                accept=".zip,application/zip"
+                accept=".zip,application/zip,application/x-zip-compressed"
                 class="zip-input-hidden"
                 @change="onZipSelected"
             />
             <Button
                 v-if="showZipUpload"
-                icon="pi pi-file-import"
+                icon="pi pi-cloud-upload"
                 label="رفع ZIP"
                 size="small"
-                outlined
-                :loading="containerUploadStore.isContainerBusy(containerKey)"
-                :disabled="loading || containerUploadStore.isContainerBusy(containerKey)"
+                :loading="Boolean(activeUploadJob)"
+                :disabled="loading || Boolean(activeUploadJob)"
                 @click="triggerZipUpload"
             />
-            <span v-if="zipMeta?.count" class="zip-meta">
+            <div v-if="activeUploadJob" class="zip-upload-inline" role="status" aria-live="polite">
+                <div class="zip-upload-inline__track">
+                    <div
+                        class="zip-upload-inline__fill"
+                        :class="`zip-upload-inline__fill--${activeUploadJob.status}`"
+                        :style="{ width: `${activeUploadJob.progress}%` }"
+                    />
+                </div>
+                <span class="zip-upload-inline__text">{{ activeUploadJob.message }}</span>
+            </div>
+            <span v-else-if="zipMeta?.count" class="zip-meta">
                 <i class="pi pi-images" />
                 {{ zipMeta.count }} صورة في المعرض ({{ zipMeta.matched }} مطابقة)
             </span>
@@ -281,6 +290,8 @@
                 </span>
             </div>
         </Teleport>
+
+        <ConfirmDialog group="containerZip" />
     </Dialog>
 </template>
 
@@ -289,6 +300,7 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 import { useConfirm } from 'primevue/useconfirm';
+import ConfirmDialog from 'primevue/confirmdialog';
 import Dialog from 'primevue/dialog';
 import DataTable from 'primevue/datatable';
 import Column from 'primevue/column';
@@ -384,6 +396,10 @@ const statusClass = computed(() =>
 );
 
 const containerKey = computed(() => containerRefKey(headerMeta.value ?? props.container ?? {}));
+
+const activeUploadJob = computed(() =>
+    containerUploadStore.activeJobs.find((job) => job.containerKey === containerKey.value) ?? null,
+);
 
 const zipMeta = computed(() => {
     if (zipPayload.value) {
@@ -675,50 +691,49 @@ function formatZipSize(bytes) {
     return `${Math.round(bytes / 1024)} KB`;
 }
 
-function requestUploadConfirmations(zipFile, existingCount) {
+function isZipFile(file) {
+    if (! file) {
+        return false;
+    }
+
+    const name = String(file.name || '').toLowerCase();
+
+    return name.endsWith('.zip')
+        || file.type === 'application/zip'
+        || file.type === 'application/x-zip-compressed';
+}
+
+function triggerZipUpload() {
+    if (activeUploadJob.value) {
+        toast.add({
+            severity: 'info',
+            summary: t('containers.zipUploadInProgress'),
+            detail: t('containers.zipUploadInProgressDetail'),
+            life: 3500,
+        });
+
+        return;
+    }
+
+    zipInputRef.value?.click();
+}
+
+function confirmReplaceUpload(zipFile, existingCount) {
     return new Promise((resolve) => {
-        const containerLabel = headerContainer.value;
         const sizeLabel = formatZipSize(zipFile?.size);
         const fileLabel = sizeLabel
             ? `${zipFile?.name} (${sizeLabel})`
             : (zipFile?.name || 'ملف ZIP');
 
-        const askFinal = () => {
-            confirm.require({
-                message: 'سيتم رفع الملف مرة واحدة إلى الخادم الذي يستخرج الصور ويرفعها. يمكنك إغلاق هذه النافذة أثناء المعالجة.',
-                header: 'تأكيد أخير',
-                icon: 'pi pi-info-circle',
-                rejectLabel: 'إلغاء',
-                acceptLabel: 'ابدأ الرفع',
-                accept: () => resolve(true),
-                reject: () => resolve(false),
-            });
-        };
-
         confirm.require({
-            message: `هل تريد رفع ${fileLabel} إلى حاوية ${containerLabel}؟`,
-            header: 'تأكيد بدء الرفع',
-            icon: 'pi pi-cloud-upload',
+            group: 'containerZip',
+            message: `سيتم استبدال ${existingCount} صورة في معرض ${headerContainer.value} ورفع ${fileLabel}.\nالرفع يتم على الخادم ويمكنك إغلاق هذه النافذة.`,
+            header: 'تأكيد استبدال الصور',
+            icon: 'pi pi-exclamation-triangle',
             rejectLabel: 'إلغاء',
-            acceptLabel: 'متابعة',
-            accept: () => {
-                if (existingCount > 0) {
-                    confirm.require({
-                        message: `يوجد حالياً ${existingCount} صورة في معرض هذه الحاوية.\nسيتم استبدالها بالصور الجديدة. هل أنت متأكد؟`,
-                        header: 'تأكيد الاستبدال',
-                        icon: 'pi pi-exclamation-triangle',
-                        rejectLabel: 'إلغاء',
-                        acceptLabel: 'نعم، استبدال',
-                        acceptClass: 'p-button-warning',
-                        accept: askFinal,
-                        reject: () => resolve(false),
-                    });
-
-                    return;
-                }
-
-                askFinal();
-            },
+            acceptLabel: 'ابدأ الرفع',
+            acceptClass: 'p-button-warning',
+            accept: () => resolve(true),
             reject: () => resolve(false),
         });
     });
@@ -726,37 +741,77 @@ function requestUploadConfirmations(zipFile, existingCount) {
 
 async function startContainerZipUpload(zipFile) {
     const ref = containerApiRef();
+    const key = containerKey.value;
 
     if (! ref || ! zipFile) {
+        toast.add({
+            severity: 'error',
+            summary: t('common.error'),
+            detail: 'لا يوجد رقم حاوية أو حجز لبدء الرفع',
+            life: 4000,
+        });
+
+        return;
+    }
+
+    if (! key) {
+        toast.add({
+            severity: 'error',
+            summary: t('common.error'),
+            detail: 'تعذّر تحديد معرف الحاوية',
+            life: 4000,
+        });
+
+        return;
+    }
+
+    if (containerUploadStore.isContainerBusy(key)) {
+        toast.add({
+            severity: 'info',
+            summary: t('containers.zipUploadInProgress'),
+            detail: t('containers.zipUploadInProgressDetail'),
+            life: 3500,
+        });
+
         return;
     }
 
     const existingCount = zipMeta.value?.count ?? 0;
-    const confirmed = await requestUploadConfirmations(zipFile, existingCount);
 
-    if (! confirmed) {
-        return;
+    if (existingCount > 0) {
+        const confirmed = await confirmReplaceUpload(zipFile, existingCount);
+
+        if (! confirmed) {
+            return;
+        }
     }
 
-    containerUploadStore.enqueueZip({
+    const jobId = containerUploadStore.enqueueZip({
         containerRef: ref,
         containerLabel: headerContainer.value,
-        containerKey: containerKey.value,
+        containerKey: key,
         zipFile,
         apiPrefix: apiPrefix.value,
         replace: true,
     });
 
+    if (! jobId) {
+        toast.add({
+            severity: 'warn',
+            summary: t('common.error'),
+            detail: 'تعذّر بدء الرفع — حاول مرة أخرى',
+            life: 4000,
+        });
+
+        return;
+    }
+
     toast.add({
         severity: 'info',
-        summary: 'بدأ رفع ZIP',
-        detail: 'يمكنك إغلاق النافذة — الرفع والمعالجة يستمران في الخلفية',
-        life: 4000,
+        summary: t('containers.zipUploadStarted'),
+        detail: t('containers.zipUploadStartedDetail'),
+        life: 5000,
     });
-}
-
-function triggerZipUpload() {
-    zipInputRef.value?.click();
 }
 
 async function onZipSelected(event) {
@@ -770,8 +825,81 @@ async function onZipSelected(event) {
         return;
     }
 
+    if (! isZipFile(file)) {
+        toast.add({
+            severity: 'warn',
+            summary: 'ملف غير مدعوم',
+            detail: 'يُقبل ملف ZIP فقط (.zip)',
+            life: 3500,
+        });
+
+        return;
+    }
+
     await startContainerZipUpload(file);
 }
+
+const trackedUploadJobs = new Map();
+
+function trackUploadJob(job) {
+    if (! job?.id || trackedUploadJobs.has(job.id)) {
+        return;
+    }
+
+    trackedUploadJobs.set(job.id, job.status);
+
+    const stop = watch(
+        () => containerUploadStore.jobs.find((entry) => entry.id === job.id),
+        (latest) => {
+            if (! latest) {
+                return;
+            }
+
+            const status = latest.status;
+
+            if (! status || status === trackedUploadJobs.get(job.id)) {
+                return;
+            }
+
+            trackedUploadJobs.set(job.id, status);
+
+            if (status === 'completed') {
+                toast.add({
+                    severity: 'success',
+                    summary: 'اكتمل رفع ZIP',
+                    detail: latest.message || 'تم تحديث معرض الحاوية',
+                    life: 4500,
+                });
+                loadCloudImages();
+                stop();
+            } else if (status === 'failed') {
+                toast.add({
+                    severity: 'error',
+                    summary: 'فشل رفع ZIP',
+                    detail: latest.error || latest.message || 'تعذّر رفع ملف ZIP',
+                    life: 6000,
+                });
+                stop();
+            }
+        },
+        { deep: true },
+    );
+}
+
+watch(
+    () => containerKey.value,
+    () => {
+        if (props.visible) {
+            bindContainerUploadListener();
+        }
+    },
+);
+
+watch(activeUploadJob, (job) => {
+    if (job) {
+        trackUploadJob(job);
+    }
+}, { immediate: true });
 
 watch(
     () => props.container,
@@ -869,6 +997,48 @@ onBeforeUnmount(() => {
     gap: 0.35rem;
     font-size: 0.8rem;
     color: var(--vs-text-muted);
+}
+
+.zip-upload-inline {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+    flex: 1 1 220px;
+    min-width: min(100%, 220px);
+}
+
+.zip-upload-inline__track {
+    flex: 1;
+    height: 6px;
+    border-radius: 999px;
+    background: var(--vs-border);
+    overflow: hidden;
+}
+
+.zip-upload-inline__fill {
+    height: 100%;
+    border-radius: inherit;
+    background: #2563eb;
+    transition: width 0.2s ease;
+}
+
+.zip-upload-inline__fill--processing,
+.zip-upload-inline__fill--refreshing {
+    background: #0d9488;
+}
+
+.zip-upload-inline__fill--failed {
+    background: #dc2626;
+}
+
+.zip-upload-inline__fill--completed {
+    background: #16a34a;
+}
+
+.zip-upload-inline__text {
+    font-size: 0.78rem;
+    color: var(--vs-text-secondary);
+    white-space: nowrap;
 }
 
 .zip-meta--link {

@@ -604,15 +604,38 @@ async function onZipSelected(event) {
         return;
     }
 
-    const refs = containerRefs(props.container);
-    const containerRef = refs.container || refs.booking || '';
-    const containerKey = containerRefKey(props.container);
+    const name = String(file.name || '').toLowerCase();
+    const isZip = name.endsWith('.zip')
+        || file.type === 'application/zip'
+        || file.type === 'application/x-zip-compressed';
 
-    if (! containerRef || ! containerKey) {
+    if (! isZip) {
+        toast.add({
+            severity: 'warn',
+            summary: t('common.error'),
+            detail: 'يُقبل ملف ZIP فقط (.zip)',
+            life: 3500,
+        });
+
         return;
     }
 
-    if (containerUploadStore.isContainerBusy(containerKey)) {
+    const refs = containerRefs(props.container);
+    const containerRef = refs.container || refs.booking || '';
+    const key = containerRefKey(props.container);
+
+    if (! containerRef || ! key) {
+        toast.add({
+            severity: 'error',
+            summary: t('common.error'),
+            detail: 'لا يوجد رقم حاوية أو حجز',
+            life: 4000,
+        });
+
+        return;
+    }
+
+    if (containerUploadStore.isContainerBusy(key)) {
         toast.add({
             severity: 'info',
             summary: t('containers.zipUploadInProgress'),
@@ -623,20 +646,31 @@ async function onZipSelected(event) {
         return;
     }
 
-    containerUploadStore.enqueueZip({
+    const jobId = containerUploadStore.enqueueZip({
         containerRef,
         containerLabel: containerRef,
-        containerKey,
+        containerKey: key,
         zipFile: file,
         apiPrefix: props.apiPrefix,
         replace: true,
     });
 
+    if (! jobId) {
+        toast.add({
+            severity: 'warn',
+            summary: t('common.error'),
+            detail: 'تعذّر بدء الرفع',
+            life: 4000,
+        });
+
+        return;
+    }
+
     toast.add({
         severity: 'info',
         summary: t('containers.zipUploadStarted'),
         detail: t('containers.zipUploadStartedDetail'),
-        life: 4000,
+        life: 5000,
     });
 }
 
