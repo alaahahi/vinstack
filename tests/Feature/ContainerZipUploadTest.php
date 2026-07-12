@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Enums\UserRole;
+use App\Jobs\ProcessImageTransferBatch;
+use App\Models\ImageTransferJob;
 use App\Models\User;
 use App\Models\VinstackSetting;
 use App\Services\CloudinaryService;
@@ -67,9 +69,16 @@ class ContainerZipUploadTest extends TestCase
             'Accept' => 'application/json',
         ]);
 
-        $response->assertCreated()
-            ->assertJsonPath('data.meta.count', 2)
-            ->assertJsonPath('data.uploaded', 2);
+        $response->assertStatus(202)
+            ->assertJsonPath('data.async', true)
+            ->assertJsonPath('data.transfer.total_images', 2);
+
+        $job = ImageTransferJob::query()->first();
+        $this->assertNotNull($job);
+        $this->assertSame(ImageTransferJob::STATUS_COMPLETED, $job->status);
+        $this->assertSame(2, $job->transferred_count);
+
+        $this->assertDatabaseCount('container_images', 2);
 
         @unlink($zipPath);
     }

@@ -7,7 +7,7 @@ use App\Http\Controllers\Admin\DealerController;
 use App\Http\Controllers\Admin\DealerNotificationController;
 use App\Http\Controllers\Admin\ManualVehicleController;
 use App\Http\Controllers\Admin\NotificationController;
-use App\Http\Controllers\Admin\NujoomAlJazeeraImportController;
+use App\Http\Controllers\Admin\ImageTransferController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\Admin\SystemController;
 use App\Http\Controllers\Admin\VehicleController as AdminVehicleController;
@@ -118,6 +118,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/containers/{container}/images/upload', [AdminContainerImageController::class, 'upload']);
         Route::post('/containers/{container}/images/zip', [AdminContainerImageController::class, 'uploadZip']);
         Route::delete('/containers/{container}/images/{image}', [AdminContainerImageController::class, 'destroy']);
+        Route::get('/image-transfers', [ImageTransferController::class, 'index']);
+        Route::get('/image-transfers/{uuid}', [ImageTransferController::class, 'show']);
+        Route::post('/image-transfers/{uuid}/retry', [ImageTransferController::class, 'retry']);
         Route::get('/containers/{container}/vehicles', [AdminContainerController::class, 'vehicles']);
         Route::get('/containers/{container}/tracking', [AdminContainerController::class, 'tracking']);
         Route::get('/vinstack/containers', [VinstackBrowseController::class, 'containers']);

@@ -23,6 +23,8 @@ class VinstackSetting extends Model
         'cloudinary_api_secret',
         'cloudinary_upload_preset',
         'cloudinary_folder',
+        'image_transfer_async_enabled',
+        'image_transfer_batch_size',
         'wa_queue_base_url',
         'wa_queue_sender_id',
         'wa_queue_enabled',
@@ -42,6 +44,7 @@ class VinstackSetting extends Model
             'last_auto_sync_at' => 'datetime',
             'vehicle_options' => 'array',
             'wa_queue_enabled' => 'boolean',
+            'image_transfer_async_enabled' => 'boolean',
             'dealer_notification_events' => 'array',
         ];
     }

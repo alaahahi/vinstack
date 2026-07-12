@@ -115,6 +115,8 @@ class VinstackSettingsController extends Controller
             'cloudinary_upload_preset' => $settings->cloudinary_upload_preset ?? '',
             'cloudinary_folder' => $settings->cloudinary_folder ?? '',
             'cloudinary_configured' => app(CloudinaryService::class)->isConfigured(),
+            'image_transfer_async_enabled' => (bool) ($settings->image_transfer_async_enabled ?? true),
+            'image_transfer_batch_size' => (int) ($settings->image_transfer_batch_size ?? 10),
         ];
     }
 }

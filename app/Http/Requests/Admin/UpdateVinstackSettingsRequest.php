@@ -25,6 +25,8 @@ class UpdateVinstackSettingsRequest extends FormRequest
             'cloudinary_api_secret' => ['nullable', 'string', 'max:500'],
             'cloudinary_upload_preset' => ['nullable', 'string', 'max:120'],
             'cloudinary_folder' => ['nullable', 'string', 'max:200'],
+            'image_transfer_async_enabled' => ['sometimes', 'boolean'],
+            'image_transfer_batch_size' => ['sometimes', 'integer', 'min:1', 'max:50'],
         ];
     }
 }

@@ -104,6 +104,14 @@ export async function uploadContainerZipToCloud({
 
     onProgress?.({ percent: 100, phase: 'processing' });
 
+    if (response.status === 202 && response.data?.data?.async) {
+        return {
+            async: true,
+            transfer: response.data.data.transfer,
+            message: response.data.message,
+        };
+    }
+
     const payload = response.data?.data ?? null;
 
     if (! payload) {
@@ -112,7 +120,7 @@ export async function uploadContainerZipToCloud({
 
     const uploaded = Number(payload.uploaded ?? 0);
 
-    if (uploaded === 0) {
+    if (uploaded === 0 && ! payload.async) {
         const error = new Error(formatCloudinaryUploadError({
             response: { data: response.data },
         }));
@@ -125,6 +133,30 @@ export async function uploadContainerZipToCloud({
         uploaded,
         failed: payload.failed ?? response.data?.failed ?? [],
     };
+}
+
+/**
+ * Poll background image transfer job status.
+ */
+export async function fetchImageTransferStatus(transferId, apiPrefix = '/admin') {
+    if (! transferId) {
+        return null;
+    }
+
+    const { data } = await api.get(
+        `${apiPrefix}/image-transfers/${encodeURIComponent(transferId)}`,
+    );
+
+    return data.data ?? null;
+}
+
+/**
+ * Recent image transfer jobs for admin monitoring.
+ */
+export async function fetchImageTransfers(apiPrefix = '/admin') {
+    const { data } = await api.get(`${apiPrefix}/image-transfers`);
+
+    return data.data ?? [];
 }
 
 /**

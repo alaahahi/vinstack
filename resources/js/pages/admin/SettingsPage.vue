@@ -215,6 +215,65 @@
                 </div>
             </section>
 
+            <section class="admin-surface settings-card settings-card--gallery">
+                <header class="settings-card__head">
+                    <i class="pi pi-server" />
+                    <div>
+                        <h2 class="vs-card-title">نقل الصور إلى Cloudinary</h2>
+                        <p class="vs-card-subtitle">استلام ZIP فوراً ثم النقل بالخلفية على دفعات</p>
+                    </div>
+                    <Button
+                        icon="pi pi-refresh"
+                        label="تحديث"
+                        size="small"
+                        text
+                        :loading="loadingTransfers"
+                        @click="loadImageTransfers"
+                    />
+                </header>
+
+                <div class="settings-card__body">
+                    <div class="field field--inline">
+                        <label class="vs-form-label" for="image-transfer-async">النقل بالخلفية</label>
+                        <ToggleSwitch
+                            id="image-transfer-async"
+                            v-model="form.image_transfer_async_enabled"
+                        />
+                    </div>
+                    <div class="field">
+                        <label for="image-transfer-batch" class="vs-form-label">حجم الدفعة (صور لكل دورة)</label>
+                        <InputNumber
+                            id="image-transfer-batch"
+                            v-model="form.image_transfer_batch_size"
+                            :min="1"
+                            :max="50"
+                            show-buttons
+                            class="transfer-batch-input"
+                        />
+                    </div>
+
+                    <div v-if="imageTransfers.length" class="transfer-monitor">
+                        <div
+                            v-for="job in imageTransfers"
+                            :key="job.id"
+                            class="transfer-row"
+                            :class="`transfer-row--${job.status}`"
+                        >
+                            <div class="transfer-row__main">
+                                <strong>{{ job.container_number || '—' }}</strong>
+                                <span class="transfer-row__status">{{ transferStatusLabel(job.status) }}</span>
+                            </div>
+                            <div class="transfer-row__meta">
+                                {{ job.transferred_count }}/{{ job.total_images }}
+                                <span v-if="job.failed_count"> · فشل {{ job.failed_count }}</span>
+                                · {{ job.progress_percent }}%
+                            </div>
+                        </div>
+                    </div>
+                    <p v-else class="transfer-monitor-empty">لا توجد مهام نقل حديثة</p>
+                </div>
+            </section>
+
             <section class="admin-surface settings-card">
                 <header class="settings-card__head">
                     <i class="pi pi-headphones" />
@@ -640,12 +699,15 @@ import Password from 'primevue/password';
 import Checkbox from 'primevue/checkbox';
 import Button from 'primevue/button';
 import Tag from 'primevue/tag';
+import ToggleSwitch from 'primevue/toggleswitch';
+import InputNumber from 'primevue/inputnumber';
 import Dialog from 'primevue/dialog';
 import ProgressSpinner from 'primevue/progressspinner';
 import AdminPageHeader from '../../components/AdminPageHeader.vue';
 import VehicleOptionsEditor from '../../components/VehicleOptionsEditor.vue';
 import { restoreVehicle } from '../../api/vehicles';
 import api from '../../api/client';
+import { fetchImageTransfers } from '../../utils/containerCloudinaryUpload';
 import { formatDateTime } from '../../utils/formatDateTime';
 
 const { t } = useI18n();
@@ -655,6 +717,8 @@ const settings = ref({ has_token: false, last_sync_at: null, last_auto_sync_at: 
 const saving = ref(false);
 const testingGallery = ref(false);
 const testingCloudinary = ref(false);
+const imageTransfers = ref([]);
+const loadingTransfers = ref(false);
 const savingOptions = ref(false);
 const syncing = ref(false);
 const restorableVisible = ref(false);
@@ -736,6 +800,8 @@ const form = reactive({
     cloudinary_api_secret: '',
     cloudinary_upload_preset: '',
     cloudinary_folder: '',
+    image_transfer_async_enabled: true,
+    image_transfer_batch_size: 10,
 });
 
 async function load() {
@@ -751,6 +817,8 @@ async function load() {
     form.cloudinary_cloud_name = settingsRes.data.data.cloudinary_cloud_name || '';
     form.cloudinary_upload_preset = settingsRes.data.data.cloudinary_upload_preset || '';
     form.cloudinary_folder = settingsRes.data.data.cloudinary_folder || '';
+    form.image_transfer_async_enabled = settingsRes.data.data.image_transfer_async_enabled ?? true;
+    form.image_transfer_batch_size = Number(settingsRes.data.data.image_transfer_batch_size ?? 10);
     form.api_token = '';
     form.gallery_api_token = '';
     form.cloudinary_api_key = '';
@@ -822,6 +890,30 @@ async function testCloudinaryConnection() {
     }
 }
 
+function transferStatusLabel(status) {
+    const labels = {
+        queued: 'بالانتظار',
+        processing: 'جاري النقل',
+        completed: 'مكتمل',
+        partial: 'جزئي',
+        failed: 'فاشل',
+    };
+
+    return labels[status] || status;
+}
+
+async function loadImageTransfers() {
+    loadingTransfers.value = true;
+
+    try {
+        imageTransfers.value = await fetchImageTransfers();
+    } catch {
+        imageTransfers.value = [];
+    } finally {
+        loadingTransfers.value = false;
+    }
+}
+
 async function save() {
     saving.value = true;
 
@@ -834,6 +926,8 @@ async function save() {
             cloudinary_cloud_name: form.cloudinary_cloud_name,
             cloudinary_upload_preset: form.cloudinary_upload_preset,
             cloudinary_folder: form.cloudinary_folder,
+            image_transfer_async_enabled: form.image_transfer_async_enabled,
+            image_transfer_batch_size: form.image_transfer_batch_size,
         };
 
         if (form.api_token) {
@@ -1238,7 +1332,7 @@ async function restoreFromUpload() {
 onMounted(async () => {
     logMessage.value = t('settings.logPrompt');
     await load();
-    await Promise.all([loadMigrations(), loadLogs(), loadBackups()]);
+    await Promise.all([loadMigrations(), loadLogs(), loadBackups(), loadImageTransfers()]);
 });
 </script>
 
@@ -1598,6 +1692,66 @@ onMounted(async () => {
     background: var(--admin-sidebar-active, rgba(0, 0, 0, 0.04));
     padding: 0.1rem 0.35rem;
     border-radius: 4px;
+}
+
+.field--inline {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+}
+
+.transfer-batch-input :deep(.p-inputnumber-input) {
+    width: 5rem;
+}
+
+.transfer-monitor {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    margin-top: 0.75rem;
+}
+
+.transfer-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.55rem 0.7rem;
+    border: 1px solid var(--vs-border);
+    border-radius: 8px;
+    background: var(--vs-surface-elevated);
+    font-size: 0.82rem;
+}
+
+.transfer-row__main {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.transfer-row__status {
+    font-size: 0.72rem;
+    color: var(--vs-text-muted);
+}
+
+.transfer-row__meta {
+    color: var(--vs-text-secondary);
+    font-variant-numeric: tabular-nums;
+}
+
+.transfer-row--completed {
+    border-color: rgb(22 163 74 / 25%);
+}
+
+.transfer-row--failed {
+    border-color: rgb(220 38 38 / 25%);
+}
+
+.transfer-monitor-empty {
+    margin: 0.75rem 0 0;
+    font-size: 0.82rem;
+    color: var(--vs-text-muted);
 }
 
 @media (max-width: 640px) {

@@ -12,3 +12,8 @@ Schedule::command('vinstack:sync')
     ->hourly()
     ->name('vinstack-auto-sync')
     ->withoutOverlapping();
+
+Schedule::command('image-transfers:process')
+    ->everyMinute()
+    ->name('image-transfers-process')
+    ->withoutOverlapping();

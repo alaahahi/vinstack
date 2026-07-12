@@ -162,6 +162,47 @@ class ContainerImageService
     }
 
     /**
+     * Upload one staged file for a background transfer job (no replace — caller handles that).
+     *
+     * @param  array{name: string, path: string, vin?: ?string, lot?: ?string, index?: int}  $item
+     */
+    public function uploadStagedImage(string $container, array $item): ContainerImage
+    {
+        if (! $this->cloudinary->isConfigured()) {
+            throw new \RuntimeException('Cloudinary is not configured.');
+        }
+
+        $number = $this->normalizeContainerNumber($container);
+        $path = (string) ($item['path'] ?? '');
+        $name = (string) ($item['name'] ?? 'image');
+        $index = (int) ($item['index'] ?? 0);
+        $vin = $this->normalizeVin($item['vin'] ?? null);
+        $vehicleId = $this->resolveVehicleId($vin);
+
+        if ($path === '' || ! is_readable($path)) {
+            throw new \RuntimeException('Staged image file is not readable.');
+        }
+
+        $config = $this->cloudinary->resolveConfig();
+        $folder = rtrim((string) ($config['folder'] ?? 'vinstack/containers'), '/').'/'.$number;
+
+        $upload = $this->cloudinary->upload($path, [
+            'folder' => $folder,
+            'public_id' => $this->publicIdFromFilename($name, $index),
+        ]);
+
+        return ContainerImage::query()->create([
+            'container_number' => $number,
+            'vehicle_id' => $vehicleId,
+            'vin' => $vin,
+            'original_name' => $name,
+            'cloudinary_url' => $upload['url'],
+            'public_id' => $upload['public_id'],
+            'uploaded_at' => now(),
+        ]);
+    }
+
+    /**
      * @param  list<UploadedFile>  $files
      * @param  list<array{name?: string, vin?: ?string, lot?: ?string}>  $metadata
      * @return array{images: list<array<string, mixed>>, byVin: array<string, list<string>>, unmatched: list<string>, meta: array<string, mixed>, uploaded: int, failed: list<array{index: int, name: string, error: string}>}

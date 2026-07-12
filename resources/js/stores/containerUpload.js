@@ -1,12 +1,14 @@
 import { defineStore } from 'pinia';
 import { computed, ref } from 'vue';
 import {
+    fetchImageTransferStatus,
     formatCloudinaryUploadError,
     uploadContainerZipToCloud,
 } from '../utils/containerCloudinaryUpload';
 import { applyCloudinaryContainerPayload } from '../utils/containerZipImages';
 
 const ACTIVE_STATUSES = ['queued', 'uploading', 'processing', 'refreshing'];
+const POLL_MS = 3000;
 
 function makeJobId() {
     return `container-upload-${Date.now()}-${Math.random().toString(36).slice(2, 9)}`;
@@ -24,9 +26,50 @@ function formatZipSize(bytes) {
     return `${Math.round(bytes / 1024)} KB`;
 }
 
+function transferStatusMessage(transfer) {
+    if (! transfer) {
+        return 'جاري النقل إلى Cloudinary…';
+    }
+
+    if (transfer.status === 'queued') {
+        return `في الانتظار — ${transfer.total_images} صورة`;
+    }
+
+    if (transfer.status === 'processing') {
+        return `نقل إلى Cloudinary… ${transfer.transferred_count}/${transfer.total_images}`;
+    }
+
+    if (transfer.status === 'completed') {
+        return `اكتمل النقل — ${transfer.transferred_count} صورة`;
+    }
+
+    if (transfer.status === 'partial') {
+        return `اكتمل جزئياً — نجح ${transfer.transferred_count} وفشل ${transfer.failed_count}`;
+    }
+
+    return transfer.error_message || 'فشل نقل الصور إلى Cloudinary';
+}
+
+function mapTransferToJobStatus(transferStatus) {
+    if (transferStatus === 'completed' || transferStatus === 'partial') {
+        return 'completed';
+    }
+
+    if (transferStatus === 'failed') {
+        return 'failed';
+    }
+
+    if (transferStatus === 'queued') {
+        return 'queued';
+    }
+
+    return 'processing';
+}
+
 export const useContainerUploadStore = defineStore('containerUpload', () => {
     const jobs = ref([]);
     const listeners = new Map();
+    const pollTimers = new Map();
 
     const activeJobs = computed(() => jobs.value.filter(
         (job) => ! job.dismissed && ACTIVE_STATUSES.includes(job.status),
@@ -84,6 +127,73 @@ export const useContainerUploadStore = defineStore('containerUpload', () => {
         return activeJobs.value.some((job) => job.containerKey === containerKey);
     }
 
+    function stopPolling(jobId) {
+        const timer = pollTimers.get(jobId);
+
+        if (timer) {
+            clearTimeout(timer);
+            pollTimers.delete(jobId);
+        }
+    }
+
+    function schedulePoll(jobId, transferId, containerKey, apiPrefix) {
+        stopPolling(jobId);
+
+        const tick = async () => {
+            try {
+                const transfer = await fetchImageTransferStatus(transferId, apiPrefix);
+
+                if (! transfer) {
+                    return;
+                }
+
+                const mappedStatus = mapTransferToJobStatus(transfer.status);
+                const uploadPercent = Math.min(95, Math.max(8, Number(transfer.progress_percent ?? 0)));
+
+                patchJob(jobId, {
+                    status: mappedStatus === 'completed' ? 'refreshing' : mappedStatus,
+                    phase: mappedStatus === 'completed' ? 'refresh' : 'cloud',
+                    progress: mappedStatus === 'completed' ? 98 : uploadPercent,
+                    completed: transfer.transferred_count ?? 0,
+                    total: transfer.total_images ?? 0,
+                    failed: transfer.failed_count ?? 0,
+                    message: transferStatusMessage(transfer),
+                    transferId,
+                });
+
+                if (['completed', 'partial', 'failed'].includes(transfer.status)) {
+                    stopPolling(jobId);
+
+                    if (transfer.gallery && mappedStatus !== 'failed') {
+                        const stored = applyCloudinaryContainerPayload(containerKey, transfer.gallery);
+
+                        notify(containerKey, {
+                            type: 'zip',
+                            payload: stored,
+                        });
+                    }
+
+                    patchJob(jobId, {
+                        status: mappedStatus,
+                        phase: 'done',
+                        progress: 100,
+                        finishedAt: Date.now(),
+                        message: transferStatusMessage(transfer),
+                        error: transfer.status === 'failed' ? (transfer.error_message || 'فشل النقل') : null,
+                    });
+
+                    return;
+                }
+
+                pollTimers.set(jobId, setTimeout(tick, POLL_MS));
+            } catch {
+                pollTimers.set(jobId, setTimeout(tick, POLL_MS * 2));
+            }
+        };
+
+        pollTimers.set(jobId, setTimeout(tick, POLL_MS));
+    }
+
     async function runZipUpload(jobId, {
         containerRef,
         containerKey,
@@ -92,7 +202,7 @@ export const useContainerUploadStore = defineStore('containerUpload', () => {
         replace,
     }) {
         try {
-            const payload = await uploadContainerZipToCloud({
+            const result = await uploadContainerZipToCloud({
                 containerRef,
                 zipFile,
                 apiPrefix,
@@ -100,8 +210,8 @@ export const useContainerUploadStore = defineStore('containerUpload', () => {
                 onProgress: ({ percent, phase }) => {
                     if (phase === 'upload') {
                         patchJob(jobId, {
-                            progress: Math.min(88, percent),
-                            message: `جاري رفع ZIP… ${percent}%`,
+                            progress: Math.min(40, percent),
+                            message: `جاري استلام ZIP… ${percent}%`,
                         });
 
                         return;
@@ -109,12 +219,28 @@ export const useContainerUploadStore = defineStore('containerUpload', () => {
 
                     patchJob(jobId, {
                         status: 'processing',
-                        phase: 'processing',
-                        progress: Math.min(96, 90 + Math.round(percent / 10)),
-                        message: 'جاري استخراج الصور ورفعها على الخادم…',
+                        phase: 'staging',
+                        progress: Math.min(50, 42 + Math.round(percent / 20)),
+                        message: 'جاري تجهيز الصور على الخادم…',
                     });
                 },
             });
+
+            if (result?.async && result?.transfer?.id) {
+                patchJob(jobId, {
+                    status: 'queued',
+                    phase: 'cloud',
+                    progress: Math.max(52, result.transfer.progress_percent ?? 52),
+                    total: result.transfer.total_images ?? 0,
+                    completed: 0,
+                    message: result.message || transferStatusMessage(result.transfer),
+                    transferId: result.transfer.id,
+                });
+
+                schedulePoll(jobId, result.transfer.id, containerKey, apiPrefix);
+
+                return;
+            }
 
             patchJob(jobId, {
                 status: 'refreshing',
@@ -123,14 +249,13 @@ export const useContainerUploadStore = defineStore('containerUpload', () => {
                 message: 'جاري تحديث المعرض…',
             });
 
-            const stored = applyCloudinaryContainerPayload(containerKey, payload);
+            const stored = applyCloudinaryContainerPayload(containerKey, result);
+            const uploaded = Number(result.uploaded ?? result.images?.length ?? 0);
 
             notify(containerKey, {
                 type: 'zip',
                 payload: stored,
             });
-
-            const uploaded = Number(payload.uploaded ?? payload.images?.length ?? 0);
 
             patchJob(jobId, {
                 status: 'completed',
@@ -187,13 +312,14 @@ export const useContainerUploadStore = defineStore('containerUpload', () => {
             fileProgress: 0,
             phase: 'upload',
             message: sizeLabel
-                ? `جاري رفع ZIP (${sizeLabel})…`
-                : 'جاري رفع ملف ZIP…',
+                ? `جاري استلام ZIP (${sizeLabel})…`
+                : 'جاري استلام ملف ZIP…',
             error: null,
             dismissed: false,
             expanded: true,
             startedAt: Date.now(),
             finishedAt: null,
+            transferId: null,
         });
 
         void runZipUpload(jobId, {
@@ -214,10 +340,17 @@ export const useContainerUploadStore = defineStore('containerUpload', () => {
             return;
         }
 
+        stopPolling(jobId);
         patchJob(jobId, { dismissed: true });
     }
 
     function dismissAllFinished() {
+        jobs.value.forEach((job) => {
+            if (['completed', 'failed'].includes(job.status)) {
+                stopPolling(job.id);
+            }
+        });
+
         jobs.value = jobs.value.map((job) => (
             ['completed', 'failed'].includes(job.status)
                 ? { ...job, dismissed: true }

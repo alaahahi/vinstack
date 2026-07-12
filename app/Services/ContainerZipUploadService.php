@@ -59,7 +59,7 @@ class ContainerZipUploadService
      * @param  list<array<string, mixed>>  $vehicles
      * @return array{vin: ?string, lot: ?string}
      */
-    protected function matchImageToVehicle(string $filename, array $vehicles, int $sequentialIndex): array
+    public function matchImageToVehicle(string $filename, array $vehicles, int $sequentialIndex): array
     {
         $base = pathinfo($this->basename($filename), PATHINFO_FILENAME);
         $upper = strtoupper($base);
@@ -114,18 +114,40 @@ class ContainerZipUploadService
     }
 
     /**
+     * Extract ZIP images into a persistent staging directory (for background transfer).
+     *
+     * @return list<array{name: string, path: string}>
+     */
+    public function extractToStagingDirectory(string $zipPath, string $directory): array
+    {
+        if (! is_dir($directory) && ! mkdir($directory, 0755, true) && ! is_dir($directory)) {
+            throw new RuntimeException('zip_extract_failed');
+        }
+
+        return $this->extractImageEntriesFromPath($zipPath, $directory);
+    }
+
+    /**
      * @return list<array{name: string, path: string}>
      */
     protected function extractImageEntries(UploadedFile $zip): array
     {
-        if (! class_exists(ZipArchive::class)) {
-            throw new RuntimeException('zip_extension_missing');
-        }
-
         $zipPath = $zip->getRealPath();
 
         if (! is_string($zipPath) || $zipPath === '') {
             throw new RuntimeException('invalid_zip');
+        }
+
+        return $this->extractImageEntriesFromPath($zipPath, null);
+    }
+
+    /**
+     * @return list<array{name: string, path: string}>
+     */
+    protected function extractImageEntriesFromPath(string $zipPath, ?string $targetDirectory): array
+    {
+        if (! class_exists(ZipArchive::class)) {
+            throw new RuntimeException('zip_extension_missing');
         }
 
         $archive = new ZipArchive;
@@ -155,16 +177,23 @@ class ContainerZipUploadService
             }
 
             $basename = $this->basename($name);
-            $tempPath = tempnam(sys_get_temp_dir(), 'container-zip-');
 
-            if ($tempPath === false) {
-                $archive->close();
+            if ($targetDirectory !== null) {
+                $target = rtrim($targetDirectory, DIRECTORY_SEPARATOR)
+                    .DIRECTORY_SEPARATOR
+                    .sprintf('%04d_%s', $index, $basename);
+            } else {
+                $tempPath = tempnam(sys_get_temp_dir(), 'container-zip-');
 
-                throw new RuntimeException('zip_extract_failed');
+                if ($tempPath === false) {
+                    $archive->close();
+
+                    throw new RuntimeException('zip_extract_failed');
+                }
+
+                $target = $tempPath.'.'.$this->extension($basename);
+                @unlink($tempPath);
             }
-
-            $target = $tempPath.'.'.$this->extension($basename);
-            @unlink($tempPath);
 
             $stream = $archive->getStream($name);
 

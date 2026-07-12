@@ -11,6 +11,7 @@ use App\Services\ContainerImageService;
 use App\Services\ContainerService;
 use App\Services\ContainerZipUploadService;
 use App\Services\DealerNotificationService;
+use App\Services\ImageTransferService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Log;
@@ -130,6 +131,7 @@ class ContainerImageController extends Controller
         UploadContainerZipImagesRequest $request,
         string $container,
         ContainerZipUploadService $zipUploads,
+        ImageTransferService $transfers,
         ContainerImageService $images,
         CloudinaryService $cloudinary,
         ContainerService $containers,
@@ -143,13 +145,46 @@ class ContainerImageController extends Controller
 
         /** @var UploadedFile $zip */
         $zip = $request->file('zip');
+        $replace = $request->boolean('replace', true);
+
+        if ($transfers->asyncEnabled()) {
+            try {
+                $job = $transfers->createContainerZipJob(
+                    $container,
+                    $zip,
+                    $request->user(),
+                    $replace,
+                );
+            } catch (\RuntimeException $e) {
+                return response()->json([
+                    'message' => $this->zipErrorMessage($e->getMessage()),
+                ], 422);
+            } catch (\Throwable $e) {
+                Log::error('Container ZIP staging failed', [
+                    'container' => $container,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return response()->json([
+                    'message' => 'تعذّر استلام ملف ZIP على الخادم.',
+                ], 422);
+            }
+
+            return response()->json([
+                'data' => [
+                    'transfer' => $job->fresh()->toApiArray(),
+                    'async' => true,
+                ],
+                'message' => 'تم استلام الملف — النقل إلى Cloudinary جارٍ في الخلفية.',
+            ], 202);
+        }
 
         try {
             $payload = $zipUploads->uploadZip(
                 $container,
                 $zip,
                 null,
-                $request->boolean('replace', true),
+                $replace,
             );
         } catch (RuntimeException $e) {
             return response()->json([
