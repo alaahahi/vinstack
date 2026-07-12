@@ -6,10 +6,14 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreVehicleUploadedImagesRequest;
 use App\Models\Vehicle;
 use App\Models\VehicleUploadedImage;
+use App\Services\CloudinaryService;
 use App\Services\DealerNotificationService;
+use App\Services\ImageTransferService;
 use App\Services\VehicleDetailService;
 use App\Services\VehicleUploadedImageService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
+use RuntimeException;
 
 class VehicleUploadedImageController extends Controller
 {
@@ -17,18 +21,51 @@ class VehicleUploadedImageController extends Controller
         StoreVehicleUploadedImagesRequest $request,
         Vehicle $vehicle,
         VehicleUploadedImageService $uploads,
+        ImageTransferService $transfers,
+        CloudinaryService $cloudinary,
         VehicleDetailService $details,
         DealerNotificationService $notifications,
     ): JsonResponse {
         /** @var list<\Illuminate\Http\UploadedFile> $files */
         $files = $request->file('images', []);
         $stage = $request->string('stage')->toString();
+        $user = $request->user();
+
+        if ($transfers->asyncEnabled() && $cloudinary->isConfigured() && $user) {
+            try {
+                $job = $transfers->createVehicleImagesJob($vehicle, $stage, $files, $user);
+            } catch (RuntimeException $e) {
+                return response()->json([
+                    'message' => $e->getMessage() === 'Cloudinary is not configured.'
+                        ? 'Cloudinary is not configured.'
+                        : $e->getMessage(),
+                ], 422);
+            } catch (\Throwable $e) {
+                Log::error('Vehicle images staging failed', [
+                    'vehicle_id' => $vehicle->id,
+                    'stage' => $stage,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return response()->json([
+                    'message' => 'تعذّر استلام الصور على الخادم.',
+                ], 422);
+            }
+
+            return response()->json([
+                'data' => [
+                    'transfer' => $job->fresh()->toApiArray(),
+                    'async' => true,
+                ],
+                'message' => 'تم الرفع — معالجة الصور جارية في الخلفية.',
+            ], 202);
+        }
 
         $created = $uploads->storeMany(
             $vehicle,
             $stage,
             $files,
-            $request->user(),
+            $user,
         );
 
         if (count($created) > 0) {
@@ -36,7 +73,7 @@ class VehicleUploadedImageController extends Controller
                 $vehicle,
                 count($created),
                 $stage,
-                $request->user(),
+                $user,
             );
         }
 

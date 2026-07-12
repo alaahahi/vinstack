@@ -260,7 +260,7 @@
                             :class="`transfer-row--${job.status}`"
                         >
                             <div class="transfer-row__main">
-                                <strong>{{ job.container_number || '—' }}</strong>
+                                <strong>{{ transferJobLabel(job) }}</strong>
                                 <span class="transfer-row__status">{{ transferStatusLabel(job.status) }}</span>
                             </div>
                             <div class="transfer-row__meta">
@@ -707,7 +707,7 @@ import AdminPageHeader from '../../components/AdminPageHeader.vue';
 import VehicleOptionsEditor from '../../components/VehicleOptionsEditor.vue';
 import { restoreVehicle } from '../../api/vehicles';
 import api from '../../api/client';
-import { fetchImageTransfers } from '../../utils/containerCloudinaryUpload';
+import { fetchImageTransfers } from '../../utils/imageTransfer';
 import { formatDateTime } from '../../utils/formatDateTime';
 
 const { t } = useI18n();
@@ -888,6 +888,20 @@ async function testCloudinaryConnection() {
     } finally {
         testingCloudinary.value = false;
     }
+}
+
+function transferJobLabel(job) {
+    if (job.container_number) {
+        return job.container_number;
+    }
+
+    if (job.vehicle_vin) {
+        const stage = job.stage ? ` · ${job.stage}` : '';
+
+        return `${job.vehicle_vin}${stage}`;
+    }
+
+    return '—';
 }
 
 function transferStatusLabel(status) {

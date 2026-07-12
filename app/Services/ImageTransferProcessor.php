@@ -5,6 +5,8 @@ namespace App\Services;
 use App\Jobs\ProcessImageTransferBatch;
 use App\Models\ContainerImage;
 use App\Models\ImageTransferJob;
+use App\Models\User;
+use App\Models\Vehicle;
 use App\Models\VinstackSetting;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
@@ -15,6 +17,7 @@ class ImageTransferProcessor
         protected ContainerImageService $images,
         protected ContainerService $containers,
         protected DealerNotificationService $notifications,
+        protected VehicleUploadedImageService $vehicleImages,
     ) {}
 
     /**
@@ -32,7 +35,7 @@ class ImageTransferProcessor
             $job->status = ImageTransferJob::STATUS_PROCESSING;
             $job->started_at = $job->started_at ?? now();
 
-            if ($job->replace_existing) {
+            if ($job->type === ImageTransferJob::TYPE_CONTAINER_ZIP && $job->replace_existing) {
                 ContainerImage::query()
                     ->where('container_number', $job->container_number)
                     ->delete();
@@ -55,13 +58,14 @@ class ImageTransferProcessor
             }
 
             try {
-                $this->images->uploadStagedImage((string) $job->container_number, $item);
+                $this->processManifestItem($job, $item);
                 $manifest[$offset]['status'] = 'done';
                 $manifest[$offset]['error'] = null;
                 $job->transferred_count++;
             } catch (\Throwable $e) {
                 Log::warning('Image transfer batch item failed', [
                     'job' => $job->uuid,
+                    'type' => $job->type,
                     'name' => $item['name'] ?? null,
                     'error' => $e->getMessage(),
                 ]);
@@ -85,6 +89,56 @@ class ImageTransferProcessor
         $this->finalizeJob($job);
 
         return false;
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
+    protected function processManifestItem(ImageTransferJob $job, array $item): void
+    {
+        if ($job->type === ImageTransferJob::TYPE_CONTAINER_ZIP) {
+            $this->images->uploadStagedImage((string) $job->container_number, $item);
+
+            return;
+        }
+
+        if (! in_array($job->type, [
+            ImageTransferJob::TYPE_VEHICLE_ZIP,
+            ImageTransferJob::TYPE_VEHICLE_IMAGES,
+        ], true)) {
+            throw new \RuntimeException('Unsupported transfer type: '.$job->type);
+        }
+
+        $vehicle = $job->vehicle_id
+            ? Vehicle::query()->find($job->vehicle_id)
+            : null;
+
+        if ($vehicle === null) {
+            throw new \RuntimeException('Vehicle not found for transfer job.');
+        }
+
+        $user = $job->user_id
+            ? User::query()->find($job->user_id)
+            : null;
+
+        if ($user === null) {
+            throw new \RuntimeException('Uploader user not found for transfer job.');
+        }
+
+        $stage = (string) ($job->stage ?? '');
+
+        if ($stage === '') {
+            throw new \RuntimeException('Image stage is required for vehicle transfer.');
+        }
+
+        $this->vehicleImages->storeFromPath(
+            $vehicle,
+            $stage,
+            (string) ($item['path'] ?? ''),
+            (string) ($item['name'] ?? 'image.jpg'),
+            $user,
+            discardAfterUpload: false,
+        );
     }
 
     public function processPendingJobs(int $limit = 5): int
@@ -129,15 +183,44 @@ class ImageTransferProcessor
         $job->save();
 
         if ($job->transferred_count > 0) {
+            $this->sendCompletionNotification($job);
+        }
+
+        $this->cleanupStaging($job);
+    }
+
+    protected function sendCompletionNotification(ImageTransferJob $job): void
+    {
+        if ($job->type === ImageTransferJob::TYPE_CONTAINER_ZIP && $job->container_number) {
             $this->notifications->notifyContainerImagesAdded(
                 (string) $job->container_number,
                 $job->transferred_count,
                 $this->containers->dealersForContainer((string) $job->container_number),
                 $job->user()->first(),
             );
+
+            return;
         }
 
-        $this->cleanupStaging($job);
+        if (! in_array($job->type, [
+            ImageTransferJob::TYPE_VEHICLE_ZIP,
+            ImageTransferJob::TYPE_VEHICLE_IMAGES,
+        ], true) || ! $job->vehicle_id) {
+            return;
+        }
+
+        $vehicle = Vehicle::query()->find($job->vehicle_id);
+
+        if ($vehicle === null) {
+            return;
+        }
+
+        $this->notifications->notifyVehicleImagesAdded(
+            $vehicle,
+            $job->transferred_count,
+            (string) ($job->stage ?? 'terminal'),
+            $job->user()->first(),
+        );
     }
 
     protected function cleanupStaging(ImageTransferJob $job): void

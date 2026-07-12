@@ -7,6 +7,8 @@ use App\Jobs\ProcessImageTransferBatch;
 use App\Models\ImageTransferJob;
 use App\Services\ContainerImageService;
 use App\Services\ImageTransferProcessor;
+use App\Services\VehicleDetailService;
+use App\Services\VinstackGalleryService;
 use Illuminate\Http\JsonResponse;
 
 class ImageTransferController extends Controller
@@ -14,6 +16,7 @@ class ImageTransferController extends Controller
     public function index(): JsonResponse
     {
         $jobs = ImageTransferJob::query()
+            ->with('vehicle:id,vin')
             ->latest('id')
             ->limit(30)
             ->get()
@@ -22,22 +25,40 @@ class ImageTransferController extends Controller
         return response()->json(['data' => $jobs]);
     }
 
-    public function show(string $uuid, ContainerImageService $images): JsonResponse
-    {
-        $job = ImageTransferJob::query()->where('uuid', $uuid)->firstOrFail();
+    public function show(
+        string $uuid,
+        ContainerImageService $images,
+        VinstackGalleryService $gallery,
+        VehicleDetailService $details,
+    ): JsonResponse {
+        $job = ImageTransferJob::query()
+            ->with('vehicle')
+            ->where('uuid', $uuid)
+            ->firstOrFail();
         $payload = $job->toApiArray();
 
-        if (in_array($job->status, [
+        if (! in_array($job->status, [
             ImageTransferJob::STATUS_COMPLETED,
             ImageTransferJob::STATUS_PARTIAL,
-        ], true) && $job->container_number) {
-            $gallery = $images->payloadForContainer((string) $job->container_number);
-            $payload['gallery'] = $gallery;
+        ], true)) {
+            return response()->json(['data' => $payload]);
+        }
+
+        if ($job->container_number) {
+            $galleryPayload = $images->payloadForContainer((string) $job->container_number);
+            $payload['gallery'] = $galleryPayload;
             $payload['uploaded'] = $job->transferred_count;
-            $payload['images'] = $gallery['images'] ?? [];
-            $payload['byVin'] = $gallery['byVin'] ?? [];
-            $payload['unmatched'] = $gallery['unmatched'] ?? [];
-            $payload['meta'] = $gallery['meta'] ?? [];
+            $payload['images'] = $galleryPayload['images'] ?? [];
+            $payload['byVin'] = $galleryPayload['byVin'] ?? [];
+            $payload['unmatched'] = $galleryPayload['unmatched'] ?? [];
+            $payload['meta'] = $galleryPayload['meta'] ?? [];
+        }
+
+        if ($job->vehicle_id && $job->vehicle) {
+            $vehicle = $job->vehicle->fresh() ?? $job->vehicle;
+            $payload['gallery'] = $gallery->buildGalleryPayload($vehicle);
+            $payload['vehicle'] = $details->build($vehicle, includeAssignment: true);
+            $payload['uploaded'] = $job->transferred_count;
         }
 
         return response()->json(['data' => $payload]);

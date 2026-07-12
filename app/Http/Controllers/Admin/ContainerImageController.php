@@ -175,7 +175,7 @@ class ContainerImageController extends Controller
                     'transfer' => $job->fresh()->toApiArray(),
                     'async' => true,
                 ],
-                'message' => 'تم استلام الملف — النقل إلى Cloudinary جارٍ في الخلفية.',
+                'message' => 'تم الرفع — معالجة الصور جارية في الخلفية.',
             ], 202);
         }
 

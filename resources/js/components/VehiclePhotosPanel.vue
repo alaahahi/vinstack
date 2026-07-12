@@ -674,13 +674,14 @@ async function uploadZipFile(stageKey, zipFile) {
         vehicleLabel: label.value,
         stage: stageKey,
         zipFile,
-    });
-
-    toast.add({
-        severity: 'info',
-        summary: 'بدأ رفع ZIP',
-        detail: 'يمكنك إغلاق النافذة — الرفع يستمر في الخلفية',
-        life: 3500,
+        onAccepted: (message) => {
+            toast.add({
+                severity: 'success',
+                summary: 'تم الرفع',
+                detail: message || 'معالجة الصور جارية في الخلفية',
+                life: 4000,
+            });
+        },
     });
 }
 
@@ -694,13 +695,14 @@ async function uploadFiles(stageKey, files) {
         vehicleLabel: label.value,
         stage: stageKey,
         files,
-    });
-
-    toast.add({
-        severity: 'info',
-        summary: 'بدأ رفع الصور',
-        detail: `جاري رفع ${files.length} صورة — يمكنك إغلاق النافذة`,
-        life: 3500,
+        onAccepted: (message) => {
+            toast.add({
+                severity: 'success',
+                summary: 'تم الرفع',
+                detail: message || 'معالجة الصور جارية في الخلفية',
+                life: 4000,
+            });
+        },
     });
 }
 

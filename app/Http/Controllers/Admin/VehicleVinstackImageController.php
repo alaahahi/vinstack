@@ -6,9 +6,12 @@ use App\Exceptions\GalleryTokenExpiredException;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\StoreVehicleZipImagesRequest;
 use App\Models\Vehicle;
+use App\Services\CloudinaryService;
 use App\Services\DealerNotificationService;
+use App\Services\ImageTransferService;
 use App\Services\VehicleVinstackZipUploadService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class VehicleVinstackImageController extends Controller
@@ -17,14 +20,45 @@ class VehicleVinstackImageController extends Controller
         StoreVehicleZipImagesRequest $request,
         Vehicle $vehicle,
         VehicleVinstackZipUploadService $zipUploads,
+        ImageTransferService $transfers,
+        CloudinaryService $cloudinary,
         DealerNotificationService $notifications,
     ): JsonResponse {
         /** @var \Illuminate\Http\UploadedFile $zip */
         $zip = $request->file('zip');
         $stage = $request->string('stage')->toString();
+        $user = $request->user();
+
+        if ($transfers->asyncEnabled() && $cloudinary->isConfigured() && $user) {
+            try {
+                $job = $transfers->createVehicleZipJob($vehicle, $stage, $zip, $user);
+            } catch (RuntimeException $e) {
+                return response()->json([
+                    'message' => $this->arabicErrorMessage($e->getMessage()),
+                ], 422);
+            } catch (\Throwable $e) {
+                Log::error('Vehicle ZIP staging failed', [
+                    'vehicle_id' => $vehicle->id,
+                    'stage' => $stage,
+                    'error' => $e->getMessage(),
+                ]);
+
+                return response()->json([
+                    'message' => 'تعذّر استلام ملف ZIP على الخادم.',
+                ], 422);
+            }
+
+            return response()->json([
+                'data' => [
+                    'transfer' => $job->fresh()->toApiArray(),
+                    'async' => true,
+                ],
+                'message' => 'تم الرفع — معالجة الصور جارية في الخلفية.',
+            ], 202);
+        }
 
         try {
-            $result = $zipUploads->uploadZip($vehicle, $stage, $zip, $request->user());
+            $result = $zipUploads->uploadZip($vehicle, $stage, $zip, $user);
         } catch (GalleryTokenExpiredException) {
             return response()->json([
                 'message' => 'توكن API المعرض منتهي — حدّثه من الإعدادات.',
@@ -44,7 +78,7 @@ class VehicleVinstackImageController extends Controller
                 $vehicle,
                 $uploaded,
                 $stage,
-                $request->user(),
+                $user,
             );
         }
 
@@ -102,6 +136,7 @@ class VehicleVinstackImageController extends Controller
             'invalid_zip' => 'ملف ZIP تالف أو غير صالح.',
             'zip_extract_failed' => 'تعذّر استخراج الصور من ملف ZIP.',
             'upload_file_unreadable' => 'تعذّر قراءة ملف الصورة أثناء الرفع.',
+            'Cloudinary is not configured.' => 'Cloudinary غير مضبوط — أضف بيانات الاعتماد من الإعدادات.',
             default => 'تعذّر رفع الصور. '.$code,
         };
     }

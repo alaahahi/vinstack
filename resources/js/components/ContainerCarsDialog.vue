@@ -793,6 +793,14 @@ async function startContainerZipUpload(zipFile) {
         zipFile,
         apiPrefix: apiPrefix.value,
         replace: true,
+        onAccepted: (message) => {
+            toast.add({
+                severity: 'success',
+                summary: 'تم الرفع',
+                detail: message || t('containers.zipUploadStartedDetail'),
+                life: 5000,
+            });
+        },
     });
 
     if (! jobId) {
@@ -805,13 +813,6 @@ async function startContainerZipUpload(zipFile) {
 
         return;
     }
-
-    toast.add({
-        severity: 'info',
-        summary: t('containers.zipUploadStarted'),
-        detail: t('containers.zipUploadStartedDetail'),
-        life: 5000,
-    });
 }
 
 async function onZipSelected(event) {

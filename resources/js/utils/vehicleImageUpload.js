@@ -20,6 +20,45 @@ export async function uploadVehicleImages(vehicleId, stage, files) {
 /**
  * @param {number|string} vehicleId
  * @param {string} stage
+ * @param {File[]} files
+ * @param {(percent: number) => void} [onProgress]
+ */
+export async function uploadVehicleImagesBatch(vehicleId, stage, files, onProgress) {
+    const form = new FormData();
+    form.append('stage', stage);
+
+    for (const file of files) {
+        form.append('images[]', file);
+    }
+
+    const response = await api.post(`/admin/vehicles/${vehicleId}/images`, form, {
+        timeout: UPLOAD_TIMEOUT_MS,
+        headers: { 'Content-Type': 'multipart/form-data' },
+        onUploadProgress: (event) => {
+            if (onProgress && event.total) {
+                onProgress(Math.round((event.loaded * 100) / event.total));
+            }
+        },
+        validateStatus: (status) => status === 201 || status === 202,
+    });
+
+    if (response.status === 202 && response.data?.data?.async) {
+        return {
+            async: true,
+            transfer: response.data.data.transfer,
+            message: response.data.message,
+        };
+    }
+
+    return {
+        async: false,
+        ...response.data,
+    };
+}
+
+/**
+ * @param {number|string} vehicleId
+ * @param {string} stage
  * @param {File} file
  * @param {(percent: number) => void} [onProgress]
  */

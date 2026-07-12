@@ -1,6 +1,8 @@
 import api from '../api/client';
 import { UPLOAD_TIMEOUT_MS, ZIP_UPLOAD_TIMEOUT_MS } from '../constants/uploadTimeouts';
 
+export { fetchImageTransferStatus, fetchImageTransfers, watchBackgroundTransfer } from './imageTransfer';
+
 const MIME_BY_EXT = {
     jpg: 'image/jpeg',
     jpeg: 'image/jpeg',
@@ -133,30 +135,6 @@ export async function uploadContainerZipToCloud({
         uploaded,
         failed: payload.failed ?? response.data?.failed ?? [],
     };
-}
-
-/**
- * Poll background image transfer job status.
- */
-export async function fetchImageTransferStatus(transferId, apiPrefix = '/admin') {
-    if (! transferId) {
-        return null;
-    }
-
-    const { data } = await api.get(
-        `${apiPrefix}/image-transfers/${encodeURIComponent(transferId)}`,
-    );
-
-    return data.data ?? null;
-}
-
-/**
- * Recent image transfer jobs for admin monitoring.
- */
-export async function fetchImageTransfers(apiPrefix = '/admin') {
-    const { data } = await api.get(`${apiPrefix}/image-transfers`);
-
-    return data.data ?? [];
 }
 
 /**

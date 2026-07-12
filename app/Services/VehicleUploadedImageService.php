@@ -101,15 +101,21 @@ class VehicleUploadedImageService
     /**
      * @return array<string, mixed>
      */
-    public function storeFromPath(Vehicle $vehicle, string $stage, string $path, string $originalName, User $user): array
-    {
+    public function storeFromPath(
+        Vehicle $vehicle,
+        string $stage,
+        string $path,
+        string $originalName,
+        User $user,
+        bool $discardAfterUpload = true,
+    ): array {
         if (! is_file($path) || ! is_readable($path)) {
             throw new \RuntimeException('upload_file_unreadable');
         }
 
         $file = new UploadedFile($path, $originalName, null, null, true);
 
-        return $this->storeOne($vehicle, $stage, $file, $user);
+        return $this->storeOne($vehicle, $stage, $file, $user, $discardAfterUpload);
     }
 
 
@@ -120,7 +126,7 @@ class VehicleUploadedImageService
 
      */
 
-    public function storeOne(Vehicle $vehicle, string $stage, UploadedFile $file, User $user): array
+    public function storeOne(Vehicle $vehicle, string $stage, UploadedFile $file, User $user, bool $discardAfterUpload = true): array
 
     {
 
@@ -146,7 +152,9 @@ class VehicleUploadedImageService
 
         } finally {
 
-            $this->discardUploadedFile($file);
+            if ($discardAfterUpload) {
+                $this->discardUploadedFile($file);
+            }
 
         }
 

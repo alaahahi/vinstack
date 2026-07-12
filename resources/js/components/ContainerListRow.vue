@@ -653,6 +653,14 @@ async function onZipSelected(event) {
         zipFile: file,
         apiPrefix: props.apiPrefix,
         replace: true,
+        onAccepted: (message) => {
+            toast.add({
+                severity: 'success',
+                summary: 'تم الرفع',
+                detail: message || t('containers.zipUploadStartedDetail'),
+                life: 5000,
+            });
+        },
     });
 
     if (! jobId) {
@@ -662,16 +670,7 @@ async function onZipSelected(event) {
             detail: 'تعذّر بدء الرفع',
             life: 4000,
         });
-
-        return;
     }
-
-    toast.add({
-        severity: 'info',
-        summary: t('containers.zipUploadStarted'),
-        detail: t('containers.zipUploadStartedDetail'),
-        life: 5000,
-    });
 }
 
 </script>

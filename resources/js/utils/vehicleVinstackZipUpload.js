@@ -51,7 +51,7 @@ export async function uploadVehicleZipImages(vehicleId, stage, zipFile, onProgre
     form.append('zip', zipFile, zipFile.name);
 
     try {
-        const { data } = await api.post(`/admin/vehicles/${vehicleId}/images/zip`, form, {
+        const response = await api.post(`/admin/vehicles/${vehicleId}/images/zip`, form, {
             timeout: ZIP_UPLOAD_TIMEOUT_MS,
             onUploadProgress: (event) => {
                 if (onProgress && event.total) {
@@ -60,13 +60,28 @@ export async function uploadVehicleZipImages(vehicleId, stage, zipFile, onProgre
                     onProgress(99);
                 }
             },
+            validateStatus: (status) => status === 201 || status === 202 || status === 422,
         });
 
         if (onProgress) {
             onProgress(100);
         }
 
-        return data;
+        if (response.status === 202 && response.data?.data?.async) {
+            return {
+                async: true,
+                transfer: response.data.data.transfer,
+                message: response.data.message,
+            };
+        }
+
+        if (response.status === 422) {
+            const error = new Error(formatVinstackZipUploadError({ response }));
+            error.response = response;
+            throw error;
+        }
+
+        return response.data;
     } catch (error) {
         error.message = formatVinstackZipUploadError(error);
         throw error;

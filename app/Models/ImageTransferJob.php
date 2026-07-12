@@ -9,6 +9,10 @@ class ImageTransferJob extends Model
 {
     public const TYPE_CONTAINER_ZIP = 'container_zip';
 
+    public const TYPE_VEHICLE_ZIP = 'vehicle_zip';
+
+    public const TYPE_VEHICLE_IMAGES = 'vehicle_images';
+
     public const STATUS_QUEUED = 'queued';
 
     public const STATUS_PROCESSING = 'processing';
@@ -24,6 +28,8 @@ class ImageTransferJob extends Model
         'type',
         'status',
         'container_number',
+        'vehicle_id',
+        'stage',
         'user_id',
         'replace_existing',
         'total_images',
@@ -49,6 +55,11 @@ class ImageTransferJob extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    public function vehicle(): BelongsTo
+    {
+        return $this->belongsTo(Vehicle::class);
     }
 
     public function progressPercent(): int
@@ -92,6 +103,9 @@ class ImageTransferJob extends Model
             'type' => $this->type,
             'status' => $this->status,
             'container_number' => $this->container_number,
+            'vehicle_id' => $this->vehicle_id,
+            'stage' => $this->stage,
+            'vehicle_vin' => $this->vehicle?->vin,
             'total_images' => $this->total_images,
             'transferred_count' => $this->transferred_count,
             'failed_count' => $this->failed_count,
