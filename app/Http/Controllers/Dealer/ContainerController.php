@@ -18,15 +18,34 @@ class ContainerController extends Controller
             abort(403, 'Dealer profile not found.');
         }
 
-        $data = $containers->listForDealer(
+        $container = $request->string('container')->trim()->toString() ?: null;
+        $chassis = $request->string('chassis')->trim()->toString() ?: null;
+        $perPage = min((int) $request->input('per_page', 50), 100);
+        $page = max(1, (int) $request->input('page', 1));
+
+        $all = $containers->listForDealer(
             $dealer,
-            $request->string('container')->toString() ?: null,
-            $request->string('chassis')->toString() ?: null,
+            $container,
+            $chassis,
         );
 
+        $total = count($all);
+        $offset = ($page - 1) * $perPage;
+        $slice = array_slice($all, $offset, $perPage);
+        $lastPage = max(1, (int) ceil($total / $perPage));
+
         return response()->json([
-            'data' => $data,
-            'total' => count($data),
+            'data' => $slice,
+            'meta' => [
+                'current_page' => $page,
+                'last_page' => $lastPage,
+                'per_page' => $perPage,
+                'total' => $total,
+                'from' => $total > 0 ? $offset + 1 : null,
+                'to' => $total > 0 ? min($offset + count($slice), $total) : null,
+                'has_more' => $page < $lastPage,
+            ],
+            'total' => $total,
             'tracking_available' => $containers->trackingAvailable(),
         ]);
     }

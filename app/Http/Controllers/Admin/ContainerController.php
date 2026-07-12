@@ -28,6 +28,8 @@ class ContainerController extends Controller
 
         $dealerId = $request->filled('dealer_id') ? (int) $request->input('dealer_id') : null;
 
+        $container = $request->string('container')->trim()->toString() ?: null;
+
         $chassis = $request->string('chassis')->trim()->toString()
 
             ?: $request->string('vin')->trim()->toString()
@@ -40,7 +42,11 @@ class ContainerController extends Controller
 
 
 
-        $all = $containers->listForAdminFiltered($dealerId, $chassis !== '' ? $chassis : null);
+        $all = $containers->listForAdminFiltered(
+            $dealerId,
+            $chassis !== '' ? $chassis : null,
+            $container !== '' ? $container : null,
+        );
 
         $total = count($all);
 

@@ -31,23 +31,31 @@ class ContainerService
     /**
      * @return list<array<string, mixed>>
      */
-    public function listForAdminFiltered(?int $dealerId = null, ?string $chassis = null): array
+    public function listForAdminFiltered(?int $dealerId = null, ?string $chassis = null, ?string $containerRef = null): array
     {
         if ($dealerId !== null) {
             $dealer = Dealer::query()->findOrFail($dealerId);
-            $items = $this->listForDealer($dealer);
+            $items = $this->listForDealer($dealer, $containerRef, $chassis);
         } else {
             $fromApi = $this->fetchNormalized();
             $fromVehicles = $this->deriveFromAllVehicles();
             $items = $this->mergeDealerContainerLists($fromApi, $fromVehicles);
-        }
 
-        if ($chassis !== null && trim($chassis) !== '') {
-            $needle = strtoupper(trim($chassis));
-            $items = array_values(array_filter(
-                $items,
-                fn (array $container) => $this->containerMatchesChassis($container, $needle),
-            ));
+            if ($containerRef !== null && trim($containerRef) !== '') {
+                $needle = strtoupper(preg_replace('/\s+/', '', trim($containerRef)) ?? '');
+                $items = array_values(array_filter(
+                    $items,
+                    fn (array $container) => $this->containerMatchesRef($container, $needle),
+                ));
+            }
+
+            if ($chassis !== null && trim($chassis) !== '') {
+                $needle = strtoupper(trim($chassis));
+                $items = array_values(array_filter(
+                    $items,
+                    fn (array $container) => $this->containerMatchesChassis($container, $needle),
+                ));
+            }
         }
 
         return $this->attachListImageSummaries($items);

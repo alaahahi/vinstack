@@ -623,12 +623,12 @@ async function onZipSelected(event) {
         return;
     }
 
-    await containerUploadStore.enqueueZip({
+    containerUploadStore.enqueueZip({
         containerRef,
         containerLabel: containerRef,
         containerKey,
         zipFile: file,
-        apiPrefix: '/admin',
+        apiPrefix: props.apiPrefix,
         replace: true,
     });
 

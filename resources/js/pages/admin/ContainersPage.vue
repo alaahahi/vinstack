@@ -14,6 +14,22 @@
 
                 <IconField>
 
+                    <InputIcon class="pi pi-box" />
+
+                    <InputText
+
+                        v-model="containerSearch"
+
+                        :placeholder="t('containers.searchContainer')"
+
+                        @keyup.enter="resetAndLoad"
+
+                    />
+
+                </IconField>
+
+                <IconField>
+
                     <InputIcon class="pi pi-search" />
 
                     <InputText
@@ -27,6 +43,21 @@
                     />
 
                 </IconField>
+
+                <Button
+                    icon="pi pi-search"
+                    :label="t('actions.search')"
+                    @click="resetAndLoad"
+                />
+
+                <Button
+                    v-if="hasActiveFilters"
+                    icon="pi pi-filter-slash"
+                    :label="t('actions.clearFilters')"
+                    severity="secondary"
+                    outlined
+                    @click="clearFilters"
+                />
 
                 <DealerFilterBadges
 
@@ -104,7 +135,7 @@
 
 <script setup>
 
-import { onMounted, ref } from 'vue';
+import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useToast } from 'primevue/usetoast';
 
@@ -143,6 +174,8 @@ const loadingMore = ref(false);
 
 const chassisSearch = ref('');
 
+const containerSearch = ref('');
+
 const dealerFilter = ref(null);
 
 const page = ref(1);
@@ -163,7 +196,9 @@ const carsVisible = ref(false);
 
 const carsContainer = ref(null);
 
-
+const hasActiveFilters = computed(() =>
+    Boolean(containerSearch.value.trim() || chassisSearch.value.trim() || dealerFilter.value),
+);
 
 function listParams(nextPage = page.value) {
 
@@ -173,7 +208,9 @@ function listParams(nextPage = page.value) {
 
         per_page: perPage.value,
 
-        chassis: chassisSearch.value || undefined,
+        container: containerSearch.value.trim() || undefined,
+
+        chassis: chassisSearch.value.trim() || undefined,
 
         dealer_id: dealerFilter.value || undefined,
 
@@ -279,6 +316,13 @@ async function resetAndLoad() {
 
     await Promise.all([loadDealerSummary(), fetchPage(1)]);
 
+}
+
+function clearFilters() {
+    containerSearch.value = '';
+    chassisSearch.value = '';
+    dealerFilter.value = null;
+    resetAndLoad();
 }
 
 

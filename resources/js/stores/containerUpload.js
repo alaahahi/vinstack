@@ -84,48 +84,13 @@ export const useContainerUploadStore = defineStore('containerUpload', () => {
         return activeJobs.value.some((job) => job.containerKey === containerKey);
     }
 
-    async function enqueueZip({
+    async function runZipUpload(jobId, {
         containerRef,
-        containerLabel,
         containerKey,
         zipFile,
-        apiPrefix = '/admin',
-        replace = true,
+        apiPrefix,
+        replace,
     }) {
-        if (! containerRef || ! zipFile || ! containerKey) {
-            return null;
-        }
-
-        const jobId = makeJobId();
-        const sizeLabel = formatZipSize(zipFile.size);
-
-        jobs.value.unshift({
-            id: jobId,
-            kind: 'container',
-            containerRef,
-            containerKey,
-            containerLabel: containerLabel || containerRef,
-            vehicleLabel: containerLabel || containerRef,
-            stageLabel: 'معرض الحاوية',
-            type: 'zip',
-            status: 'uploading',
-            total: 0,
-            completed: 0,
-            failed: 0,
-            currentFileName: zipFile.name,
-            progress: 0,
-            fileProgress: 0,
-            phase: 'upload',
-            message: sizeLabel
-                ? `جاري رفع ZIP (${sizeLabel})…`
-                : 'جاري رفع ملف ZIP…',
-            error: null,
-            dismissed: false,
-            expanded: true,
-            startedAt: Date.now(),
-            finishedAt: null,
-        });
-
         try {
             const payload = await uploadContainerZipToCloud({
                 containerRef,
@@ -187,6 +152,57 @@ export const useContainerUploadStore = defineStore('containerUpload', () => {
                 error: formatCloudinaryUploadError(error),
             });
         }
+    }
+
+    function enqueueZip({
+        containerRef,
+        containerLabel,
+        containerKey,
+        zipFile,
+        apiPrefix = '/admin',
+        replace = true,
+    }) {
+        if (! containerRef || ! zipFile || ! containerKey) {
+            return null;
+        }
+
+        const jobId = makeJobId();
+        const sizeLabel = formatZipSize(zipFile.size);
+
+        jobs.value.unshift({
+            id: jobId,
+            kind: 'container',
+            containerRef,
+            containerKey,
+            containerLabel: containerLabel || containerRef,
+            vehicleLabel: containerLabel || containerRef,
+            stageLabel: 'معرض الحاوية',
+            type: 'zip',
+            status: 'uploading',
+            total: 0,
+            completed: 0,
+            failed: 0,
+            currentFileName: zipFile.name,
+            progress: 0,
+            fileProgress: 0,
+            phase: 'upload',
+            message: sizeLabel
+                ? `جاري رفع ZIP (${sizeLabel})…`
+                : 'جاري رفع ملف ZIP…',
+            error: null,
+            dismissed: false,
+            expanded: true,
+            startedAt: Date.now(),
+            finishedAt: null,
+        });
+
+        void runZipUpload(jobId, {
+            containerRef,
+            containerKey,
+            zipFile,
+            apiPrefix,
+            replace,
+        });
 
         return jobId;
     }

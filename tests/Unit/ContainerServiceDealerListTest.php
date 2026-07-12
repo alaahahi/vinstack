@@ -119,6 +119,43 @@ class ContainerServiceDealerListTest extends TestCase
         $this->assertSame('vinstack', $rows[0]['source']);
     }
 
+    public function test_dealer_list_filters_by_container_reference(): void
+    {
+        $dealer = $this->createDealerWithAssignment(
+            vin: 'WAUZZZ8V9KA000001',
+            rawData: [],
+        );
+
+        $this->mockVinstackContainers([
+            [
+                'container_number' => 'CMAU0000001',
+                'autos' => [['vin' => 'wauzzz8v9ka000001']],
+            ],
+            [
+                'container_number' => 'OTHER0000002',
+                'autos' => [['vin' => 'wauzzz8v9ka000001']],
+            ],
+        ]);
+
+        $rows = app(ContainerService::class)->listForDealer($dealer, 'CMAU');
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('CMAU0000001', $rows[0]['container_number']);
+    }
+
+    public function test_admin_list_filters_by_container_reference(): void
+    {
+        $this->mockVinstackContainers([
+            ['container_number' => 'MSKU1234567', 'autos' => []],
+            ['container_number' => 'TCLU9999999', 'autos' => []],
+        ]);
+
+        $rows = app(ContainerService::class)->listForAdminFiltered(null, null, 'TCLU');
+
+        $this->assertCount(1, $rows);
+        $this->assertSame('TCLU9999999', $rows[0]['container_number']);
+    }
+
     public function test_admin_sees_manual_vehicle_container_when_not_in_vinstack_api(): void
     {
         Vehicle::query()->create([
