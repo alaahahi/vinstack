@@ -98,7 +98,7 @@ const props = defineProps({
     },
     directImageGallery: {
         type: Boolean,
-        default: false,
+        default: true,
     },
     linkContainerDetail: {
         type: Boolean,

@@ -93,6 +93,8 @@
 
             :tracking-available="trackingAvailable"
 
+            direct-image-gallery
+
             show-zip-upload
 
             @track="openTracking"

@@ -8,14 +8,14 @@
                 class="thumb-btn"
                 :class="{
                     empty: !hasThumbnail,
-                    clickable: hasImages,
+                    clickable: canOpenImageGallery,
                     'thumb-btn--loading': galleryLoading,
                 }"
-                :disabled="!hasImages || galleryLoading"
+                :disabled="!canOpenImageGallery || galleryLoading"
                 :title="imageTitle"
                 :aria-label="imageTitle"
                 :aria-busy="galleryLoading"
-                @click="openGallery"
+                @click.stop="openGallery"
             >
                 <img
                     v-if="thumbnailUrl && !galleryLoading"
@@ -363,7 +363,7 @@ const props = defineProps({
 
         type: Boolean,
 
-        default: false,
+        default: true,
 
     },
 
@@ -480,6 +480,14 @@ const hasThumbnail = computed(() => thumbnailUrl.value !== null);
 
 const hasImages = computed(() => imageCount.value > 0);
 
+const canOpenImageGallery = computed(() => {
+    if (! props.directImageGallery) {
+        return hasImages.value;
+    }
+
+    return hasImages.value || hasThumbnail.value;
+});
+
 const showCountBadge = computed(() => imageCount.value > 1);
 
 const imageTitle = computed(() => {
@@ -487,9 +495,9 @@ const imageTitle = computed(() => {
         return t('containers.galleryLoadingList');
     }
 
-    if (hasImages.value) {
+    if (hasImages.value || (props.directImageGallery && hasThumbnail.value)) {
         return props.directImageGallery
-            ? t('containers.openGalleryDirect', { count: imageCount.value })
+            ? t('containers.openGalleryDirect', { count: imageCount.value || 1 })
             : t('containers.showImages', { count: imageCount.value });
     }
 
@@ -499,7 +507,7 @@ const imageTitle = computed(() => {
 const directImageGallery = computed(() => props.directImageGallery);
 
 async function openGallery() {
-    if (! hasImages.value || galleryLoading.value) {
+    if (! canOpenImageGallery.value || galleryLoading.value) {
         return;
     }
 
