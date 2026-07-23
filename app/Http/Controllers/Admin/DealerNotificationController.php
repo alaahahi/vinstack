@@ -11,13 +11,19 @@ use App\Services\DealerNotificationService;
 use App\Services\WaQueueService;
 use App\Support\DealerNotificationEvents;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class DealerNotificationController extends Controller
 {
-    public function index(DealerNotificationService $notifications): JsonResponse
+    public function index(Request $request, DealerNotificationService $notifications): JsonResponse
     {
+        $page = max(1, (int) $request->input('page', 1));
+        $perPage = min(max(1, (int) $request->input('per_page', 10)), 50);
+        $result = $notifications->listPaginated($page, $perPage);
+
         return response()->json([
-            'data' => $notifications->listRecent(60),
+            'data' => $result['data'],
+            'meta' => $result['meta'],
         ]);
     }
 

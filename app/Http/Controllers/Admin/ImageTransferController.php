@@ -10,19 +10,31 @@ use App\Services\ImageTransferProcessor;
 use App\Services\VehicleDetailService;
 use App\Services\VinstackGalleryService;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 
 class ImageTransferController extends Controller
 {
-    public function index(): JsonResponse
+    public function index(Request $request): JsonResponse
     {
-        $jobs = ImageTransferJob::query()
+        $page = max(1, (int) $request->input('page', 1));
+        $perPage = min(max(1, (int) $request->input('per_page', 10)), 50);
+
+        $paginator = ImageTransferJob::query()
             ->with('vehicle:id,vin')
             ->latest('id')
-            ->limit(30)
-            ->get()
-            ->map(fn (ImageTransferJob $job) => $job->toApiArray());
+            ->paginate($perPage, ['*'], 'page', $page);
 
-        return response()->json(['data' => $jobs]);
+        return response()->json([
+            'data' => $paginator->getCollection()
+                ->map(fn (ImageTransferJob $job) => $job->toApiArray())
+                ->values(),
+            'meta' => [
+                'page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'has_more' => $paginator->hasMorePages(),
+            ],
+        ]);
     }
 
     public function show(

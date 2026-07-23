@@ -59,4 +59,45 @@ class AdminDealerNotificationSendTest extends TestCase
         ])->assertStatus(422)
             ->assertJsonValidationErrors(['message']);
     }
+
+    public function test_admin_can_paginate_notification_log(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        Sanctum::actingAs($admin);
+
+        $dealerUser = User::factory()->create(['role' => UserRole::Dealer]);
+        $dealer = Dealer::query()->create([
+            'user_id' => $dealerUser->id,
+            'company_name' => 'Dealer Log',
+            'phone' => '07503333333',
+        ]);
+
+        for ($i = 1; $i <= 12; $i++) {
+            \App\Models\DealerNotificationLog::query()->create([
+                'dealer_id' => $dealer->id,
+                'created_by' => $admin->id,
+                'phone' => $dealer->phone,
+                'message' => "رسالة رقم {$i}",
+                'source' => 'manual',
+                'event' => 'dealer.manual_notification',
+                'channel' => 'wa_queue',
+                'wa_queue_id' => 1000 + $i,
+                'wa_queue_status' => 'queued',
+            ]);
+        }
+
+        $this->getJson('/api/admin/dealer-notifications?page=1&per_page=10')
+            ->assertOk()
+            ->assertJsonCount(10, 'data')
+            ->assertJsonPath('meta.page', 1)
+            ->assertJsonPath('meta.per_page', 10)
+            ->assertJsonPath('meta.total', 12)
+            ->assertJsonPath('meta.has_more', true);
+
+        $this->getJson('/api/admin/dealer-notifications?page=2&per_page=10')
+            ->assertOk()
+            ->assertJsonCount(2, 'data')
+            ->assertJsonPath('meta.page', 2)
+            ->assertJsonPath('meta.has_more', false);
+    }
 }

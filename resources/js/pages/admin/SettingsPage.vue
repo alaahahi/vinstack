@@ -269,6 +269,21 @@
                                 · {{ job.progress_percent }}%
                             </div>
                         </div>
+                        <div class="transfer-monitor__footer">
+                            <span v-if="transferTotal > 0" class="transfer-monitor__count">
+                                {{ t('settings.transferShowing', { shown: imageTransfers.length, total: transferTotal }) }}
+                            </span>
+                            <Button
+                                v-if="transferHasMore"
+                                :label="t('settings.transferShowMore')"
+                                icon="pi pi-angle-down"
+                                severity="secondary"
+                                outlined
+                                size="small"
+                                :loading="loadingMoreTransfers"
+                                @click="loadMoreImageTransfers"
+                            />
+                        </div>
                     </div>
                     <p v-else class="transfer-monitor-empty">لا توجد مهام نقل حديثة</p>
                 </div>
@@ -718,7 +733,12 @@ const saving = ref(false);
 const testingGallery = ref(false);
 const testingCloudinary = ref(false);
 const imageTransfers = ref([]);
+const transferPage = ref(1);
+const transferTotal = ref(0);
+const transferHasMore = ref(false);
 const loadingTransfers = ref(false);
+const loadingMoreTransfers = ref(false);
+const TRANSFER_PER_PAGE = 10;
 const savingOptions = ref(false);
 const syncing = ref(false);
 const restorableVisible = ref(false);
@@ -916,16 +936,44 @@ function transferStatusLabel(status) {
     return labels[status] || status;
 }
 
-async function loadImageTransfers() {
-    loadingTransfers.value = true;
+async function loadImageTransfers({ reset = true } = {}) {
+    if (reset) {
+        loadingTransfers.value = true;
+        transferPage.value = 1;
+    } else {
+        loadingMoreTransfers.value = true;
+    }
 
     try {
-        imageTransfers.value = await fetchImageTransfers();
+        const page = reset ? 1 : transferPage.value + 1;
+        const result = await fetchImageTransfers('/admin', {
+            page,
+            perPage: TRANSFER_PER_PAGE,
+        });
+        const rows = result.data ?? [];
+
+        imageTransfers.value = reset ? rows : [...imageTransfers.value, ...rows];
+        transferPage.value = result.meta?.page ?? page;
+        transferTotal.value = result.meta?.total ?? imageTransfers.value.length;
+        transferHasMore.value = Boolean(result.meta?.has_more);
     } catch {
-        imageTransfers.value = [];
+        if (reset) {
+            imageTransfers.value = [];
+            transferTotal.value = 0;
+            transferHasMore.value = false;
+        }
     } finally {
         loadingTransfers.value = false;
+        loadingMoreTransfers.value = false;
     }
+}
+
+async function loadMoreImageTransfers() {
+    if (loadingTransfers.value || loadingMoreTransfers.value || ! transferHasMore.value) {
+        return;
+    }
+
+    await loadImageTransfers({ reset: false });
 }
 
 async function save() {
@@ -1724,6 +1772,22 @@ onMounted(async () => {
     flex-direction: column;
     gap: 0.45rem;
     margin-top: 0.75rem;
+}
+
+.transfer-monitor__footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 0.35rem;
+    padding-top: 0.65rem;
+    border-top: 1px solid var(--vs-border);
+}
+
+.transfer-monitor__count {
+    font-size: 0.78rem;
+    color: var(--vs-text-muted);
 }
 
 .transfer-row {

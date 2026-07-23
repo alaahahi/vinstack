@@ -200,28 +200,45 @@
                 </header>
 
                 <div class="notif-card__body notif-card__body--log">
-                    <div v-if="loadingLog" class="log-loading">
+                    <div v-if="loadingLog && !logs.length" class="log-loading">
                         <ProgressSpinner style="width: 32px; height: 32px" />
                     </div>
                     <div v-else-if="!logs.length" class="log-empty">
                         <i class="pi pi-inbox" />
                         <p>{{ t('dealerNotifications.logEmpty') }}</p>
                     </div>
-                    <ul v-else class="log-list">
-                        <li v-for="row in logs" :key="row.id" class="log-item" :class="{ 'log-item--failed': !row.success }">
-                            <div class="log-item__top">
-                                <strong>{{ row.dealer_name || t('notifications.dealerFallback') }}</strong>
-                                <Tag :severity="row.success ? 'success' : 'danger'" :value="statusLabel(row)" />
-                            </div>
-                            <p class="log-item__message">{{ row.message }}</p>
-                            <div class="log-item__meta">
-                                <span v-if="row.event" class="log-item__event">{{ eventLabel(row.event) }}</span>
-                                <span dir="ltr"><i class="pi pi-phone" /> {{ row.phone }}</span>
-                                <span><i class="pi pi-clock" /> {{ formatDateTime(row.created_at) }}</span>
-                                <span v-if="row.author_name"><i class="pi pi-user" /> {{ row.author_name }}</span>
-                            </div>
-                        </li>
-                    </ul>
+                    <template v-else>
+                        <ul class="log-list">
+                            <li v-for="row in logs" :key="row.id" class="log-item" :class="{ 'log-item--failed': !row.success }">
+                                <div class="log-item__top">
+                                    <strong>{{ row.dealer_name || t('notifications.dealerFallback') }}</strong>
+                                    <Tag :severity="row.success ? 'success' : 'danger'" :value="statusLabel(row)" />
+                                </div>
+                                <p class="log-item__message">{{ row.message }}</p>
+                                <div class="log-item__meta">
+                                    <span v-if="row.event" class="log-item__event">{{ eventLabel(row.event) }}</span>
+                                    <span dir="ltr"><i class="pi pi-phone" /> {{ row.phone }}</span>
+                                    <span><i class="pi pi-clock" /> {{ formatDateTime(row.created_at) }}</span>
+                                    <span v-if="row.author_name"><i class="pi pi-user" /> {{ row.author_name }}</span>
+                                </div>
+                            </li>
+                        </ul>
+                        <div class="log-footer">
+                            <span v-if="logTotal > 0" class="log-footer__count">
+                                {{ t('dealerNotifications.logShowing', { shown: logs.length, total: logTotal }) }}
+                            </span>
+                            <Button
+                                v-if="logHasMore"
+                                :label="t('dealerNotifications.logShowMore')"
+                                icon="pi pi-angle-down"
+                                severity="secondary"
+                                outlined
+                                size="small"
+                                :loading="loadingMoreLog"
+                                @click="loadMoreLog"
+                            />
+                        </div>
+                    </template>
                 </div>
             </section>
         </div>
@@ -262,11 +279,16 @@ const sendForm = reactive({
 });
 const dealers = ref([]);
 const logs = ref([]);
+const logPage = ref(1);
+const logTotal = ref(0);
+const logHasMore = ref(false);
 const connectionResult = ref(null);
 const savingSettings = ref(false);
 const testing = ref(false);
 const sending = ref(false);
 const loadingLog = ref(false);
+const loadingMoreLog = ref(false);
+const LOG_PER_PAGE = 10;
 
 const dealersWithPhoneCount = computed(() =>
     dealers.value.filter((dealer) => dealer.has_phone).length,
@@ -338,15 +360,40 @@ async function loadDealers() {
     dealers.value = data.data ?? [];
 }
 
-async function loadLog() {
-    loadingLog.value = true;
+async function loadLog({ reset = true } = {}) {
+    if (reset) {
+        loadingLog.value = true;
+        logPage.value = 1;
+    } else {
+        loadingMoreLog.value = true;
+    }
 
     try {
-        const { data } = await api.get('/admin/dealer-notifications');
-        logs.value = data.data ?? [];
+        const page = reset ? 1 : logPage.value + 1;
+        const { data } = await api.get('/admin/dealer-notifications', {
+            params: {
+                page,
+                per_page: LOG_PER_PAGE,
+            },
+        });
+        const rows = data.data ?? [];
+
+        logs.value = reset ? rows : [...logs.value, ...rows];
+        logPage.value = data.meta?.page ?? page;
+        logTotal.value = data.meta?.total ?? logs.value.length;
+        logHasMore.value = Boolean(data.meta?.has_more);
     } finally {
         loadingLog.value = false;
+        loadingMoreLog.value = false;
     }
+}
+
+async function loadMoreLog() {
+    if (loadingLog.value || loadingMoreLog.value || ! logHasMore.value) {
+        return;
+    }
+
+    await loadLog({ reset: false });
 }
 
 async function saveSettings() {
@@ -432,8 +479,10 @@ async function sendNotification() {
 
         if (Array.isArray(data.data) && data.data.length) {
             logs.value = [...data.data, ...logs.value];
+            logTotal.value += data.data.length;
         } else if (data.data) {
             logs.value = [data.data, ...logs.value];
+            logTotal.value += 1;
         } else {
             await loadLog();
         }
@@ -793,6 +842,22 @@ onMounted(async () => {
     display: flex;
     flex-direction: column;
     gap: 0.75rem;
+}
+
+.log-footer {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: center;
+    gap: 0.75rem;
+    margin-top: 1rem;
+    padding-top: 0.85rem;
+    border-top: 1px solid var(--vs-border);
+}
+
+.log-footer__count {
+    font-size: 0.78rem;
+    color: var(--vs-text-muted);
 }
 
 .log-item {

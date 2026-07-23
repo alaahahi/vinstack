@@ -19,10 +19,27 @@ export async function fetchImageTransferStatus(transferId, apiPrefix = '/admin')
     return data.data ?? null;
 }
 
-export async function fetchImageTransfers(apiPrefix = '/admin') {
-    const { data } = await api.get(`${apiPrefix}/image-transfers`);
+/**
+ * @param {string} [apiPrefix='/admin']
+ * @param {{ page?: number, perPage?: number }} [options]
+ */
+export async function fetchImageTransfers(apiPrefix = '/admin', { page = 1, perPage = 10 } = {}) {
+    const { data } = await api.get(`${apiPrefix}/image-transfers`, {
+        params: {
+            page,
+            per_page: perPage,
+        },
+    });
 
-    return data.data ?? [];
+    return {
+        data: data.data ?? [],
+        meta: data.meta ?? {
+            page,
+            per_page: perPage,
+            total: 0,
+            has_more: false,
+        },
+    };
 }
 
 /**

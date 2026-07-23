@@ -32,6 +32,37 @@ class DealerNotificationService
     }
 
     /**
+     * @return array{
+     *     data: list<array<string, mixed>>,
+     *     meta: array{page: int, per_page: int, total: int, last_page: int, has_more: bool}
+     * }
+     */
+    public function listPaginated(int $page = 1, int $perPage = 10): array
+    {
+        $page = max(1, $page);
+        $perPage = max(1, min($perPage, 50));
+
+        $paginator = DealerNotificationLog::query()
+            ->with(['dealer:id,company_name,phone', 'author:id,name'])
+            ->latest()
+            ->paginate(perPage: $perPage, page: $page);
+
+        return [
+            'data' => $paginator->getCollection()
+                ->map(fn (DealerNotificationLog $row) => $this->serialize($row))
+                ->values()
+                ->all(),
+            'meta' => [
+                'page' => $paginator->currentPage(),
+                'per_page' => $paginator->perPage(),
+                'total' => $paginator->total(),
+                'last_page' => $paginator->lastPage(),
+                'has_more' => $paginator->hasMorePages(),
+            ],
+        ];
+    }
+
+    /**
      * @return array{ok: bool, message: string, log?: array<string, mixed>, status?: int|null, errors?: array<string, mixed>|null}
      */
     public function notifyVehicleAssigned(Dealer $dealer, Vehicle $vehicle, ?User $author = null): array
