@@ -7,6 +7,7 @@ use App\Http\Controllers\Admin\DealerController;
 use App\Http\Controllers\Admin\DealerNotificationController;
 use App\Http\Controllers\Admin\ManualVehicleController;
 use App\Http\Controllers\Admin\NotificationController;
+use App\Http\Controllers\Admin\NujoomAlJazeeraImportController;
 use App\Http\Controllers\Admin\ImageTransferController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\Admin\SystemController;
