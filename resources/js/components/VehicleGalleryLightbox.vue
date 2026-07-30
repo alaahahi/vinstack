@@ -76,7 +76,6 @@
                 </div>
 
                 <div class="gallery-actions-bar" role="toolbar" aria-label="إجراءات الصور">
-                    <span v-if="currentIsLocal" class="gallery-local-badge">مرفوعة محلياً</span>
                     <button
                         type="button"
                         class="gallery-action-btn"
@@ -85,24 +84,6 @@
                     >
                         <i class="pi" :class="busyCurrent ? 'pi-spin pi-spinner' : 'pi-download'" />
                         <span class="gallery-action-label">صورة</span>
-                    </button>
-                    <button
-                        type="button"
-                        class="gallery-action-btn"
-                        :disabled="!activeImages.length || busyStage"
-                        @click="onDownloadStage"
-                    >
-                        <i class="pi" :class="busyStage ? 'pi-spin pi-spinner' : 'pi-file-export'" />
-                        <span class="gallery-action-label">{{ busyStage ? stageProgressLabel : activeStageLabel }}</span>
-                    </button>
-                    <button
-                        type="button"
-                        class="gallery-action-btn"
-                        :disabled="!allHdCount || busyAll"
-                        @click="onDownloadAll"
-                    >
-                        <i class="pi" :class="busyAll ? 'pi-spin pi-spinner' : 'pi-box'" />
-                        <span class="gallery-action-label">{{ busyAll ? bulkProgressLabel : 'كل الأنواع' }}</span>
                     </button>
                     <button
                         type="button"
@@ -124,8 +105,6 @@ import { computed, onBeforeUnmount, onMounted, ref, watch } from 'vue';
 import { useToast } from 'primevue/usetoast';
 import VueEasyLightbox from 'vue-easy-lightbox';
 import {
-    downloadAllVehicleImagesByStage,
-    downloadStageVehicleImages,
     downloadVehicleImage,
     shareAllVehicleImages,
 } from '../utils/vehicleImageDownload';
@@ -134,9 +113,7 @@ import {
     vehicleGalleryByStage,
     vehicleGalleryImages,
     vehicleLabel,
-    vehicleUploadedImages,
 } from '../utils/vehicleImages';
-import { isLocalUploadedUrl } from '../utils/vehicleImageUpload';
 
 const props = defineProps({
     visible: {
@@ -165,11 +142,7 @@ const toast = useToast();
 const activeStage = ref('terminal');
 const activeIndex = ref(0);
 const busyCurrent = ref(false);
-const busyStage = ref(false);
-const busyAll = ref(false);
 const busyShare = ref(false);
-const bulkProgress = ref({ current: 0, total: 0 });
-const stageProgress = ref({ current: 0, total: 0 });
 const shareProgress = ref({ current: 0, total: 0 });
 const navLock = ref(false);
 const preloadedUrls = new Set();
@@ -190,26 +163,6 @@ const label = computed(() => vehicleLabel(props.vehicle));
 const allHdCount = computed(() => vehicleGalleryImages(props.vehicle).length);
 
 const currentUrl = computed(() => activeImages.value[activeIndex.value] ?? null);
-
-const currentIsLocal = computed(() =>
-    isLocalUploadedUrl(currentUrl.value, vehicleUploadedImages(props.vehicle)),
-);
-
-const bulkProgressLabel = computed(() => {
-    if (! busyAll.value || bulkProgress.value.total === 0) {
-        return 'جاري التحميل…';
-    }
-
-    return `جاري التحميل ${bulkProgress.value.current}/${bulkProgress.value.total}`;
-});
-
-const stageProgressLabel = computed(() => {
-    if (! busyStage.value || stageProgress.value.total === 0) {
-        return 'جاري التحميل…';
-    }
-
-    return `جاري التحميل ${stageProgress.value.current}/${stageProgress.value.total}`;
-});
 
 const shareProgressLabel = computed(() => {
     if (! busyShare.value || shareProgress.value.total === 0) {
@@ -380,90 +333,6 @@ async function onDownloadCurrent() {
         });
     } finally {
         busyCurrent.value = false;
-    }
-}
-
-async function onDownloadStage() {
-    if (! activeImages.value.length || busyStage.value) {
-        return;
-    }
-
-    busyStage.value = true;
-    stageProgress.value = { current: 0, total: activeImages.value.length };
-
-    try {
-        const result = await downloadStageVehicleImages(props.vehicle, activeStage.value, {
-            onProgress: (current, total) => {
-                stageProgress.value = { current, total };
-            },
-        });
-
-        toast.add({
-            severity: 'success',
-            summary: `تم تحميل ${activeStageLabel.value}`,
-            detail: `${result.count} من ${result.total} صورة`,
-            life: 4000,
-        });
-    } catch (error) {
-        if (error?.message === 'no_images') {
-            toast.add({
-                severity: 'warn',
-                summary: 'لا توجد صور في هذه المرحلة',
-                life: 3000,
-            });
-        } else {
-            toast.add({
-                severity: 'error',
-                summary: 'تعذّر تحميل الصور',
-                detail: 'تحقق من الاتصال أو جرّب صورة واحدة',
-                life: 4000,
-            });
-        }
-    } finally {
-        busyStage.value = false;
-        stageProgress.value = { current: 0, total: 0 };
-    }
-}
-
-async function onDownloadAll() {
-    if (! allHdCount.value || busyAll.value) {
-        return;
-    }
-
-    busyAll.value = true;
-    bulkProgress.value = { current: 0, total: allHdCount.value };
-
-    try {
-        const result = await downloadAllVehicleImagesByStage(props.vehicle, {
-            onProgress: (current, total) => {
-                bulkProgress.value = { current, total };
-            },
-        });
-
-        toast.add({
-            severity: 'success',
-            summary: 'تم تحميل الأرشيف',
-            detail: `${result.zipCount} ملف ZIP — ${result.count} من ${result.total} صورة`,
-            life: 5000,
-        });
-    } catch (error) {
-        if (error?.message === 'no_images') {
-            toast.add({
-                severity: 'warn',
-                summary: 'لا توجد صور للتحميل',
-                life: 3000,
-            });
-        } else {
-            toast.add({
-                severity: 'error',
-                summary: 'تعذّر تحميل الصور',
-                detail: 'تحقق من الاتصال أو جرّب صورة واحدة',
-                life: 4000,
-            });
-        }
-    } finally {
-        busyAll.value = false;
-        bulkProgress.value = { current: 0, total: 0 };
     }
 }
 
@@ -704,17 +573,6 @@ onBeforeUnmount(() => {
     max-width: none;
 }
 
-.gallery-local-badge {
-    display: inline-flex;
-    align-items: center;
-    padding: 0.35rem 0.65rem;
-    border-radius: 999px;
-    background: #ecfdf5;
-    color: #047857;
-    font-size: 0.72rem;
-    font-weight: 600;
-}
-
 .gallery-action-btn {
     display: inline-flex;
     align-items: center;
@@ -751,13 +609,13 @@ onBeforeUnmount(() => {
 .gallery-stage-tab {
     display: inline-flex;
     align-items: center;
-    gap: 0.45rem;
-    padding: 0.4rem 0.75rem;
+    gap: 0.35rem;
+    padding: 0.3rem 0.62rem;
     border: 1px solid rgb(255 255 255 / 18%);
     border-radius: 999px;
     background: rgb(24 24 27 / 72%);
     color: rgb(255 255 255 / 82%);
-    font-size: 0.8rem;
+    font-size: 0.74rem;
     font-weight: 600;
     cursor: pointer;
     backdrop-filter: blur(8px);
@@ -779,15 +637,15 @@ onBeforeUnmount(() => {
 }
 
 .gallery-stage-count {
-    min-width: 1.25rem;
-    height: 1.25rem;
-    padding: 0 0.35rem;
+    min-width: 1.1rem;
+    height: 1.1rem;
+    padding: 0 0.3rem;
     border-radius: 999px;
     background: rgb(0 0 0 / 28%);
     color: inherit;
-    font-size: 0.72rem;
+    font-size: 0.66rem;
     font-weight: 700;
-    line-height: 1.25rem;
+    line-height: 1.1rem;
     text-align: center;
 }
 

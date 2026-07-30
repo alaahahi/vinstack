@@ -1,16 +1,79 @@
 <template>
     <div class="layout">
         <header class="header">
-            <div class="brand">
-                <div class="brand-logo-frame">
-                    <img :src="themeLogo" alt="KAML KAMAL" class="brand-logo" />
+            <div class="header-top">
+                <div class="brand">
+                    <div class="brand-logo-frame">
+                        <img :src="themeLogo" alt="KAML KAMAL" class="brand-logo" />
+                    </div>
+                    <div class="brand-text">
+                        <h2>KAML KAMAL</h2>
+                        <p class="brand-tagline">Fast. Safe. Reliable.</p>
+                        <p v-if="auth.user?.dealer?.company_name" class="brand-sub">
+                            {{ auth.user.dealer.company_name }}
+                        </p>
+                    </div>
                 </div>
-                <div class="brand-text">
-                    <h2>KAML KAMAL</h2>
-                    <p class="brand-tagline">Fast. Safe. Reliable.</p>
-                    <p v-if="auth.user?.dealer?.company_name" class="brand-sub">
-                        {{ auth.user.dealer.company_name }}
-                    </p>
+
+                <div ref="headerMenuWrap" class="header-menu-wrap">
+                    <button
+                        type="button"
+                        class="header-menu-trigger"
+                        aria-haspopup="menu"
+                        :aria-expanded="headerMenuOpen"
+                        @click.stop="toggleHeaderMenu"
+                    >
+                        <i class="pi pi-cog" aria-hidden="true" />
+                        <span class="header-menu-trigger__label">الخيارات</span>
+                        <i class="pi pi-ellipsis-v" aria-hidden="true" />
+                    </button>
+
+                    <div
+                        v-if="headerMenuOpen"
+                        class="header-menu-panel"
+                        role="menu"
+                        aria-label="خيارات البوابة"
+                        @click.stop
+                    >
+                        <div class="header-menu-account">
+                            <strong class="header-menu-account__name">{{ dealerCompanyName }}</strong>
+                            <span class="header-menu-account__caption">{{ t('navigation.account') }}</span>
+                        </div>
+
+                        <RouterLink
+                            :to="{ name: 'dealer.profile' }"
+                            class="header-menu-link"
+                            role="menuitem"
+                            @click="closeHeaderMenu"
+                        >
+                            <i class="pi pi-user" aria-hidden="true" />
+                            <span>{{ t('navigation.profile') }}</span>
+                        </RouterLink>
+
+                        <div class="header-menu-divider" />
+
+                        <div class="header-menu-control">
+                            <span class="header-menu-control__label">{{ t('locale.label') }}</span>
+                            <LocaleSwitcher />
+                        </div>
+
+                        <div class="header-menu-control">
+                            <span class="header-menu-control__label">المظهر</span>
+                            <ThemeToggle />
+                        </div>
+
+                        <div class="header-menu-divider" />
+
+                        <button
+                            type="button"
+                            class="header-menu-link header-menu-link--danger"
+                            role="menuitem"
+                            @click="confirmLogout"
+                        >
+                            <i class="pi pi-sign-out" aria-hidden="true" />
+                            <span>{{ t('actions.logout') }}</span>
+                        </button>
+                    </div>
                 </div>
             </div>
 
@@ -25,22 +88,6 @@
                     <span>{{ item.label }}</span>
                 </RouterLink>
             </nav>
-
-            <div class="header-actions">
-                <LocaleSwitcher />
-                <ThemeToggle />
-                <Button
-                    icon="pi pi-user"
-                    :label="profileLabel"
-                    severity="secondary"
-                    text
-                    class="profile-btn"
-                    @click="toggleProfileMenu"
-                    aria-haspopup="true"
-                    :aria-expanded="profileMenuOpen"
-                />
-                <Menu ref="profileMenu" :model="profileMenuItems" popup />
-            </div>
         </header>
 
         <main class="content">
@@ -59,8 +106,6 @@
 import { computed, onMounted, onUnmounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
-import Button from 'primevue/button';
-import Menu from 'primevue/menu';
 import { useConfirm } from 'primevue/useconfirm';
 import { useAuthStore } from '../stores/auth';
 import { useTheme } from '../composables/useTheme';
@@ -77,51 +122,46 @@ let heartbeatTimer = null;
 const router = useRouter();
 const route = useRoute();
 const confirm = useConfirm();
-const profileMenu = ref(null);
-const profileMenuOpen = ref(false);
+const headerMenuWrap = ref(null);
+const headerMenuOpen = ref(false);
 
 const navItems = computed(() => [
-    { name: 'dealer.vehicles', label: t('navigation.myVehicles'), icon: 'pi pi-car' },
-    { name: 'dealer.containers', label: t('navigation.myContainers'), icon: 'pi pi-box' },
-    { name: 'dealer.profile', label: t('navigation.profile'), icon: 'pi pi-user' },
+    { name: 'dealer.vehicles', label: 'السيارات', icon: 'pi pi-car' },
+    { name: 'dealer.containers', label: 'الكونتينر', icon: 'pi pi-box' },
 ]);
 
 const pageTitle = computed(() => (
     route.meta.titleKey ? t(route.meta.titleKey) : (route.meta.title || '')
 ));
 
-const profileLabel = computed(() => {
-    if (route.name === 'dealer.profile') {
-        return t('navigation.profile');
+const dealerCompanyName = computed(() => auth.user?.dealer?.company_name || t('navigation.myAccount'));
+
+function toggleHeaderMenu() {
+    headerMenuOpen.value = ! headerMenuOpen.value;
+}
+
+function closeHeaderMenu() {
+    headerMenuOpen.value = false;
+}
+
+function onDocumentClick(event) {
+    if (! headerMenuOpen.value) {
+        return;
     }
 
-    return '';
-});
+    if (headerMenuWrap.value && ! headerMenuWrap.value.contains(event.target)) {
+        closeHeaderMenu();
+    }
+}
 
-const profileMenuItems = computed(() => [
-    {
-        label: auth.user?.dealer?.company_name || t('navigation.myAccount'),
-        items: [
-            {
-                label: t('navigation.adminProfile'),
-                icon: 'pi pi-user',
-                command: () => router.push({ name: 'dealer.profile' }),
-            },
-            {
-                label: t('actions.logout'),
-                icon: 'pi pi-sign-out',
-                command: confirmLogout,
-            },
-        ],
-    },
-]);
-
-function toggleProfileMenu(event) {
-    profileMenu.value.toggle(event);
-    profileMenuOpen.value = ! profileMenuOpen.value;
+function onDocumentKeydown(event) {
+    if (event.key === 'Escape') {
+        closeHeaderMenu();
+    }
 }
 
 function confirmLogout() {
+    closeHeaderMenu();
     confirm.require({
         message: t('dealer.logoutPrompt'),
         header: t('actions.logout'),
@@ -148,6 +188,9 @@ async function sendHeartbeat() {
 }
 
 onMounted(() => {
+    document.addEventListener('click', onDocumentClick);
+    document.addEventListener('keydown', onDocumentKeydown);
+
     if (auth.token) {
         sendHeartbeat();
         heartbeatTimer = setInterval(sendHeartbeat, HEARTBEAT_MS);
@@ -155,6 +198,9 @@ onMounted(() => {
 });
 
 onUnmounted(() => {
+    document.removeEventListener('click', onDocumentClick);
+    document.removeEventListener('keydown', onDocumentKeydown);
+
     if (heartbeatTimer) {
         clearInterval(heartbeatTimer);
     }
@@ -174,14 +220,22 @@ onUnmounted(() => {
     grid-column: 1 / -1;
     background: var(--dealer-header-bg);
     color: var(--dealer-header-text);
-    padding: 0.85rem 1.25rem;
+    padding: 0.8rem 1.25rem 0.7rem;
     display: flex;
-    align-items: center;
-    gap: 1rem;
-    flex-wrap: wrap;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 0.7rem;
     position: sticky;
     top: 0;
     z-index: 20;
+}
+
+.header-top {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    min-width: 0;
 }
 
 .brand {
@@ -220,11 +274,127 @@ onUnmounted(() => {
     white-space: nowrap;
 }
 
+.header-menu-wrap {
+    position: relative;
+    flex-shrink: 0;
+}
+
+.header-menu-trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.7rem;
+    border: 1px solid rgb(255 255 255 / 14%);
+    border-radius: 999px;
+    background: rgb(255 255 255 / 0.06);
+    color: var(--dealer-header-text);
+    cursor: pointer;
+    transition: background 0.15s ease, border-color 0.15s ease;
+}
+
+.header-menu-trigger:hover {
+    background: var(--dealer-nav-hover);
+    border-color: rgb(255 255 255 / 18%);
+}
+
+.header-menu-trigger__label {
+    font-size: 0.8rem;
+    font-weight: 600;
+}
+
+.header-menu-panel {
+    position: absolute;
+    top: calc(100% + 0.55rem);
+    inset-inline-end: 0;
+    width: min(22rem, calc(100vw - 2rem));
+    padding: 0.65rem;
+    border: 1px solid rgb(255 255 255 / 0.1);
+    border-radius: 16px;
+    background: color-mix(in srgb, var(--dealer-header-bg) 92%, #0b1220 8%);
+    box-shadow: 0 18px 40px rgb(15 23 42 / 0.28);
+    backdrop-filter: blur(18px);
+}
+
+.header-menu-account {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.15rem 0.15rem 0.5rem;
+}
+
+.header-menu-account__name {
+    font-size: 0.88rem;
+}
+
+.header-menu-account__caption {
+    font-size: 0.72rem;
+    color: var(--dealer-header-muted);
+}
+
+.header-menu-divider {
+    height: 1px;
+    margin: 0.45rem 0;
+    background: rgb(255 255 255 / 0.08);
+}
+
+.header-menu-link {
+    width: 100%;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.55rem;
+    padding: 0.65rem 0.7rem;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--dealer-header-text);
+    text-decoration: none;
+    font: inherit;
+    cursor: pointer;
+    transition: background 0.15s ease, color 0.15s ease;
+}
+
+.header-menu-link:hover {
+    background: var(--dealer-nav-hover);
+    color: #fff;
+}
+
+.header-menu-link--danger {
+    color: #fecaca;
+}
+
+.header-menu-control {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.45rem 0.2rem;
+}
+
+.header-menu-control__label {
+    font-size: 0.76rem;
+    color: var(--dealer-header-muted);
+    white-space: nowrap;
+}
+
+.header-menu-panel :deep(.locale-switcher) {
+    gap: 0.35rem;
+}
+
+.header-menu-panel :deep(.locale-switcher__label) {
+    display: none;
+}
+
+.header-menu-panel :deep(.locale-switcher__select) {
+    min-height: 2rem;
+    padding: 0.35rem 0.6rem;
+    font-size: 0.78rem;
+}
+
 .nav {
     display: flex;
-    gap: 0.25rem;
-    flex: 1;
-    flex-wrap: wrap;
+    gap: 0.45rem;
+    width: 100%;
+    flex-wrap: nowrap;
 }
 
 .nav-link {
@@ -233,10 +403,15 @@ onUnmounted(() => {
     gap: 0.4rem;
     color: var(--dealer-header-text);
     text-decoration: none;
-    padding: 0.5rem 0.75rem;
-    border-radius: 8px;
-    font-size: 0.88rem;
-    transition: background 0.12s ease, color 0.12s ease;
+    justify-content: center;
+    flex: 1 1 0;
+    padding: 0.55rem 0.8rem;
+    border: 1px solid rgb(255 255 255 / 0.08);
+    border-radius: 999px;
+    font-size: 0.84rem;
+    font-weight: 600;
+    background: rgb(255 255 255 / 0.04);
+    transition: background 0.12s ease, color 0.12s ease, border-color 0.12s ease;
 }
 
 .nav-link:hover {
@@ -247,52 +422,12 @@ onUnmounted(() => {
 .nav-link.router-link-active {
     background: var(--dealer-nav-active);
     color: #fff;
-    font-weight: 600;
+    border-color: rgb(255 255 255 / 0.14);
 }
 
 .nav-link i {
-    font-size: 0.95rem;
+    font-size: 0.9rem;
     opacity: 0.9;
-}
-
-.header-actions {
-    display: flex;
-    align-items: center;
-    justify-content: center;
-    gap: 0.25rem;
-    margin-inline-start: auto;
-}
-
-.header-actions :deep(.theme-toggle) {
-    display: inline-flex;
-    justify-content: center;
-    align-items: center;
-}
-
-.header-actions :deep(.theme-toggle .p-button) {
-    color: var(--dealer-header-text);
-    width: 2.5rem;
-    height: 2.5rem;
-    min-width: 2.5rem;
-    min-height: 2.5rem;
-    padding: 0;
-    border-radius: 50%;
-    aspect-ratio: 1;
-}
-
-.header-actions :deep(.theme-toggle .p-button:hover) {
-    background: var(--dealer-nav-hover);
-    color: #fff;
-}
-
-.profile-btn :deep(.p-button-label) {
-    display: none;
-}
-
-@media (min-width: 640px) {
-    .profile-btn :deep(.p-button-label) {
-        display: inline;
-    }
 }
 
 .content {
@@ -323,27 +458,22 @@ onUnmounted(() => {
 
 @media (max-width: 640px) {
     .header {
-        padding: 0.75rem 1rem;
+        padding: 0.75rem 1rem 0.65rem;
         isolation: isolate;
     }
 
+    .header-top {
+        align-items: flex-start;
+    }
+
     .nav {
-        order: 3;
-        width: 100%;
-        justify-content: stretch;
-        position: relative;
-        z-index: 1;
+        gap: 0.4rem;
     }
 
     .nav-link {
-        flex: 1;
         justify-content: center;
         touch-action: manipulation;
         -webkit-tap-highlight-color: rgba(255, 255, 255, 0.08);
-    }
-
-    .header-actions {
-        margin-inline-start: 0;
     }
 
     .content {
@@ -358,22 +488,25 @@ onUnmounted(() => {
         width: 4rem;
     }
 
+    .header-menu-trigger {
+        min-height: 44px;
+        padding-inline: 0.65rem;
+    }
+
+    .header-menu-panel {
+        width: min(20rem, calc(100vw - 2rem));
+    }
+
+    .header-menu-control {
+        align-items: flex-start;
+        flex-direction: column;
+        gap: 0.45rem;
+    }
+
     .nav-link {
         min-height: 44px;
-        padding: 0.55rem 0.45rem;
+        padding: 0.52rem 0.45rem;
         font-size: 0.8rem;
-    }
-
-    .profile-btn :deep(.p-button) {
-        min-width: 44px;
-        min-height: 44px;
-    }
-
-    .header-actions :deep(.theme-toggle .p-button) {
-        width: 44px;
-        height: 44px;
-        min-width: 44px;
-        min-height: 44px;
     }
 }
 </style>
