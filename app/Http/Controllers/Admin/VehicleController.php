@@ -10,12 +10,14 @@ use App\Http\Requests\Admin\AssignVehicleRequest;
 use App\Enums\VehicleSource;
 use App\Models\Dealer;
 use App\Models\Vehicle;
+use App\Services\AdminVehicleIndexCache;
 use App\Services\ContainerTrackingService;
 use App\Services\VehicleDetailService;
 use App\Services\VehicleMessageService;
 use App\Services\VehicleUploadedImageService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Database\Eloquent\Builder;
 
 class VehicleController extends Controller
 {
@@ -24,7 +26,44 @@ class VehicleController extends Controller
         VehicleUploadedImageService $gallery,
         ContainerTrackingService $tracking,
         VehicleMessageService $messages,
+        AdminVehicleIndexCache $cache,
     ): JsonResponse
+    {
+        /** @var \App\Models\User $user */
+        $user = $request->user();
+
+        $payload = $cache->remember($request, $user, function () use ($request, $gallery) {
+            $vehicles = $this->buildIndexQuery($request)->paginate(
+                perPage: min((int) $request->input('per_page', 50), 100),
+                page: (int) $request->input('page', 1),
+            );
+
+            $vehicles->through(fn (Vehicle $vehicle) => $gallery->enrichListVehicle($vehicle));
+
+            return [
+                'data' => $vehicles->items(),
+                'meta' => [
+                    'current_page' => $vehicles->currentPage(),
+                    'last_page' => $vehicles->lastPage(),
+                    'per_page' => $vehicles->perPage(),
+                    'total' => $vehicles->total(),
+                    'from' => $vehicles->firstItem(),
+                    'to' => $vehicles->lastItem(),
+                    'has_more' => $vehicles->hasMorePages(),
+                ],
+            ];
+        });
+
+        $items = $messages->attachUnreadCounts($payload['data'], UserRole::Admin);
+
+        return response()->json([
+            'data' => $items,
+            'meta' => $payload['meta'],
+            'tracking_available' => $tracking->trackingAvailable(),
+        ]);
+    }
+
+    protected function buildIndexQuery(Request $request): Builder
     {
         $query = Vehicle::query()
             ->with(['activeAssignment.dealer.user:id,name,email,phone', 'uploadedImages']);
@@ -80,33 +119,12 @@ class VehicleController extends Controller
 
             if (in_array($sortField, $allowedSort, true)) {
                 $query->orderBy($sortField, $sortOrder);
+
+                return $query;
             }
-        } else {
-            $query->newestFirst();
         }
 
-        $vehicles = $query->paginate(
-            perPage: min((int) $request->input('per_page', 50), 100),
-            page: (int) $request->input('page', 1),
-        );
-
-        $vehicles->through(fn (Vehicle $vehicle) => $gallery->enrichListVehicle($vehicle));
-
-        $items = $messages->attachUnreadCounts($vehicles->items(), UserRole::Admin);
-
-        return response()->json([
-            'data' => $items,
-            'meta' => [
-                'current_page' => $vehicles->currentPage(),
-                'last_page' => $vehicles->lastPage(),
-                'per_page' => $vehicles->perPage(),
-                'total' => $vehicles->total(),
-                'from' => $vehicles->firstItem(),
-                'to' => $vehicles->lastItem(),
-                'has_more' => $vehicles->hasMorePages(),
-            ],
-            'tracking_available' => $tracking->trackingAvailable(),
-        ]);
+        return $query->newestFirst();
     }
 
     public function details(Vehicle $vehicle, VehicleDetailService $details): JsonResponse

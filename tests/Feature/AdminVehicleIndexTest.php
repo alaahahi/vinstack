@@ -10,6 +10,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleAssignment;
 use App\Services\VehicleUploadedImageService;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -21,6 +22,8 @@ class AdminVehicleIndexTest extends TestCase
     protected function setUp(): void
     {
         parent::setUp();
+
+        Cache::flush();
 
         $this->mock(VehicleUploadedImageService::class, function ($mock): void {
             $mock->shouldReceive('enrichListVehicle')
@@ -205,5 +208,127 @@ class AdminVehicleIndexTest extends TestCase
             $newerPurchase->vin,
             $olderPurchase->vin,
         ], $vins);
+    }
+
+    public function test_admin_vehicle_list_reuses_cached_payload_for_same_query(): void
+    {
+        $this->mock(VehicleUploadedImageService::class, function ($mock): void {
+            $mock->shouldReceive('enrichListVehicle')
+                ->once()
+                ->andReturnUsing(fn (Vehicle $vehicle) => $vehicle->toArray());
+        });
+
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        Vehicle::query()->create([
+            'source' => VehicleSource::Vinstack,
+            'vinstack_id' => 'vs-cache-1',
+            'vin' => '1HGCM82633A004364',
+            'status' => VehicleStatus::Available,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $uri = '/api/admin/vehicles?search=1HGCM82633A004364&per_page=50&page=1';
+
+        $this->getJson($uri)->assertOk()->assertJsonPath('meta.total', 1);
+        $this->getJson($uri)->assertOk()->assertJsonPath('meta.total', 1);
+    }
+
+    public function test_admin_vehicle_list_cache_expires_after_five_minutes(): void
+    {
+        $this->mock(VehicleUploadedImageService::class, function ($mock): void {
+            $mock->shouldReceive('enrichListVehicle')
+                ->twice()
+                ->andReturnUsing(fn (Vehicle $vehicle) => $vehicle->toArray());
+        });
+
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        Vehicle::query()->create([
+            'source' => VehicleSource::Manual,
+            'vinstack_id' => 'manual-cache-ttl-1',
+            'vin' => '1HGCM82633A004365',
+            'status' => VehicleStatus::Available,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $uri = '/api/admin/vehicles?source=manual';
+
+        $this->getJson($uri)->assertOk()->assertJsonPath('meta.total', 1);
+
+        $this->travel(6)->minutes();
+
+        $this->getJson($uri)->assertOk()->assertJsonPath('meta.total', 1);
+    }
+
+    public function test_admin_vehicle_list_cache_is_invalidated_when_vehicle_data_changes(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
+        Vehicle::query()->create([
+            'source' => VehicleSource::Vinstack,
+            'vinstack_id' => 'vs-cache-bust-1',
+            'vin' => '1HGCM82633A004366',
+            'status' => VehicleStatus::Available,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $uri = '/api/admin/vehicles?source=vinstack';
+
+        $this->getJson($uri)
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1);
+
+        Vehicle::query()->create([
+            'source' => VehicleSource::Vinstack,
+            'vinstack_id' => 'vs-cache-bust-2',
+            'vin' => '1HGCM82633A004367',
+            'status' => VehicleStatus::Available,
+        ]);
+
+        $this->getJson($uri)
+            ->assertOk()
+            ->assertJsonPath('meta.total', 2);
+    }
+
+    public function test_admin_vehicle_list_cache_is_invalidated_when_assignment_changes(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $dealerUser = User::factory()->create(['role' => UserRole::Dealer]);
+        $dealer = Dealer::query()->create([
+            'user_id' => $dealerUser->id,
+            'company_name' => 'Dealer Cache Test',
+        ]);
+
+        $vehicle = Vehicle::query()->create([
+            'source' => VehicleSource::Vinstack,
+            'vinstack_id' => 'vs-cache-assignment-1',
+            'vin' => '1HGCM82633A004368',
+            'status' => VehicleStatus::Available,
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $uri = "/api/admin/vehicles?dealer_id={$dealer->id}";
+
+        $this->getJson($uri)
+            ->assertOk()
+            ->assertJsonPath('meta.total', 0);
+
+        VehicleAssignment::query()->create([
+            'vehicle_id' => $vehicle->id,
+            'dealer_id' => $dealer->id,
+            'assigned_by' => $admin->id,
+            'assigned_at' => now(),
+            'is_active' => true,
+        ]);
+
+        $this->getJson($uri)
+            ->assertOk()
+            ->assertJsonPath('meta.total', 1)
+            ->assertJsonPath('data.0.vin', $vehicle->vin);
     }
 }
