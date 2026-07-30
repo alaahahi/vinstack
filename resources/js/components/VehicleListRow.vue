@@ -105,12 +105,12 @@
                 <span class="date-value">{{ purchaseDate || '—' }}</span>
             </div>
             <div class="date-row">
-                <span class="date-label">{{ t('vehicles.eta') }}</span>
-                <span class="date-value">{{ etaDate || '—' }}</span>
-            </div>
-            <div class="date-row">
                 <span class="date-label">{{ t('vehicles.arrivedTerminal') }}</span>
                 <span class="date-value">{{ arrivedDate || '—' }}</span>
+            </div>
+            <div class="date-row">
+                <span class="date-label">{{ t('vehicles.eta') }}</span>
+                <span class="date-value">{{ etaDate || '—' }}</span>
             </div>
         </div>
 
