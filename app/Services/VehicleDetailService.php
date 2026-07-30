@@ -25,6 +25,7 @@ class VehicleDetailService
         $local = is_array($vehicle->raw_data) ? $vehicle->raw_data : [];
         $fresh = $this->fetchVinstackData($vehicle);
         $merged = array_merge($local, $fresh);
+        $merged['eta'] ??= $vehicle->eta;
 
         $vehicle->loadMissing('uploadedImages');
 
@@ -37,6 +38,7 @@ class VehicleDetailService
             'vin' => $this->string($merged, 'vin') ?: $vehicle->vin,
             'title' => $this->buildTitle($merged, $vehicle),
             'status' => $this->string($merged, 'status'),
+            'eta' => $this->string($merged, 'eta') ?: $vehicle->eta,
             'local_status' => $vehicle->status?->value ?? (string) $vehicle->status,
             'images' => $images,
             'images_by_stage' => $imagesByStage,
@@ -118,11 +120,13 @@ class VehicleDetailService
                 'title' => 'Dates',
                 'fields' => $this->fields($merged, [
                     'purchase_date' => 'Purchase date',
+                    'eta' => 'ETA',
                     'arrived_terminal_date' => 'Arrived terminal',
                     'left_terminal' => 'Left terminal',
                     'title_received' => 'Title received',
                 ], [
                     'purchase_date' => 'date',
+                    'eta' => 'date',
                     'arrived_terminal_date' => 'date',
                     'left_terminal' => 'date',
                     'title_received' => 'date',

@@ -18,6 +18,7 @@ class VehicleRawDataLocations
         'city',
         'container_number',
         'booking_number',
+        'eta',
         'shipping_method',
         'delivery_type',
         'location',

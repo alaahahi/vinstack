@@ -330,6 +330,8 @@ class VehicleUploadedImageService
 
         $data['thumbnail_url'] = $thumbnail;
 
+        $data['eta'] = $vehicle->eta;
+
         $data['uploaded_images'] = array_map(
 
             fn (VehicleUploadedImage $image) => $this->formatImage($image),
@@ -341,6 +343,12 @@ class VehicleUploadedImageService
 
 
         if (is_array($data['raw_data'] ?? null)) {
+
+            if (! isset($data['raw_data']['eta']) && $vehicle->eta) {
+
+                $data['raw_data']['eta'] = $vehicle->eta;
+
+            }
 
             $data['raw_data'] = VehicleRawDataLocations::sanitizeForList($data['raw_data']);
 

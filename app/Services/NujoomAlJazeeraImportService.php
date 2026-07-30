@@ -6,6 +6,7 @@ use App\Enums\NujoomImportApplyMode;
 use App\Enums\VehicleSource;
 use App\Enums\VehicleStatus;
 use App\Models\Vehicle;
+use App\Support\VehicleEta;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Cache;
@@ -345,6 +346,8 @@ class NujoomAlJazeeraImportService
             throw new RuntimeException('رقم الشاصي غير صالح أو مفقود.');
         }
 
+        $eta = VehicleEta::normalize($row['eta'] ?? null);
+
         $rawData = [
             'source' => VehicleSource::NujoomAlJazeera->value,
             'vin' => $vin,
@@ -374,7 +377,7 @@ class NujoomAlJazeeraImportService
             'container_number' => $this->nullableString($row['container_number'] ?? null),
             'etd' => $this->nullableString($row['etd'] ?? null),
             'shipping_date' => $this->nullableString($row['shipping_date'] ?? null),
-            'eta' => $this->nullableString($row['eta'] ?? null),
+            'eta' => $eta,
             'store_arrival' => $this->nullableString($row['store_arrival'] ?? null),
             'paid' => $this->nullableString($row['paid'] ?? null),
             'sold' => $this->nullableString($row['sold'] ?? null),
@@ -394,6 +397,7 @@ class NujoomAlJazeeraImportService
             'model' => $ymm['model'],
             'year' => $ymm['year'],
             'price' => $this->parsePrice($row['auction_price'] ?? null),
+            'eta' => $eta,
             'container_number' => $rawData['container_number'] ?? null,
             'booking_number' => $rawData['booking_number'] ?? null,
             'loading_point' => $rawData['loading_point'] ?? null,
@@ -421,6 +425,7 @@ class NujoomAlJazeeraImportService
             'model' => $payload['model'],
             'year' => $payload['year'],
             'price' => $payload['price'],
+            'eta' => $payload['eta'] ?? null,
             'status' => VehicleStatus::Available,
             'images' => [],
             'raw_data' => $rawData,
@@ -452,6 +457,7 @@ class NujoomAlJazeeraImportService
             'model' => $payload['model'] ?: $vehicle->model,
             'year' => $payload['year'] ?: $vehicle->year,
             'price' => $payload['price'] ?? $vehicle->price,
+            'eta' => $payload['eta'] ?? $vehicle->eta,
             'raw_data' => $rawData,
         ]);
     }
@@ -669,6 +675,7 @@ class NujoomAlJazeeraImportService
             'make' => $mapped['make'],
             'model' => $mapped['model'],
             'year' => $mapped['year'],
+            'eta' => $mapped['eta'] ?? null,
             'container_number' => $mapped['container_number'] ?? null,
             'booking_number' => $mapped['booking_number'] ?? null,
             'destination' => $mapped['destination'] ?? null,

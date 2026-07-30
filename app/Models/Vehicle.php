@@ -22,6 +22,7 @@ class Vehicle extends Model
         'model',
         'year',
         'price',
+        'eta',
         'status',
         'images',
         'raw_data',

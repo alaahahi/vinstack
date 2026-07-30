@@ -10,6 +10,7 @@ use App\Services\VinstackService;
 use App\Services\DealerNotificationService;
 use App\Services\VehicleStatusNotificationService;
 use App\Support\VehicleGalleryMerger;
+use App\Support\VehicleEta;
 use App\Support\VehicleImageStages;
 use App\Support\VehicleRawDataLocations;
 use Illuminate\Support\Arr;
@@ -129,6 +130,11 @@ class SyncVehiclesAction
     {
         $imagesByStage = VehicleImageStages::resolve($item);
         $images = [];
+        $eta = VehicleEta::normalize(
+            Arr::get($item, 'eta')
+                ?? Arr::get($item, 'eta_date')
+                ?? Arr::get($item, 'estimated_arrival')
+        );
 
         foreach (VehicleImageStages::STAGES as $stage) {
             foreach ($imagesByStage[$stage] as $url) {
@@ -144,9 +150,11 @@ class SyncVehiclesAction
             'model' => Arr::get($item, 'model'),
             'year' => Arr::get($item, 'year'),
             'price' => Arr::get($item, 'price'),
+            'eta' => $eta,
             'images' => $images,
             'raw_data' => [
                 ...$item,
+                'eta' => $eta,
                 'images_by_stage' => $imagesByStage,
             ],
         ];

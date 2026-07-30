@@ -76,7 +76,7 @@ class VehicleController extends Controller
         if ($request->filled('sort_field')) {
             $sortField = $request->input('sort_field');
             $sortOrder = $request->input('sort_order', 'desc') === 'asc' ? 'asc' : 'desc';
-            $allowedSort = ['id', 'vin', 'make', 'model', 'year', 'price', 'status', 'created_at'];
+            $allowedSort = ['id', 'vin', 'make', 'model', 'year', 'price', 'eta', 'status', 'created_at'];
 
             if (in_array($sortField, $allowedSort, true)) {
                 $query->orderBy($sortField, $sortOrder);

@@ -104,6 +104,7 @@ export default {
         },
         enteredBy: 'أدخلها {name}',
         purchase: 'الشراء',
+        eta: 'ETA',
         arrivedTerminal: 'وصول الميناء',
         trackContainer: 'تتبع الحاوية',
         localUploads: 'يوجد صور مرفوعة محلياً للتاجر',

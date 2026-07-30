@@ -64,6 +64,7 @@ class NujoomAlJazeeraImportTest extends TestCase
         $this->assertDatabaseHas('vehicles', [
             'vin' => '4T1DAACK6SU551977',
             'source' => VehicleSource::NujoomAlJazeera->value,
+            'eta' => '2026-07-20',
         ]);
     }
 
@@ -120,6 +121,8 @@ class NujoomAlJazeeraImportTest extends TestCase
         ]);
 
         $updated = Vehicle::query()->where('vin', '1HGCY2F54SA066635')->first();
+        $this->assertSame('2026-07-25', $updated->eta);
+        $this->assertSame('2026-07-25', $updated->raw_data['eta']);
         $this->assertSame('Loading', $updated->raw_data['status']);
     }
 
@@ -179,7 +182,7 @@ class NujoomAlJazeeraImportTest extends TestCase
             null,
             null,
             null,
-            null,
+            '2026-07-20',
             null,
             null,
             null,
@@ -224,7 +227,7 @@ class NujoomAlJazeeraImportTest extends TestCase
             null,
             null,
             null,
-            null,
+            '2026-07-25',
             null,
             null,
             null,

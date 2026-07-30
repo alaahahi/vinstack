@@ -104,6 +104,7 @@ export default {
         },
         enteredBy: 'Entered by {name}',
         purchase: 'Purchase',
+        eta: 'ETA',
         arrivedTerminal: 'Arrived terminal',
         trackContainer: 'Track container',
         localUploads: 'Locally uploaded images for dealer',

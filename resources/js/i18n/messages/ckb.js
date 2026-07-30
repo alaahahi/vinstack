@@ -104,6 +104,7 @@ export default {
         },
         enteredBy: 'تۆمارکراوە لەلایەن {name}',
         purchase: 'کڕین',
+        eta: 'ETA',
         arrivedTerminal: 'گەیشتن بە تێرمیناڵ',
         trackContainer: 'بەدواداچوونی کۆنتەینەر',
         localUploads: 'وێنەی بارکراوی ناوخۆیی بۆ بازرگان هەیە',

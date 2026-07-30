@@ -24,7 +24,7 @@ class AdminVehicleIndexTest extends TestCase
 
         $this->mock(VehicleUploadedImageService::class, function ($mock): void {
             $mock->shouldReceive('enrichListVehicle')
-                ->andReturnUsing(fn (Vehicle $vehicle) => $vehicle);
+                ->andReturnUsing(fn (Vehicle $vehicle) => $vehicle->toArray());
         });
     }
 
@@ -36,6 +36,7 @@ class AdminVehicleIndexTest extends TestCase
             'source' => VehicleSource::Vinstack,
             'vinstack_id' => 'vs-unassigned-1',
             'vin' => '1HGCM82633A004352',
+            'eta' => '2026-08-15',
             'status' => VehicleStatus::Available,
         ]);
 
@@ -46,7 +47,8 @@ class AdminVehicleIndexTest extends TestCase
         $response->assertOk()
             ->assertJsonPath('meta.total', 1)
             ->assertJsonCount(1, 'data')
-            ->assertJsonPath('data.0.source', 'vinstack');
+            ->assertJsonPath('data.0.source', 'vinstack')
+            ->assertJsonPath('data.0.eta', '2026-08-15');
     }
 
     public function test_legacy_imported_status_filter_maps_to_vinstack_source(): void

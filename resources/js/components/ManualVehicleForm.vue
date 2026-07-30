@@ -365,6 +365,14 @@
 
                 <div class="field">
 
+                    <label class="vs-form-label">ETA</label>
+
+                    <DatePicker v-model="form.eta" date-format="yy-mm-dd" show-icon class="w-full" />
+
+                </div>
+
+                <div class="field">
+
                     <label class="vs-form-label">تاريخ الوصول للمحطة</label>
 
                     <DatePicker v-model="form.arrived_terminal_date" date-format="yy-mm-dd" show-icon class="w-full" />
@@ -711,6 +719,8 @@ const form = reactive({
 
     purchase_date: null,
 
+    eta: null,
+
     arrived_terminal_date: null,
 
     notes: '',
@@ -854,6 +864,8 @@ function loadFromVehicle(vehicle) {
         booking_number: raw.booking_number ?? '',
 
         purchase_date: parseDate(raw.purchase_date),
+
+        eta: parseDate(vehicle.eta ?? raw.eta),
 
         arrived_terminal_date: parseDate(raw.arrived_terminal_date),
 
@@ -1448,6 +1460,8 @@ function buildPayload() {
         booking_number: form.booking_number || null,
 
         purchase_date: formatDate(form.purchase_date),
+
+        eta: formatDate(form.eta),
 
         arrived_terminal_date: formatDate(form.arrived_terminal_date),
 

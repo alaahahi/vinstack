@@ -155,6 +155,10 @@ export function vehiclePurchaseDate(vehicle) {
     return formatVehicleDate(vehicle?.raw_data?.purchase_date);
 }
 
+export function vehicleEtaDate(vehicle) {
+    return formatVehicleDate(vehicle?.eta || vehicle?.raw_data?.eta);
+}
+
 export function vehicleArrivedDate(vehicle) {
     return formatVehicleDate(vehicle?.raw_data?.arrived_terminal_date);
 }

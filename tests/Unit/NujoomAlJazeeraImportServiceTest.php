@@ -61,6 +61,7 @@ class NujoomAlJazeeraImportServiceTest extends TestCase
             'loaded_date' => '2026-06-08',
             'booking_number' => 'NYC060398600',
             'container_number' => 'ARKU8556770',
+            'eta' => '2026-07-12',
             'tracking' => 'Loading',
         ]);
 
@@ -71,6 +72,8 @@ class NujoomAlJazeeraImportServiceTest extends TestCase
         $this->assertSame('NYC060398600', $mapped['booking_number']);
         $this->assertSame('MERSIN, TURKEY (TRMER)', $mapped['destination']);
         $this->assertSame(10660.0, $mapped['price']);
+        $this->assertSame('2026-07-12', $mapped['eta']);
+        $this->assertSame('2026-07-12', $mapped['raw_data']['eta']);
         $this->assertSame('Loading', $mapped['raw_data']['status']);
         $this->assertSame('AHMAD ABDULKHALIQ 445902', $mapped['raw_data']['buyer']);
     }
@@ -168,6 +171,7 @@ class NujoomAlJazeeraImportServiceTest extends TestCase
                 'lot_and_vin' => 'Lot# 44750097Vin# 1HGCY2F54SA066635',
                 'auction' => 'Boston | IAA',
                 'destination' => 'MERSIN, TURKEY (TRMER)',
+                'eta' => '2026-07-12',
                 'tracking' => 'Loading',
             ],
             [
@@ -191,6 +195,8 @@ class NujoomAlJazeeraImportServiceTest extends TestCase
         $created = Vehicle::query()->where('vin', '4T1DAACK6SU551977')->first();
 
         $this->assertSame(VehicleSource::Vinstack, $updated->source);
+        $this->assertSame('2026-07-12', $updated->eta);
+        $this->assertSame('2026-07-12', $updated->raw_data['eta']);
         $this->assertSame('Loading', $updated->raw_data['status']);
         $this->assertSame(VehicleSource::NujoomAlJazeera, $created->source);
         $this->assertNull(Cache::get('nujoom_import_preview:'.$token));

@@ -5,6 +5,7 @@ namespace App\Actions;
 use App\Enums\VehicleSource;
 use App\Enums\VehicleStatus;
 use App\Models\Vehicle;
+use App\Support\VehicleEta;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 
@@ -36,6 +37,7 @@ class CreateManualVehicleAction
             'model' => $this->titleCase((string) ($data['model'] ?? '')),
             'year' => (int) $data['year'],
             'price' => Arr::get($data, 'price'),
+            'eta' => VehicleEta::normalize(Arr::get($data, 'eta')),
             'status' => VehicleStatus::Available,
             'images' => [],
             'raw_data' => $rawData,
@@ -78,6 +80,7 @@ class CreateManualVehicleAction
             'buyer',
             'lot',
             'purchase_date',
+            'eta',
             'value',
             'arrived_terminal_date',
             'left_terminal',

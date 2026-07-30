@@ -6,6 +6,7 @@ use App\Enums\VehicleSource;
 use App\Models\Vehicle;
 use App\Services\DealerNotificationService;
 use App\Services\VehicleStatusNotificationService;
+use App\Support\VehicleEta;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Str;
 use Symfony\Component\HttpKernel\Exception\HttpException;
@@ -47,6 +48,16 @@ class UpdateManualVehicleAction
 
         ];
 
+        if (array_key_exists('eta', $data)) {
+            $eta = VehicleEta::normalize(Arr::get($data, 'eta'));
+
+            if ($eta === null) {
+                unset($rawData['eta']);
+            } else {
+                $rawData['eta'] = $eta;
+            }
+        }
+
         if (is_array($vpic) && $vpic !== []) {
 
             $rawData['vpic'] = $vpic;
@@ -64,6 +75,10 @@ class UpdateManualVehicleAction
             'year' => (int) $data['year'],
 
             'price' => Arr::get($data, 'price'),
+
+            'eta' => array_key_exists('eta', $data)
+                ? VehicleEta::normalize(Arr::get($data, 'eta'))
+                : $vehicle->eta,
 
             'raw_data' => $rawData,
 
