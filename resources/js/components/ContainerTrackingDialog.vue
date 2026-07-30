@@ -455,25 +455,8 @@ const lowGeocodeConfidence = computed(() => {
     return origin === 'low' || dest === 'low';
 });
 
-const hasImpreciseRouteLocations = computed(() => {
-    const locations = [
-        tracking.value?.origin,
-        ...(Array.isArray(tracking.value?.waypoints) ? tracking.value.waypoints : []),
-        tracking.value?.destination,
-    ].filter(Boolean);
-
-    return locations.some((location) => (
-        location?.geocoded !== true
-        || (
-            location?.geocode_confidence
-            && location.geocode_confidence !== 'high'
-        )
-    ));
-});
-
 const shouldRenderStraightRoute = computed(() => (
     Boolean(tracking.value?.route_is_estimated)
-    && hasImpreciseRouteLocations.value
     && straightRouteLatLngs.value.length >= 2
 ));
 
