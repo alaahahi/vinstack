@@ -463,9 +463,11 @@ const hasImpreciseRouteLocations = computed(() => {
     ].filter(Boolean);
 
     return locations.some((location) => (
-        location?.geocoded === true
-        && location?.geocode_confidence
-        && location.geocode_confidence !== 'high'
+        location?.geocoded !== true
+        || (
+            location?.geocode_confidence
+            && location.geocode_confidence !== 'high'
+        )
     ));
 });
 
