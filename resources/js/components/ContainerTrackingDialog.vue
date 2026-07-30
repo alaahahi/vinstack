@@ -77,14 +77,6 @@
                     <i class="pi pi-database" aria-hidden="true" />
                     {{ tracking.cache_note }}
                 </p>
-                <p v-if="tracking?.disclaimer" class="disclaimer-note" role="note">
-                    <i class="pi pi-info-circle" aria-hidden="true" />
-                    {{ tracking.disclaimer }}
-                </p>
-                <p v-if="showEstimatedLocationNotice" class="disclaimer-note disclaimer-note--estimate" role="note">
-                    <i class="pi pi-map-marker" aria-hidden="true" />
-                    {{ t('containers.tracking.estimatedLocation') }}
-                </p>
             </div>
         </template>
 
@@ -447,26 +439,6 @@ const destinationLabel = computed(
 const hasPartialRoute = computed(
     () => originLabel.value !== '—' || destinationLabel.value !== '—',
 );
-
-const lowGeocodeConfidence = computed(() => {
-    const origin = tracking.value?.origin?.geocode_confidence;
-    const dest = tracking.value?.destination?.geocode_confidence;
-
-    return origin === 'low' || dest === 'low';
-});
-
-const usesKnownPortEstimate = computed(() => (
-    tracking.value?.origin?.geocoded === false
-    || tracking.value?.destination?.geocoded === false
-    || waypointLatLngs.value.some((_, index) => tracking.value?.waypoints?.[index]?.geocoded === false)
-));
-
-const showEstimatedLocationNotice = computed(() => (
-    lowGeocodeConfidence.value
-    || Boolean(tracking.value?.route_is_estimated)
-    || tracking.value?.source === 'derived'
-    || usesKnownPortEstimate.value
-));
 
 const shouldRenderStraightRoute = computed(() => (
     Boolean(tracking.value?.route_is_estimated)
