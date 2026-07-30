@@ -184,4 +184,62 @@ class ContainerTrackingClientPortalTest extends TestCase
         $this->assertSame(45.51, $result['current_position']['lat']);
         $this->assertSame(-73.57, $result['current_position']['lng']);
     }
+
+    public function test_derived_tracking_uses_straight_route_and_estimated_midpoint(): void
+    {
+        $geocoder = $this->createMock(PortGeocoderService::class);
+        $geocoder->method('resolve')->willReturnCallback(function (string $label): ?array {
+            return match ($label) {
+                'Montreal' => [
+                    'name' => 'Montreal, CA',
+                    'lat' => 45.5017,
+                    'lng' => -73.5673,
+                    'geocoded' => false,
+                    'geocode_confidence' => 'high',
+                    'geocode_provider' => 'known_ports',
+                ],
+                'Jebel Ali' => [
+                    'name' => 'Jebel Ali, AE',
+                    'lat' => 25.0260,
+                    'lng' => 55.0610,
+                    'geocoded' => false,
+                    'geocode_confidence' => 'high',
+                    'geocode_provider' => 'known_ports',
+                ],
+                default => null,
+            };
+        });
+
+        $service = new ContainerTrackingService(
+            vinstack: $this->createMock(VinstackService::class),
+            gallery: $this->createMock(VinstackGalleryService::class),
+            containers: $this->createMock(ContainerService::class),
+            geocoder: $geocoder,
+        );
+
+        $container = [
+            'container_number' => 'MSCU1234567',
+            'loading_point' => 'Montreal',
+            'destination' => 'Jebel Ali',
+            'shipping_line' => 'MSC',
+            'loading_date' => '2026-07-01',
+            'eta' => '2099-08-01',
+        ];
+
+        $method = new ReflectionMethod(ContainerTrackingService::class, 'buildDerived');
+        $method->setAccessible(true);
+
+        $result = $method->invoke($service, 'MSCU1234567', $container);
+
+        $this->assertSame('derived', $result['source']);
+        $this->assertTrue($result['route_is_estimated']);
+        $this->assertSame([
+            [45.5017, -73.5673],
+            [25.0260, 55.0610],
+        ], $result['route']);
+        $this->assertNotNull($result['current_position']);
+        $this->assertSame('Estimated current position', $result['current_position']['name']);
+        $this->assertSame(45.5017, $result['origin']['lat']);
+        $this->assertSame(25.0260, $result['destination']['lat']);
+    }
 }

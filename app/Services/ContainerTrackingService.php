@@ -107,7 +107,7 @@ class ContainerTrackingService
      */
     protected function resolve(string $containerNumber, ?array $container): array
     {
-        $cacheKey = 'container_tracking:v2:'.md5(strtoupper(trim($containerNumber)));
+        $cacheKey = 'container_tracking:v3:'.md5(strtoupper(trim($containerNumber)));
 
         $cached = Cache::get($cacheKey);
 
@@ -792,10 +792,10 @@ class ContainerTrackingService
             $destination['label'] = $destName;
         }
 
+        $status = $this->deriveStatus($container);
         $waypoints = [];
         $route = $this->buildRoutePolyline($origin, $destination, $waypoints);
-
-        $status = $this->deriveStatus($container);
+        $currentPosition = $this->estimateCurrentPosition($status, $route, $origin, $destination);
         $events = $this->deriveEvents($container, $originName, $destName, $status);
 
         return [
@@ -812,6 +812,7 @@ class ContainerTrackingService
             'waypoints' => $waypoints,
             'route' => $route,
             'route_is_estimated' => true,
+            'current_position' => $currentPosition,
             'events' => $events,
         ];
     }
@@ -997,57 +998,42 @@ class ContainerTrackingService
             return [];
         }
 
-        $segments = [];
-
-        for ($i = 0; $i < count($points) - 1; $i++) {
-            $segments = array_merge(
-                $segments,
-                $this->greatCircleSegment($points[$i][0], $points[$i][1], $points[$i + 1][0], $points[$i + 1][1], 24),
-            );
-        }
-
-        return $segments;
+        return $points;
     }
 
     /**
      * @return list<array{0: float, 1: float}>
      */
-    protected function greatCircleSegment(
-        float $lat1,
-        float $lng1,
-        float $lat2,
-        float $lng2,
-        int $steps = 24,
-    ): array {
-        $φ1 = deg2rad($lat1);
-        $λ1 = deg2rad($lng1);
-        $φ2 = deg2rad($lat2);
-        $λ2 = deg2rad($lng2);
-
-        $Δ = 2 * asin(min(1, sqrt(
-            sin(($φ2 - $φ1) / 2) ** 2
-            + cos($φ1) * cos($φ2) * sin(($λ2 - $λ1) / 2) ** 2
-        )));
-
-        if ($Δ < 1e-9) {
-            return [[$lat1, $lng1], [$lat2, $lng2]];
+    protected function estimateCurrentPosition(
+        string $status,
+        array $route,
+        ?array $origin,
+        ?array $destination,
+    ): ?array {
+        if ($route === []) {
+            return $origin ?? $destination;
         }
 
-        $points = [];
-
-        for ($i = 0; $i <= $steps; $i++) {
-            $f = $i / $steps;
-            $A = sin((1 - $f) * $Δ) / sin($Δ);
-            $B = sin($f * $Δ) / sin($Δ);
-            $x = $A * cos($φ1) * cos($λ1) + $B * cos($φ2) * cos($λ2);
-            $y = $A * cos($φ1) * sin($λ1) + $B * cos($φ2) * sin($λ2);
-            $z = $A * sin($φ1) + $B * sin($φ2);
-            $φ = atan2($z, sqrt($x ** 2 + $y ** 2));
-            $λ = atan2($y, $x);
-            $points[] = [rad2deg($φ), rad2deg($λ)];
+        if (in_array($status, ['arrived', 'delivered'], true)) {
+            return $destination;
         }
 
-        return $points;
+        if ($status === 'loading') {
+            return $origin;
+        }
+
+        $midpoint = $route[(int) floor((count($route) - 1) / 2)] ?? null;
+
+        if (! is_array($midpoint) || count($midpoint) < 2) {
+            return $origin ?? $destination;
+        }
+
+        return [
+            'name' => 'Estimated current position',
+            'lat' => (float) $midpoint[0],
+            'lng' => (float) $midpoint[1],
+            'label' => 'Estimated current position',
+        ];
     }
 
     protected function carrierLabel(?string $line): ?string
