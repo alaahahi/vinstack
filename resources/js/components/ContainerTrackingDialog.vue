@@ -129,8 +129,8 @@
                         @load="mapTilesLoading = false"
                     />
                     <l-polyline
-                        v-if="routeLatLngs.length"
-                        :lat-lngs="routeLatLngs"
+                        v-if="displayRouteLatLngs.length"
+                        :lat-lngs="displayRouteLatLngs"
                         color="#14b8a6"
                         :weight="4"
                         :opacity="0.9"
@@ -396,6 +396,16 @@ const waypointLatLngs = computed(() => {
     return wps.map((wp) => pointFromLocation(wp)).filter(Boolean);
 });
 
+const straightRouteLatLngs = computed(() => {
+    const points = [
+        originLatLng.value,
+        ...waypointLatLngs.value,
+        destinationLatLng.value,
+    ].filter(Boolean);
+
+    return points.length >= 2 ? points : [];
+});
+
 const waypointLabels = computed(() => {
     const wps = tracking.value?.waypoints;
 
@@ -409,8 +419,8 @@ const waypointLabels = computed(() => {
 });
 
 const mapCenter = computed(() => {
-    if (routeLatLngs.value.length) {
-        const mid = routeLatLngs.value[Math.floor(routeLatLngs.value.length / 2)];
+    if (displayRouteLatLngs.value.length) {
+        const mid = displayRouteLatLngs.value[Math.floor(displayRouteLatLngs.value.length / 2)];
 
         return mid;
     }
@@ -418,7 +428,7 @@ const mapCenter = computed(() => {
     return originLatLng.value || destinationLatLng.value || [25, 45];
 });
 
-const mapZoom = computed(() => (routeLatLngs.value.length ? 3 : 2));
+const mapZoom = computed(() => (displayRouteLatLngs.value.length ? 3 : 2));
 
 const originLabel = computed(
     () => tracking.value?.origin?.label
@@ -444,6 +454,30 @@ const lowGeocodeConfidence = computed(() => {
 
     return origin === 'low' || dest === 'low';
 });
+
+const hasImpreciseRouteLocations = computed(() => {
+    const locations = [
+        tracking.value?.origin,
+        ...(Array.isArray(tracking.value?.waypoints) ? tracking.value.waypoints : []),
+        tracking.value?.destination,
+    ].filter(Boolean);
+
+    return locations.some((location) => (
+        location?.geocoded === true
+        && location?.geocode_confidence
+        && location.geocode_confidence !== 'high'
+    ));
+});
+
+const shouldRenderStraightRoute = computed(() => (
+    Boolean(tracking.value?.route_is_estimated)
+    && hasImpreciseRouteLocations.value
+    && straightRouteLatLngs.value.length >= 2
+));
+
+const displayRouteLatLngs = computed(() => (
+    shouldRenderStraightRoute.value ? straightRouteLatLngs.value : routeLatLngs.value
+));
 
 const sourceLabel = computed(() => {
     const source = tracking.value?.source;
@@ -543,7 +577,7 @@ watch(
     },
 );
 
-watch([routeLatLngs, currentLatLng], () => {
+watch([displayRouteLatLngs, currentLatLng], () => {
     if (leafletMap.value && mapReady.value) {
         fitMapBounds(leafletMap.value);
     }
@@ -680,7 +714,7 @@ function onMapReady(map) {
 
 function fitMapBounds(map) {
     const points = [
-        ...routeLatLngs.value,
+        ...displayRouteLatLngs.value,
         ...(originLatLng.value ? [originLatLng.value] : []),
         ...(destinationLatLng.value ? [destinationLatLng.value] : []),
         ...(currentLatLng.value ? [currentLatLng.value] : []),

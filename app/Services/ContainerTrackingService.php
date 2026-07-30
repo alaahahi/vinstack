@@ -205,7 +205,9 @@ class ContainerTrackingService
             $route[] = [(float) $point['lat'], (float) $point['lng']];
         }
 
-        if ($route === []) {
+        $routeIsEstimated = $route === [];
+
+        if ($routeIsEstimated) {
             $route = $this->buildRoutePolyline($origin, $destination, $waypoints);
         }
 
@@ -260,6 +262,7 @@ class ContainerTrackingService
             'destination' => $destination,
             'waypoints' => $waypoints,
             'route' => $route,
+            'route_is_estimated' => $routeIsEstimated,
             'current_position' => $currentPosition,
             'events' => $events,
         ];
@@ -741,7 +744,9 @@ class ContainerTrackingService
 
         $route = Arr::get($raw, 'route', Arr::get($raw, 'path', []));
 
-        if (! is_array($route) || $route === []) {
+        $routeIsEstimated = ! is_array($route) || $route === [];
+
+        if ($routeIsEstimated) {
             $route = $this->buildRoutePolyline($origin, $destination, $waypoints);
         }
 
@@ -762,6 +767,7 @@ class ContainerTrackingService
             'destination' => $destination,
             'waypoints' => $waypoints,
             'route' => $route,
+            'route_is_estimated' => $routeIsEstimated,
             'events' => $events,
         ];
     }
@@ -805,6 +811,7 @@ class ContainerTrackingService
             'destination' => $destination,
             'waypoints' => $waypoints,
             'route' => $route,
+            'route_is_estimated' => true,
             'events' => $events,
         ];
     }
@@ -961,6 +968,9 @@ class ContainerTrackingService
                 'lat' => $coords['lat'],
                 'lng' => $coords['lng'],
                 'type' => 'transshipment',
+                'geocoded' => (bool) ($coords['geocoded'] ?? false),
+                'geocode_confidence' => $coords['geocode_confidence'] ?? null,
+                'geocode_provider' => $coords['geocode_provider'] ?? null,
             ];
         }
 
