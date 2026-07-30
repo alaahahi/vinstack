@@ -132,6 +132,22 @@
 
 ---
 
+### SQLite في الإنتاج (جلسات / كاش / تلف الملف)
+
+عند `DB_CONNECTION=sqlite` تكون **كل** بيانات التطبيق في ملف واحد `database/database.sqlite`. إذا كان `SESSION_DRIVER=database` و`CACHE_STORE=database` فإن الجلسات والكاش يكتبان في **نفس الملف**، وهذا يزيد خطر تلف SQLite على الاستضافات المشتركة.
+
+**موصى به مع SQLite:**
+
+```env
+SESSION_DRIVER=file
+CACHE_STORE=file
+QUEUE_CONNECTION=sync
+```
+
+تأكد أن `storage/framework/sessions` و`storage/framework/cache` قابلان للكتابة. التفاصيل الكاملة لاستعادة ملف تالف في القسم الإنجليزي أدناه: **SQLite production note**.
+
+---
+
 ## English
 
 ### Local machine (before upload)
@@ -181,3 +197,39 @@ Point the vhost to `public/` only. Migrations: Admin → **Settings**. Writable 
 - [ ] Writable `storage/` and `storage/app/backups`
 - [ ] `public/storage` symlink for uploads
 - [ ] Admin → Settings → migrations
+- [ ] With SQLite: `SESSION_DRIVER=file`, `CACHE_STORE=file`, `QUEUE_CONNECTION=sync` (see below)
+
+---
+
+### SQLite production note (sessions / cache / corruption)
+
+This app defaults to **one** file: `database/database.sqlite` for **all** Eloquent data. If `SESSION_DRIVER=database` and `CACHE_STORE=database`, session and cache rows share that same file. Concurrent PHP-FPM writers on shared hosting can corrupt SQLite (`SQLSTATE … database disk image is malformed`), often first seen on `UPDATE sessions …`.
+
+**Recommended `.env` when staying on SQLite:**
+
+```env
+DB_CONNECTION=sqlite
+SESSION_DRIVER=file
+CACHE_STORE=file
+QUEUE_CONNECTION=sync
+```
+
+Ensure `storage/framework/sessions` and `storage/framework/cache` are writable. Prefer MySQL/MariaDB for multi-process production when the host provides it.
+
+**If the SQLite file is already corrupted** (path like `/home/…/database/database.sqlite`):
+
+1. **Immediate unblock (sessions only):** set `SESSION_DRIVER=file` and `CACHE_STORE=file` in server `.env`, clear config cache if used (`php artisan config:clear`), ensure session/cache dirs are writable. Users must log in again. This does **not** fix corrupted app tables.
+2. **Backup first:** copy `database.sqlite` (+ `-wal` / `-shm` if present) off the live path before any repair.
+3. **Integrity check** (SSH or local after download):
+   ```bash
+   sqlite3 database/database.sqlite 'PRAGMA integrity_check;'
+   ```
+4. **Dump-and-restore if check fails but dump still works:**
+   ```bash
+   sqlite3 database/database.sqlite ".recover" | sqlite3 database/database.recovered.sqlite
+   # or: sqlite3 database/database.sqlite .dump > dump.sql
+   # then import dump.sql into a new empty .sqlite file
+   ```
+   Put the app in maintenance, replace the live file with the recovered one, restore permissions, re-enable.
+5. **Replace vs repair:** use dump/recover when business data must be kept. Replace with a fresh `database.sqlite` + migrate/seed **only** if there is no usable dump **and** Admin → Settings backups under `storage/app/backups` (or another backup) can restore. Never delete the corrupted file until a verified copy exists.
+6. After recovery, keep session/cache on **file** (or move the app DB to MySQL) so the failure mode does not repeat.
