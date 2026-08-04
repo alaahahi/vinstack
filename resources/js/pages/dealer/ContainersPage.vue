@@ -327,7 +327,7 @@ onMounted(resetAndLoad);
 
 <style scoped>
 .containers-page {
-    max-width: 1400px;
+    /* max-width: 1400px; */
 }
 
 .toolbar {

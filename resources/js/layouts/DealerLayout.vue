@@ -97,8 +97,9 @@
             <div class="content-body">
                 <RouterView />
             </div>
-            <DealerFooter />
         </main>
+
+        <DealerFooter />
     </div>
 </template>
 
