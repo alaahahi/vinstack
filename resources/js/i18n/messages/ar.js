@@ -95,7 +95,7 @@ export default {
         },
         columns: {
             vehicle: 'السيارة',
-            idSource: 'المعرّف والمصدر',
+            idSource: 'المعرّف والسعر',
             routeStatus: 'المسار والحالة',
             references: 'المراجع',
             dates: 'التواريخ',
@@ -104,6 +104,7 @@ export default {
         },
         enteredBy: 'أدخلها {name}',
         purchase: 'الشراء',
+        price: 'السعر',
         eta: 'ETA',
         arrivedTerminal: 'وصول الميناء',
         trackContainer: 'تتبع الحاوية',

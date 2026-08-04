@@ -95,7 +95,7 @@ export default {
         },
         columns: {
             vehicle: 'Vehicle',
-            idSource: 'ID & source',
+            idSource: 'Lot & price',
             routeStatus: 'Route & status',
             references: 'References',
             dates: 'Dates',
@@ -104,6 +104,7 @@ export default {
         },
         enteredBy: 'Entered by {name}',
         purchase: 'Purchase',
+        price: 'Price',
         eta: 'ETA',
         arrivedTerminal: 'Arrived terminal',
         trackContainer: 'Track container',

@@ -155,6 +155,59 @@ export function vehiclePurchaseDate(vehicle) {
     return formatVehicleDate(vehicle?.raw_data?.purchase_date);
 }
 
+function parseVehicleMoney(value) {
+    if (value === null || value === undefined || value === '') {
+        return null;
+    }
+
+    if (typeof value === 'number' && Number.isFinite(value)) {
+        return value;
+    }
+
+    const cleaned = String(value).replace(/[^\d.-]/g, '');
+
+    if (! cleaned || cleaned === '-' || cleaned === '.') {
+        return null;
+    }
+
+    const num = Number(cleaned);
+
+    return Number.isFinite(num) ? num : null;
+}
+
+/**
+ * Format a vehicle amount as USD (matches VehicleDetailDrawer money fields).
+ */
+export function formatVehicleMoney(value) {
+    const num = parseVehicleMoney(value);
+
+    if (num === null) {
+        return null;
+    }
+
+    return new Intl.NumberFormat(undefined, {
+        style: 'currency',
+        currency: 'USD',
+        maximumFractionDigits: 0,
+    }).format(num);
+}
+
+/**
+ * List price for admin/dealer rows.
+ * Admin prefers `vehicles.price` (editable column), then auction `raw_data.value`.
+ * Dealer prefers `raw_data.value` (sale value in detail), then `vehicles.price`.
+ */
+export function vehicleListPrice(vehicle, mode = 'admin') {
+    const columnPrice = parseVehicleMoney(vehicle?.price);
+    const auctionValue = parseVehicleMoney(vehicle?.raw_data?.value);
+
+    if (mode === 'dealer') {
+        return formatVehicleMoney(auctionValue ?? columnPrice);
+    }
+
+    return formatVehicleMoney(columnPrice ?? auctionValue);
+}
+
 export function vehicleEtaDate(vehicle) {
     return formatVehicleDate(vehicle?.eta || vehicle?.raw_data?.eta);
 }

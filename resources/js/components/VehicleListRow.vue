@@ -35,6 +35,10 @@
         <div class="cell cell-lot">
             <div class="lot-id">{{ lot || '—' }}</div>
             <div class="auction">{{ auction || '—' }}</div>
+            <div class="lot-price-row">
+                <span class="lot-price-label">{{ t('vehicles.price') }}</span>
+                <span class="lot-price-value">{{ priceDisplay || '—' }}</span>
+            </div>
         </div>
 
         <!-- Route & status -->
@@ -220,6 +224,7 @@ import {
     vehicleKeysInfo,
     vehicleLot,
     vehicleOrigin,
+    vehicleListPrice,
     vehiclePurchaseDate,
     vehicleSourceLabel,
     vehicleSourcePillClass,
@@ -295,6 +300,7 @@ const titleStatus = computed(() => vehicleTitleStatus(props.vehicle, t));
 const purchaseDate = computed(() => vehiclePurchaseDate(props.vehicle));
 const etaDate = computed(() => vehicleEtaDate(props.vehicle));
 const arrivedDate = computed(() => vehicleArrivedDate(props.vehicle));
+const priceDisplay = computed(() => vehicleListPrice(props.vehicle, props.mode));
 const enteredBy = computed(() => vehicleEnteredBy(props.vehicle, t));
 const dealerDisplayName = computed(() => {
     const userName = props.vehicle.active_assignment?.dealer?.user?.name?.trim() ?? '';
@@ -446,6 +452,30 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     color: var(--vs-text-muted);
     line-height: 1.35;
     word-break: break-word;
+}
+
+.lot-price-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin-top: 0.35rem;
+    padding-top: 0.3rem;
+    border-top: 1px solid var(--vs-border);
+}
+
+.lot-price-label {
+    font-size: 0.72rem;
+    color: var(--vs-text-muted);
+    flex-shrink: 0;
+}
+
+.lot-price-value {
+    font-size: 0.92rem;
+    font-weight: 700;
+    color: var(--vs-text);
+    font-variant-numeric: tabular-nums;
+    text-align: end;
 }
 
 .cell-route {

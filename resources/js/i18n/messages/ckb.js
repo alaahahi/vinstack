@@ -95,7 +95,7 @@ export default {
         },
         columns: {
             vehicle: 'ئۆتۆمبێل',
-            idSource: 'ناسنامە و سەرچاوە',
+            idSource: 'ناسنامە و نرخ',
             routeStatus: 'ڕێگا و دۆخ',
             references: 'سەرچاوەکان',
             dates: 'بەروارەکان',
@@ -104,6 +104,7 @@ export default {
         },
         enteredBy: 'تۆمارکراوە لەلایەن {name}',
         purchase: 'کڕین',
+        price: 'نرخ',
         eta: 'ETA',
         arrivedTerminal: 'گەیشتن بە تێرمیناڵ',
         trackContainer: 'بەدواداچوونی کۆنتەینەر',

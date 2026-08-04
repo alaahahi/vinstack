@@ -85,12 +85,13 @@
     --vs-log-surface: var(--vs-surface);
     --vs-log-surface-failed: #fffbfb;
 
-    --admin-sidebar-bg: #0f1419;
-    --admin-sidebar-border: rgba(255, 255, 255, 0.06);
-    --admin-sidebar-text: #e4e4e7;
-    --admin-sidebar-muted: #71717a;
-    --admin-sidebar-active: rgba(59, 130, 246, 0.15);
-    --admin-sidebar-active-text: #93c5fd;
+    /* Brand mauve chrome (admin sidebar + dealer header/footer) */
+    --admin-sidebar-bg: #4a3558;
+    --admin-sidebar-border: rgba(255, 255, 255, 0.1);
+    --admin-sidebar-text: #f3eef7;
+    --admin-sidebar-muted: #c4b3d1;
+    --admin-sidebar-active: rgba(196, 181, 253, 0.22);
+    --admin-sidebar-active-text: #e9d5ff;
     --admin-content-bg: var(--vs-zinc-100);
     --admin-surface: var(--vs-surface);
     --admin-border: var(--vs-zinc-200);
@@ -98,11 +99,11 @@
     --admin-topbar-title: var(--vs-zinc-900);
     --admin-topbar-subtitle: var(--vs-zinc-500);
 
-    --dealer-header-bg: #18181b;
-    --dealer-header-text: #e4e4e7;
-    --dealer-header-muted: #a1a1aa;
-    --dealer-nav-hover: #27272a;
-    --dealer-nav-active: #3f3f46;
+    --dealer-header-bg: #4a3558;
+    --dealer-header-text: #f3eef7;
+    --dealer-header-muted: #c4b3d1;
+    --dealer-nav-hover: #5c4568;
+    --dealer-nav-active: #6b5278;
     --dealer-content-bg: var(--vs-zinc-100);
     --dealer-page-title: var(--vs-zinc-500);
 
@@ -135,9 +136,10 @@
     --login-card-shadow: 0 4px 24px rgba(24, 24, 27, 0.07), 0 1px 3px rgba(24, 24, 27, 0.04);
     --login-tabs-bg: rgba(24, 24, 27, 0.05);
     --login-tab-active-bg: #ffffff;
-    --dealer-footer-text: var(--vs-zinc-500);
-    --dealer-footer-link: var(--vs-zinc-600);
-    --dealer-footer-link-hover: #dc2626;
+    --dealer-footer-bg: #4a3558;
+    --dealer-footer-text: #c4b3d1;
+    --dealer-footer-link: #f3eef7;
+    --dealer-footer-link-hover: #e9d5ff;
 
     --vs-btn-bg: rgba(255, 255, 255, 0.65);
     --vs-btn-border: var(--vs-border);
@@ -229,12 +231,13 @@
     --vs-log-surface: #2a2a32;
     --vs-log-surface-failed: rgba(69, 10, 10, 0.55);
 
-    --admin-sidebar-bg: #050608;
-    --admin-sidebar-border: rgba(255, 255, 255, 0.08);
-    --admin-sidebar-text: #f4f4f5;
-    --admin-sidebar-muted: #a1a1aa;
-    --admin-sidebar-active: rgba(59, 130, 246, 0.22);
-    --admin-sidebar-active-text: #bfdbfe;
+    /* Darker mauve chrome for dark theme */
+    --admin-sidebar-bg: #322438;
+    --admin-sidebar-border: rgba(255, 255, 255, 0.1);
+    --admin-sidebar-text: #f3eef7;
+    --admin-sidebar-muted: #b8a9c4;
+    --admin-sidebar-active: rgba(196, 181, 253, 0.28);
+    --admin-sidebar-active-text: #e9d5ff;
     --admin-content-bg: var(--vs-zinc-900);
     --admin-surface: var(--vs-surface);
     --admin-border: var(--vs-zinc-700);
@@ -242,11 +245,11 @@
     --admin-topbar-title: var(--vs-zinc-50);
     --admin-topbar-subtitle: var(--vs-zinc-400);
 
-    --dealer-header-bg: #050608;
-    --dealer-header-text: #f4f4f5;
-    --dealer-header-muted: #a1a1aa;
-    --dealer-nav-hover: var(--vs-zinc-800);
-    --dealer-nav-active: var(--vs-zinc-700);
+    --dealer-header-bg: #322438;
+    --dealer-header-text: #f3eef7;
+    --dealer-header-muted: #b8a9c4;
+    --dealer-nav-hover: #45324d;
+    --dealer-nav-active: #57405f;
     --dealer-content-bg: var(--vs-zinc-900);
     --dealer-page-title: var(--vs-zinc-400);
 
@@ -279,9 +282,10 @@
     --login-card-shadow: 0 8px 32px rgba(0, 0, 0, 0.35), 0 0 0 1px var(--login-panel-border);
     --login-tabs-bg: rgba(255, 255, 255, 0.06);
     --login-tab-active-bg: var(--vs-zinc-800);
-    --dealer-footer-text: var(--vs-zinc-500);
-    --dealer-footer-link: var(--vs-zinc-400);
-    --dealer-footer-link-hover: #f87171;
+    --dealer-footer-bg: #322438;
+    --dealer-footer-text: #b8a9c4;
+    --dealer-footer-link: #f3eef7;
+    --dealer-footer-link-hover: #e9d5ff;
 
     --vs-btn-bg: rgba(255, 255, 255, 0.04);
     --vs-btn-border: var(--vs-border);

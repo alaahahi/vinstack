@@ -84,13 +84,15 @@ onMounted(loadPublicSettings);
 
     margin-top: auto;
 
-    padding-top: 1.25rem;
+    padding: 1rem 1.25rem;
 
     text-align: center;
 
     font-size: 0.8rem;
 
     color: var(--dealer-footer-text);
+
+    background: var(--dealer-footer-bg);
 
 }
 
@@ -212,7 +214,7 @@ onMounted(loadPublicSettings);
 
         font-size: 0.75rem;
 
-        padding-top: 1rem;
+        padding: 0.85rem 1rem;
 
     }
 

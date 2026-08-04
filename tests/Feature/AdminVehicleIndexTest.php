@@ -169,12 +169,18 @@ class AdminVehicleIndexTest extends TestCase
 
     public function test_default_list_orders_by_purchase_date_then_created_at(): void
     {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+
         $olderPurchase = Vehicle::query()->create([
             'source' => VehicleSource::Manual,
             'vinstack_id' => 'manual-order-1',
             'vin' => '1HGCM82633A004361',
             'status' => VehicleStatus::Available,
-            'raw_data' => ['purchase_date' => '2026-06-01'],
+            'price' => 9000,
+            'raw_data' => [
+                'purchase_date' => '2026-06-01',
+                'value' => '8500',
+            ],
         ]);
 
         $newerPurchase = Vehicle::query()->create([
@@ -182,7 +188,11 @@ class AdminVehicleIndexTest extends TestCase
             'vinstack_id' => 'manual-order-2',
             'vin' => '1HGCM82633A004362',
             'status' => VehicleStatus::Available,
-            'raw_data' => ['purchase_date' => '2026-07-01'],
+            'price' => 12500.50,
+            'raw_data' => [
+                'purchase_date' => '2026-07-01',
+                'value' => '12000',
+            ],
         ]);
 
         $fallbackCreated = Vehicle::query()->create([
@@ -190,24 +200,33 @@ class AdminVehicleIndexTest extends TestCase
             'vinstack_id' => 'manual-order-3',
             'vin' => '1HGCM82633A004363',
             'status' => VehicleStatus::Available,
+            'price' => 15000,
+            'raw_data' => [],
         ]);
 
         $olderPurchase->update(['created_at' => now()->subDays(3)]);
         $newerPurchase->update(['created_at' => now()->subDays(2)]);
         $fallbackCreated->update(['created_at' => now()]);
 
-        $vins = Vehicle::query()
-            ->newestFirst()
-            ->pluck('vin')
-            ->take(3)
-            ->values()
-            ->all();
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson('/api/admin/vehicles?source=manual&per_page=50');
+
+        $response->assertOk();
+
+        $vins = collect($response->json('data'))->pluck('vin')->all();
 
         $this->assertSame([
             $fallbackCreated->vin,
             $newerPurchase->vin,
             $olderPurchase->vin,
         ], $vins);
+
+        $byVin = collect($response->json('data'))->keyBy('vin');
+
+        $this->assertSame('12500.50', $byVin[$newerPurchase->vin]['price']);
+        $this->assertSame('12000', $byVin[$newerPurchase->vin]['raw_data']['value']);
+        $this->assertSame('15000.00', $byVin[$fallbackCreated->vin]['price']);
     }
 
     public function test_admin_vehicle_list_reuses_cached_payload_for_same_query(): void

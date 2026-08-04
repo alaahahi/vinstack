@@ -174,6 +174,17 @@ const { themeLogo } = useTheme();
 
 .login-footer {
     padding-top: 0.5rem;
+    /* Keep auth footer quiet; mauve chrome is for admin/dealer shells */
+    background: transparent;
+    color: var(--vs-text-muted);
+}
+
+.login-footer :deep(.dealer-footer__link) {
+    color: var(--vs-text-secondary);
+}
+
+.login-footer :deep(.dealer-footer__link:hover) {
+    color: var(--login-accent);
 }
 
 @media (min-width: 900px) {

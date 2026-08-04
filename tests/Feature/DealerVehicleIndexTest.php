@@ -9,14 +9,26 @@ use App\Models\Dealer;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VehicleAssignment;
+use App\Services\VehicleUploadedImageService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
 
 class DealerVehicleIndexTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_dealer_list_uses_same_order_as_admin_newest_first(): void
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        $this->mock(VehicleUploadedImageService::class, function ($mock): void {
+            $mock->shouldReceive('enrichListVehicle')
+                ->andReturnUsing(fn (Vehicle $vehicle) => $vehicle->toArray());
+        });
+    }
+
+    public function test_dealer_list_orders_by_purchase_date_newest_first_and_includes_price(): void
     {
         $dealerUser = User::factory()->create(['role' => UserRole::Dealer]);
         $dealer = Dealer::query()->create([
@@ -29,7 +41,11 @@ class DealerVehicleIndexTest extends TestCase
             'vinstack_id' => 'dealer-order-1',
             'vin' => '1HGCM82633A004371',
             'status' => VehicleStatus::Assigned,
-            'raw_data' => ['purchase_date' => '2026-06-01'],
+            'price' => 7000,
+            'raw_data' => [
+                'purchase_date' => '2026-06-01',
+                'value' => '6800',
+            ],
         ]);
 
         $newerPurchase = Vehicle::query()->create([
@@ -37,7 +53,11 @@ class DealerVehicleIndexTest extends TestCase
             'vinstack_id' => 'dealer-order-2',
             'vin' => '1HGCM82633A004372',
             'status' => VehicleStatus::Assigned,
-            'raw_data' => ['purchase_date' => '2026-07-01'],
+            'price' => 11000,
+            'raw_data' => [
+                'purchase_date' => '2026-07-01',
+                'value' => '10900',
+            ],
         ]);
 
         $fallbackCreated = Vehicle::query()->create([
@@ -45,6 +65,8 @@ class DealerVehicleIndexTest extends TestCase
             'vinstack_id' => 'dealer-order-3',
             'vin' => '1HGCM82633A004373',
             'status' => VehicleStatus::Assigned,
+            'price' => 13000,
+            'raw_data' => [],
         ]);
 
         $olderPurchase->update(['created_at' => now()->subDays(3)]);
@@ -61,20 +83,24 @@ class DealerVehicleIndexTest extends TestCase
             ]);
         }
 
-        $vins = Vehicle::query()
-            ->whereHas('assignments', function ($q) use ($dealer) {
-                $q->where('dealer_id', $dealer->id)->where('is_active', true);
-            })
-            ->newestFirst()
-            ->pluck('vin')
-            ->take(3)
-            ->values()
-            ->all();
+        Sanctum::actingAs($dealerUser);
+
+        $response = $this->getJson('/api/dealer/vehicles?per_page=50');
+
+        $response->assertOk();
+
+        $vins = collect($response->json('data'))->pluck('vin')->all();
 
         $this->assertSame([
             $fallbackCreated->vin,
             $newerPurchase->vin,
             $olderPurchase->vin,
         ], $vins);
+
+        $byVin = collect($response->json('data'))->keyBy('vin');
+
+        $this->assertSame('11000.00', $byVin[$newerPurchase->vin]['price']);
+        $this->assertSame('10900', $byVin[$newerPurchase->vin]['raw_data']['value']);
+        $this->assertSame('13000.00', $byVin[$fallbackCreated->vin]['price']);
     }
 }
