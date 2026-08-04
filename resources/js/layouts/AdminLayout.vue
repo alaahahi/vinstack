@@ -403,9 +403,20 @@ watch(
     align-items: center;
     gap: 0.75rem;
     padding: 0.85rem 1.25rem;
-    background: var(--admin-surface);
-    border-bottom: 1px solid var(--admin-border);
-    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.03);
+    background: var(--admin-topbar-bg);
+    border-bottom: 1px solid var(--admin-topbar-border);
+    box-shadow: 0 1px 0 rgba(0, 0, 0, 0.12);
+}
+
+.admin-topbar__actions :deep(.p-button),
+.admin-topbar__menu :deep(.p-button) {
+    color: var(--admin-sidebar-text);
+}
+
+.admin-topbar__actions :deep(.p-button:hover),
+.admin-topbar__menu :deep(.p-button:hover) {
+    background: rgba(255, 255, 255, 0.08);
+    color: #fff;
 }
 
 .admin-topbar__menu {

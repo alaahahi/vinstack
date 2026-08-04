@@ -96,8 +96,10 @@
     --admin-surface: var(--vs-surface);
     --admin-border: var(--vs-zinc-200);
     --admin-shadow: 0 1px 2px rgba(0, 0, 0, 0.04), 0 4px 12px rgba(0, 0, 0, 0.03);
-    --admin-topbar-title: var(--vs-zinc-900);
-    --admin-topbar-subtitle: var(--vs-zinc-500);
+    --admin-topbar-bg: var(--admin-sidebar-bg);
+    --admin-topbar-border: var(--admin-sidebar-border);
+    --admin-topbar-title: var(--admin-sidebar-text);
+    --admin-topbar-subtitle: var(--admin-sidebar-muted);
 
     --dealer-header-bg: #4a3558;
     --dealer-header-text: #f3eef7;
@@ -242,8 +244,10 @@
     --admin-surface: var(--vs-surface);
     --admin-border: var(--vs-zinc-700);
     --admin-shadow: 0 1px 2px rgba(0, 0, 0, 0.25), 0 4px 12px rgba(0, 0, 0, 0.2);
-    --admin-topbar-title: var(--vs-zinc-50);
-    --admin-topbar-subtitle: var(--vs-zinc-400);
+    --admin-topbar-bg: var(--admin-sidebar-bg);
+    --admin-topbar-border: var(--admin-sidebar-border);
+    --admin-topbar-title: var(--admin-sidebar-text);
+    --admin-topbar-subtitle: var(--admin-sidebar-muted);
 
     --dealer-header-bg: #322438;
     --dealer-header-text: #f3eef7;

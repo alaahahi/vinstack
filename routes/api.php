@@ -98,6 +98,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/system/migrations', [SystemController::class, 'migrations']);
         Route::post('/system/migrate', [SystemController::class, 'migrate']);
+        Route::post('/system/cache/clear', [SystemController::class, 'clearCache']);
         Route::get('/system/logs', [SystemController::class, 'logs']);
         Route::delete('/system/logs', [SystemController::class, 'clearLogs']);
 

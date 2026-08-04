@@ -594,6 +594,29 @@
 
             <section class="admin-surface settings-card settings-card--wide settings-card--system">
                 <header class="settings-card__head">
+                    <i class="pi pi-bolt" />
+                    <div>
+                        <h2 class="vs-card-title">{{ t('settings.sections.cache') }}</h2>
+                        <p class="vs-card-subtitle">{{ t('settings.sections.cacheSub') }}</p>
+                    </div>
+                </header>
+
+                <div class="settings-card__body">
+                    <div class="system-actions">
+                        <Button
+                            :label="t('settings.clearCache')"
+                            icon="pi pi-trash"
+                            severity="warning"
+                            outlined
+                            :loading="clearingCache"
+                            @click="confirmClearCache"
+                        />
+                    </div>
+                </div>
+            </section>
+
+            <section class="admin-surface settings-card settings-card--wide settings-card--system">
+                <header class="settings-card__head">
                     <i class="pi pi-exclamation-triangle" />
                     <div>
                         <h2 class="vs-card-title">{{ t('settings.sections.errorLog') }}</h2>
@@ -632,6 +655,27 @@
                 </div>
             </section>
         </div>
+
+        <Dialog
+            v-model:visible="clearCacheConfirmVisible"
+            :header="t('settings.clearCacheHeader')"
+            modal
+            :style="{ width: 'min(420px, 95vw)' }"
+        >
+            <p class="vs-card-subtitle">
+                {{ t('settings.clearCacheConfirm') }}
+            </p>
+            <template #footer>
+                <Button :label="t('actions.cancel')" text @click="clearCacheConfirmVisible = false" />
+                <Button
+                    :label="t('settings.clearCache')"
+                    icon="pi pi-trash"
+                    severity="warning"
+                    :loading="clearingCache"
+                    @click="clearCache"
+                />
+            </template>
+        </Dialog>
 
         <Dialog
             v-model:visible="clearLogsConfirmVisible"
@@ -753,6 +797,8 @@ const migrateConfirmVisible = ref(false);
 const logsLoading = ref(false);
 const clearingLogs = ref(false);
 const clearLogsConfirmVisible = ref(false);
+const clearCacheConfirmVisible = ref(false);
+const clearingCache = ref(false);
 const logContent = ref('');
 const logMessage = ref('');
 const logLines = ref(0);
@@ -1157,6 +1203,33 @@ async function loadLogs() {
 
 function confirmClearLogs() {
     clearLogsConfirmVisible.value = true;
+}
+
+function confirmClearCache() {
+    clearCacheConfirmVisible.value = true;
+}
+
+async function clearCache() {
+    clearingCache.value = true;
+
+    try {
+        const { data } = await api.post('/admin/system/cache/clear');
+        clearCacheConfirmVisible.value = false;
+        toast.add({
+            severity: 'success',
+            summary: data.message || t('settings.cacheCleared'),
+            life: 3000,
+        });
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || t('settings.clearCacheFailed'),
+            life: 4000,
+        });
+    } finally {
+        clearingCache.value = false;
+    }
 }
 
 async function clearLogs() {

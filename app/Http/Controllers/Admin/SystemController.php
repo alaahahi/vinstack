@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
+use App\Http\Requests\Admin\ClearSystemCacheRequest;
+use App\Services\SystemCacheService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
@@ -12,6 +14,16 @@ use Throwable;
 
 class SystemController extends Controller
 {
+    public function clearCache(ClearSystemCacheRequest $request, SystemCacheService $cache): JsonResponse
+    {
+        $result = $cache->clear();
+
+        return response()->json([
+            'message' => 'تم مسح الكاش بنجاح.',
+            'data' => $result,
+        ]);
+    }
+
     public function migrations(): JsonResponse
     {
         $migrator = app('migrator');
