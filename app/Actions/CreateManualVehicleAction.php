@@ -123,6 +123,16 @@ class CreateManualVehicleAction
                 continue;
             }
 
+            if (in_array($key, ['purchase_date', 'eta'], true)) {
+                $normalized = VehicleEta::normalize($value);
+
+                if ($normalized !== null) {
+                    $raw[$key] = $normalized;
+                }
+
+                continue;
+            }
+
             $raw[$key] = $value;
         }
 

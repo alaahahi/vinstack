@@ -144,6 +144,22 @@ class SyncVehiclesAction
             }
         }
 
+        $rawData = [
+            ...$item,
+            'eta' => $eta,
+            'images_by_stage' => $imagesByStage,
+        ];
+
+        $purchaseDate = VehicleEta::normalize(
+            Arr::get($item, 'purchase_date')
+                ?? Arr::get($item, 'purchased_at')
+                ?? Arr::get($item, 'bought_at')
+        );
+
+        if ($purchaseDate !== null) {
+            $rawData['purchase_date'] = $purchaseDate;
+        }
+
         return [
             'vin' => Arr::get($item, 'vin'),
             'make' => Arr::get($item, 'make'),
@@ -152,11 +168,7 @@ class SyncVehiclesAction
             'price' => Arr::get($item, 'price'),
             'eta' => $eta,
             'images' => $images,
-            'raw_data' => [
-                ...$item,
-                'eta' => $eta,
-                'images_by_stage' => $imagesByStage,
-            ],
+            'raw_data' => $rawData,
         ];
     }
 }

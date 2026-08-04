@@ -60,18 +60,24 @@ class Vehicle extends Model
     {
         $driver = $query->getConnection()->getDriverName();
 
+        // Chronological purchase_date DESC (nulls last), then created_at, then id.
+        // Use DATE() so ISO timestamps and Y-m-d sort correctly — not as raw strings.
         if ($driver === 'sqlite') {
+            $purchaseDate = "date(json_extract(raw_data, '$.purchase_date'))";
+
             return $query
-                ->orderByRaw(
-                    "COALESCE(NULLIF(json_extract(raw_data, '$.purchase_date'), ''), NULLIF(json_extract(raw_data, '$.created_at'), ''), datetime(created_at)) DESC"
-                )
+                ->orderByRaw("CASE WHEN {$purchaseDate} IS NULL THEN 1 ELSE 0 END ASC")
+                ->orderByRaw("{$purchaseDate} DESC")
+                ->orderByDesc('created_at')
                 ->orderByDesc('id');
         }
 
+        $purchaseDate = "DATE(JSON_UNQUOTE(JSON_EXTRACT(raw_data, '$.purchase_date')))";
+
         return $query
-            ->orderByRaw(
-                "COALESCE(NULLIF(JSON_UNQUOTE(JSON_EXTRACT(raw_data, '$.purchase_date')), ''), NULLIF(JSON_UNQUOTE(JSON_EXTRACT(raw_data, '$.created_at')), ''), created_at) DESC"
-            )
+            ->orderByRaw("CASE WHEN {$purchaseDate} IS NULL THEN 1 ELSE 0 END ASC")
+            ->orderByRaw("{$purchaseDate} DESC")
+            ->orderByDesc('created_at')
             ->orderByDesc('id');
     }
 }

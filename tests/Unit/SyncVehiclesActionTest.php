@@ -48,6 +48,7 @@ class SyncVehiclesActionTest extends TestCase
                     'model' => 'Accord',
                     'year' => 2024,
                     'eta_date' => '2026-08-18T14:30:00Z',
+                    'purchase_date' => '2026-07-05T00:00:00.000Z',
                     'status' => 'Shipped',
                     'images' => [],
                 ],
@@ -70,6 +71,7 @@ class SyncVehiclesActionTest extends TestCase
         $this->assertSame(1, $result['updated']);
         $this->assertSame('2026-08-18', $vehicle->eta);
         $this->assertSame('2026-08-18', $vehicle->raw_data['eta']);
+        $this->assertSame('2026-07-05', $vehicle->raw_data['purchase_date']);
         $this->assertSame('Shipped', $vehicle->raw_data['status']);
     }
 }

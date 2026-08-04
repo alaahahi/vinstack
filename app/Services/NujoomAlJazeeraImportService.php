@@ -359,7 +359,7 @@ class NujoomAlJazeeraImportService
             'buyer' => $buyer,
             'region' => $this->nullableString($row['region'] ?? null),
             'destination' => $this->nullableString($row['destination'] ?? null),
-            'purchase_date' => $this->nullableString($row['purchase_date'] ?? null),
+            'purchase_date' => VehicleEta::normalize($row['purchase_date'] ?? null),
             'value' => $this->nullableString($row['auction_price'] ?? null),
             'auction_invoice' => $this->nullableString($row['auction_invoice'] ?? null),
             'payment_date' => $this->nullableString($row['payment_date'] ?? null),

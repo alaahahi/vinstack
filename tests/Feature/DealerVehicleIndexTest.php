@@ -92,9 +92,9 @@ class DealerVehicleIndexTest extends TestCase
         $vins = collect($response->json('data'))->pluck('vin')->all();
 
         $this->assertSame([
-            $fallbackCreated->vin,
             $newerPurchase->vin,
             $olderPurchase->vin,
+            $fallbackCreated->vin,
         ], $vins);
 
         $byVin = collect($response->json('data'))->keyBy('vin');

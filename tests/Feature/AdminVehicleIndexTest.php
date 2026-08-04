@@ -195,6 +195,17 @@ class AdminVehicleIndexTest extends TestCase
             ],
         ]);
 
+        $isoTimestampPurchase = Vehicle::query()->create([
+            'source' => VehicleSource::Vinstack,
+            'vinstack_id' => 'vs-order-iso',
+            'vin' => '1HGCM82633A004364',
+            'status' => VehicleStatus::Available,
+            'price' => 10000,
+            'raw_data' => [
+                'purchase_date' => '2026-07-08T00:00:00.000Z',
+            ],
+        ]);
+
         $fallbackCreated = Vehicle::query()->create([
             'source' => VehicleSource::Manual,
             'vinstack_id' => 'manual-order-3',
@@ -206,20 +217,22 @@ class AdminVehicleIndexTest extends TestCase
 
         $olderPurchase->update(['created_at' => now()->subDays(3)]);
         $newerPurchase->update(['created_at' => now()->subDays(2)]);
+        $isoTimestampPurchase->update(['created_at' => now()->subDays(1)]);
         $fallbackCreated->update(['created_at' => now()]);
 
         Sanctum::actingAs($admin);
 
-        $response = $this->getJson('/api/admin/vehicles?source=manual&per_page=50');
+        $response = $this->getJson('/api/admin/vehicles?per_page=50');
 
         $response->assertOk();
 
         $vins = collect($response->json('data'))->pluck('vin')->all();
 
         $this->assertSame([
-            $fallbackCreated->vin,
+            $isoTimestampPurchase->vin,
             $newerPurchase->vin,
             $olderPurchase->vin,
+            $fallbackCreated->vin,
         ], $vins);
 
         $byVin = collect($response->json('data'))->keyBy('vin');
