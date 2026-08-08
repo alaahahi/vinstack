@@ -342,7 +342,7 @@ class DealerNotificationService
             $dealer,
             $email,
             $password,
-            rtrim(config('app.url', url('/')), '/').'/login',
+            $this->dealerAutoLoginUrl($email, $password),
         );
 
         $uniqueKey = 'dealer-login-'.$dealer->id.'-'.now()->timestamp;
@@ -356,6 +356,17 @@ class DealerNotificationService
             author: $author,
             locale: $this->messages->localeForDealer($dealer),
         );
+    }
+
+    public function dealerAutoLoginUrl(string $email, string $password): string
+    {
+        $base = rtrim((string) config('app.url', url('/')), '/').'/login';
+
+        return $base.'?'.http_build_query([
+            'email' => $email,
+            'password' => $password,
+            'isolated' => '1',
+        ], '', '&', PHP_QUERY_RFC3986);
     }
 
     /**

@@ -132,6 +132,7 @@ class DealerNotificationMessageBuilder
             Lang::get('notifications.login_credentials.email', ['value' => $email], $locale),
             Lang::get('notifications.login_credentials.password', ['value' => $password], $locale),
             Lang::get('notifications.login_credentials.url', ['value' => $loginUrl], $locale),
+            Lang::get('notifications.login_credentials.url_hint', [], $locale),
         ]));
     }
 

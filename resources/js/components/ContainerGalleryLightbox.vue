@@ -26,19 +26,15 @@
             @click.stop
             @touchstart.stop
         >
-            <div class="gallery-chrome__row gallery-chrome__row--stages" role="status">
+            <div class="gallery-chrome__row" role="status">
                 <span class="gallery-stage-tab active">
                     <span class="gallery-stage-label">معرض الحاوية</span>
                     <span class="gallery-stage-count">{{ images.length }}</span>
                 </span>
                 <span v-if="currentVin" class="container-gallery-vin-badge">{{ currentVin }}</span>
-            </div>
 
-            <div
-                v-if="images.length > 1"
-                class="gallery-chrome__row gallery-chrome__row--tools"
-            >
                 <div
+                    v-if="images.length > 1"
                     class="gallery-nav-bar"
                     role="navigation"
                     aria-label="تنقل صور الحاوية"
@@ -195,13 +191,13 @@ onBeforeUnmount(() => {
     z-index: 11050;
     display: flex;
     flex-direction: column;
-    gap: 0.55rem;
+    gap: 0.35rem;
     padding:
-        max(12px, env(safe-area-inset-top, 0px))
-        max(60px, calc(env(safe-area-inset-end, 0px) + 48px))
-        12px
-        max(12px, env(safe-area-inset-start, 0px));
-    background: linear-gradient(180deg, rgb(9 9 11 / 0.97) 0%, rgb(9 9 11 / 0.9) 100%);
+        max(8px, env(safe-area-inset-top, 0px))
+        max(52px, calc(env(safe-area-inset-end, 0px) + 40px))
+        8px
+        max(8px, env(safe-area-inset-start, 0px));
+    background: linear-gradient(180deg, rgb(9 9 11 / 0.97) 0%, rgb(9 9 11 / 0.88) 100%);
     border-bottom: 1px solid rgb(255 255 255 / 0.08);
     pointer-events: auto;
 }
@@ -315,16 +311,22 @@ body > .vel-modal {
 }
 
 .vel-modal .vel-img-wrapper {
-    top: calc(50% + 72px) !important;
+    top: calc(50% + 12px) !important;
 }
 
 .vel-modal .vel-toolbar {
     display: none !important;
 }
 
+.vel-modal .btn__prev,
+.vel-modal .btn__next {
+    display: none !important;
+}
+
 .vel-modal .vel-img {
-    max-width: min(92vw, 1200px);
-    max-height: calc(100vh - 220px);
+    max-width: calc(100vw - 16px) !important;
+    max-height: calc(100dvh - 96px) !important;
+    object-fit: contain;
     touch-action: pinch-zoom;
 }
 
@@ -376,25 +378,20 @@ body > .vel-modal {
         height: 44px;
     }
 
-    .vel-modal .btn__prev,
-    .vel-modal .btn__next {
-        display: none !important;
-    }
-
     .vel-modal .vel-img-wrapper {
-        top: calc(50% + 88px) !important;
+        top: calc(50% + 28px) !important;
     }
 
     .vel-modal .vel-img-title {
-        bottom: max(16px, env(safe-area-inset-bottom, 0px)) !important;
-        max-width: 92vw;
+        bottom: max(8px, env(safe-area-inset-bottom, 0px)) !important;
+        max-width: 96vw;
         white-space: normal;
         line-height: 1.35;
     }
 
     .vel-modal .vel-img {
-        max-width: 100vw !important;
-        max-height: calc(100dvh - 260px) !important;
+        max-width: calc(100vw - 8px) !important;
+        max-height: calc(100dvh - 128px) !important;
     }
 }
 </style>

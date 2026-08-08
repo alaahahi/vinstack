@@ -92,12 +92,28 @@ class DealerNotificationMessageBuilderTest extends TestCase
             $dealer,
             'dealer@example.com',
             'secret123',
-            'https://vinstack.test/login',
+            'https://vinstack.test/login?email=dealer%40example.com&password=secret123&isolated=1',
         );
 
         $this->assertStringContainsString('مرحباً بكم في', $message);
         $this->assertStringContainsString('البريد الإلكتروني: dealer@example.com', $message);
+        $this->assertStringContainsString('كلمة المرور: secret123', $message);
+        $this->assertStringContainsString('password=secret123', $message);
+        $this->assertStringContainsString('تسجيل الدخول تلقائياً', $message);
         $this->assertStringNotContainsString('07504781630', $message);
         $this->assertStringNotContainsString('اسم المستخدم', $message);
+    }
+
+    public function test_login_credentials_whatsapp_url_includes_email_and_password(): void
+    {
+        $url = app(\App\Services\DealerNotificationService::class)->dealerAutoLoginUrl(
+            'dealer@example.com',
+            'secret123',
+        );
+
+        $this->assertStringContainsString('/login?', $url);
+        $this->assertStringContainsString('email=dealer%40example.com', $url);
+        $this->assertStringContainsString('password=secret123', $url);
+        $this->assertStringContainsString('isolated=1', $url);
     }
 }

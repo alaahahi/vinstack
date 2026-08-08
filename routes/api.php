@@ -1,6 +1,7 @@
 <?php
 
 use App\Http\Controllers\Admin\ContainerController as AdminContainerController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ContainerImageController as AdminContainerImageController;
 use App\Http\Controllers\Admin\DatabaseBackupController;
 use App\Http\Controllers\Admin\DealerController;
@@ -47,6 +48,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::post('/logout', [AuthController::class, 'logout']);
 
     Route::middleware('role:admin')->prefix('admin')->group(function () {
+        Route::get('/dashboard', [DashboardController::class, 'show']);
         Route::get('/profile', [AdminProfileController::class, 'show']);
         Route::put('/profile', [AdminProfileController::class, 'update']);
         Route::put('/profile/password', [AdminProfileController::class, 'updatePassword']);

@@ -20,6 +20,7 @@ return [
         'email' => 'Email: :value',
         'password' => 'Password: :value',
         'url' => 'Login URL: :value',
+        'url_hint' => 'Tap the link to sign in automatically if you are logged out.',
     ],
     'vehicle_updated' => [
         'intro' => 'Vehicle status update at :company',

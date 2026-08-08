@@ -28,7 +28,16 @@ const routes = [
         children: [
             {
                 path: '',
-                redirect: { name: 'admin.vehicles' },
+                redirect: { name: 'admin.dashboard' },
+            },
+            {
+                path: 'dashboard',
+                name: 'admin.dashboard',
+                component: () => import('../pages/admin/DashboardPage.vue'),
+                meta: {
+                    titleKey: 'pages.admin.dashboard.title',
+                    subtitleKey: 'pages.admin.dashboard.subtitle',
+                },
             },
             {
                 path: 'vehicles',

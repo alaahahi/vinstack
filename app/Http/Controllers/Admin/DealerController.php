@@ -95,7 +95,7 @@ class DealerController extends Controller
                 'email' => $user->email,
                 'username' => $user->email,
                 'password' => $plainPassword,
-                'url' => $this->loginPageUrl(),
+                'url' => $dealerNotifications->dealerAutoLoginUrl($user->email, $plainPassword),
             ],
             'credentials_notification' => [
                 'ok' => $credentialsNotification['ok'],
@@ -105,7 +105,7 @@ class DealerController extends Controller
         ], 201);
     }
 
-    public function update(UpdateDealerRequest $request, Dealer $dealer): JsonResponse
+    public function update(UpdateDealerRequest $request, Dealer $dealer, DealerNotificationService $dealerNotifications): JsonResponse
     {
         $validated = $request->validated();
         $user = $dealer->user;
@@ -139,6 +139,8 @@ class DealerController extends Controller
             $user->save();
             $dealer->login_password_encrypted = $validated['password'];
             $dealer->save();
+            $dealer->loadMissing('user');
+            $dealerNotifications->sendLoginCredentials($dealer, $validated['password'], $request->user());
         }
 
         $dealer->load('user:id,name,email,phone,locale,locale_customized,last_seen_at,recovery_codes_archive,two_factor_confirmed_at');
