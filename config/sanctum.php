@@ -54,6 +54,21 @@ return [
 
     /*
     |--------------------------------------------------------------------------
+    | Last Used At Tracking
+    |--------------------------------------------------------------------------
+    |
+    | When true, Sanctum updates personal_access_tokens.last_used_at on bearer
+    | token auth. App\Models\PersonalAccessToken throttles those writes so
+    | polling clients do not contend on SQLite every few seconds.
+    |
+    */
+
+    'last_used_at' => filter_var(env('SANCTUM_LAST_USED_AT', true), FILTER_VALIDATE_BOOL),
+
+    'last_used_at_throttle_seconds' => (int) (env('SANCTUM_LAST_USED_AT_THROTTLE', 300) ?: 300),
+
+    /*
+    |--------------------------------------------------------------------------
     | Token Prefix
     |--------------------------------------------------------------------------
     |

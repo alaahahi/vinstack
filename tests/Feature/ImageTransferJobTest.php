@@ -63,7 +63,18 @@ class ImageTransferJobTest extends TestCase
             ->assertJsonPath('meta.total', 1)
             ->assertJsonPath('meta.has_more', false)
             ->assertJsonPath('meta.active_count', 0)
-            ->assertJsonPath('meta.stale_count', 0);
+            ->assertJsonPath('meta.stale_count', 0)
+            ->assertJsonStructure([
+                'meta' => [
+                    'health' => [
+                        'async_enabled',
+                        'queue_connection',
+                        'scheduler' => ['ok', 'command', 'frequency'],
+                        'queue' => ['ok', 'job'],
+                        'overall_ok',
+                    ],
+                ],
+            ]);
     }
 
     public function test_admin_can_paginate_transfer_list(): void
@@ -299,6 +310,28 @@ class ImageTransferJobTest extends TestCase
             ->assertJsonPath('meta.active_count', 1)
             ->assertJsonPath('meta.stale_count', 1)
             ->assertJsonPath('data.0.is_stale', true);
+    }
+
+    public function test_scheduler_command_writes_health_heartbeat(): void
+    {
+        $this->artisan('image-transfers:process')
+            ->assertSuccessful();
+
+        $path = storage_path('app/image-transfers/health.json');
+        $this->assertFileExists($path);
+
+        $payload = json_decode((string) file_get_contents($path), true);
+        $this->assertIsArray($payload);
+        $this->assertNotEmpty($payload['scheduler_last_run_at'] ?? null);
+        $this->assertSame('image-transfers:process', $payload['scheduler_command'] ?? null);
+
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        Sanctum::actingAs($admin);
+
+        $this->getJson('/api/admin/image-transfers')
+            ->assertOk()
+            ->assertJsonPath('meta.health.scheduler.ok', true)
+            ->assertJsonPath('meta.health.scheduler.command', 'image-transfers:process');
     }
 
     public function test_cannot_cancel_finished_transfer(): void

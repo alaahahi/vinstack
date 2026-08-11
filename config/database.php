@@ -38,12 +38,15 @@ return [
             'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            // WAL + busy timeout reduce lock contention / corruption risk under concurrent PHP-FPM writers.
-            'busy_timeout' => (int) env('DB_BUSY_TIMEOUT', 5000),
+            // WAL + busy timeout reduce lock contention under concurrent PHP-FPM / queue writers.
+            // Applied by Illuminate\Database\Connectors\SQLiteConnector on every new PDO connection.
+            'busy_timeout' => (int) (env('DB_BUSY_TIMEOUT') ?: 10000),
             'journal_mode' => env('DB_JOURNAL_MODE', 'wal'),
-            'synchronous' => env('DB_SYNCHRONOUS', null),
+            // NORMAL pairs well with WAL (less fsync pressure than FULL).
+            'synchronous' => env('DB_SYNCHRONOUS', 'NORMAL'),
             'transaction_mode' => 'DEFERRED',
         ],
+
 
         'mysql' => [
             'driver' => 'mysql',
