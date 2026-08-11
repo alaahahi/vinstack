@@ -143,7 +143,7 @@
 
 ```env
 DB_CONNECTION=sqlite
-DB_BUSY_TIMEOUT=10000
+DB_BUSY_TIMEOUT=20000
 DB_JOURNAL_MODE=wal
 DB_SYNCHRONOUS=NORMAL
 
@@ -228,7 +228,7 @@ This app defaults to **one** file: `database/database.sqlite` for **all** Eloque
 
 ```env
 DB_CONNECTION=sqlite
-DB_BUSY_TIMEOUT=10000
+DB_BUSY_TIMEOUT=20000
 DB_JOURNAL_MODE=wal
 DB_SYNCHRONOUS=NORMAL
 
@@ -241,7 +241,7 @@ Then run `php artisan config:clear` (or rebuild config cache). Ensure `storage/f
 
 App-side mitigations already in code:
 
-- SQLite connector pragmas: `journal_mode=WAL`, `busy_timeout=10000`, `synchronous=NORMAL`
+- SQLite connector pragmas: `journal_mode=WAL`, `busy_timeout=20000`, `synchronous=NORMAL`
 - Sanctum `last_used_at` writes throttled (~5 minutes) via `App\Models\PersonalAccessToken`
 
 **If the SQLite file is already corrupted** (path like `/home/…/database/database.sqlite`):

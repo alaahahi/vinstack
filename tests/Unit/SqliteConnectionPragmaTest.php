@@ -10,7 +10,7 @@ class SqliteConnectionPragmaTest extends TestCase
 {
     public function test_default_sqlite_config_enables_wal_and_busy_timeout(): void
     {
-        $this->assertSame(10000, (int) config('database.connections.sqlite.busy_timeout'));
+        $this->assertSame(20000, (int) config('database.connections.sqlite.busy_timeout'));
         $this->assertSame('wal', strtolower((string) config('database.connections.sqlite.journal_mode')));
         $this->assertSame('NORMAL', strtoupper((string) config('database.connections.sqlite.synchronous')));
     }
@@ -26,7 +26,7 @@ class SqliteConnectionPragmaTest extends TestCase
                 'database' => $path,
                 'prefix' => '',
                 'foreign_key_constraints' => true,
-                'busy_timeout' => 10000,
+                'busy_timeout' => 20000,
                 'journal_mode' => 'wal',
                 'synchronous' => 'NORMAL',
                 'transaction_mode' => 'DEFERRED',
@@ -38,7 +38,7 @@ class SqliteConnectionPragmaTest extends TestCase
             $journalMode = strtolower((string) $pdo->query('PRAGMA journal_mode')->fetchColumn());
             $synchronous = strtoupper((string) $pdo->query('PRAGMA synchronous')->fetchColumn());
 
-            $this->assertSame(10000, $busyTimeout);
+            $this->assertSame(20000, $busyTimeout);
             $this->assertSame('wal', $journalMode);
             // SQLite returns 1 for NORMAL
             $this->assertContains($synchronous, ['1', 'NORMAL'], 'Expected NORMAL synchronous mode');
