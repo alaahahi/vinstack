@@ -19,6 +19,7 @@ class ImageTransferProcessor
         protected ContainerService $containers,
         protected DealerNotificationService $notifications,
         protected VehicleUploadedImageService $vehicleImages,
+        protected ImageTransferHealthService $health,
     ) {}
 
     /**
@@ -26,7 +27,7 @@ class ImageTransferProcessor
      */
     public function processBatch(int $jobId): bool
     {
-        return DB::transaction(function () use ($jobId) {
+        $more = DB::transaction(function () use ($jobId) {
             $job = ImageTransferJob::query()->lockForUpdate()->find($jobId);
 
             if ($job === null || $job->isFinished()) {
@@ -97,6 +98,10 @@ class ImageTransferProcessor
 
             return false;
         });
+
+        $this->health->markBatchProcessed('processor', $jobId);
+
+        return $more;
     }
 
     /**

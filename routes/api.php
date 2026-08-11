@@ -123,10 +123,14 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/containers/{container}/images/zip', [AdminContainerImageController::class, 'uploadZip']);
         Route::delete('/containers/{container}/images/{image}', [AdminContainerImageController::class, 'destroy']);
         Route::get('/image-transfers', [ImageTransferController::class, 'index']);
-        Route::get('/image-transfers/{uuid}', [ImageTransferController::class, 'show']);
-        Route::post('/image-transfers/{uuid}/retry', [ImageTransferController::class, 'retry']);
-        Route::post('/image-transfers/{uuid}/process-now', [ImageTransferController::class, 'processNow']);
-        Route::post('/image-transfers/{uuid}/cancel', [ImageTransferController::class, 'cancel']);
+        Route::post('/image-transfers/{uuid}/retry', [ImageTransferController::class, 'retry'])
+            ->whereUuid('uuid');
+        Route::post('/image-transfers/{uuid}/process-now', [ImageTransferController::class, 'processNow'])
+            ->whereUuid('uuid');
+        Route::post('/image-transfers/{uuid}/cancel', [ImageTransferController::class, 'cancel'])
+            ->whereUuid('uuid');
+        Route::get('/image-transfers/{uuid}', [ImageTransferController::class, 'show'])
+            ->whereUuid('uuid');
         Route::get('/containers/{container}/vehicles', [AdminContainerController::class, 'vehicles']);
         Route::get('/containers/{container}/tracking', [AdminContainerController::class, 'tracking']);
         Route::get('/vinstack/containers', [VinstackBrowseController::class, 'containers']);

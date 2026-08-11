@@ -21,6 +21,9 @@ class ProcessImageTransferBatch implements ShouldQueue
 
     public function handle(ImageTransferProcessor $processor): void
     {
+        app(\App\Services\ImageTransferHealthService::class)->markQueueBatchRun($this->transferJobId);
+        app(\App\Services\ImageTransferHealthService::class)->markBatchProcessed('queue', $this->transferJobId);
+
         $more = $processor->processBatch($this->transferJobId);
 
         if ($more) {

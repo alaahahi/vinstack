@@ -22,6 +22,34 @@
             </div>
         </div>
 
+        <div v-if="health" class="health-panel" :class="{ 'health-panel--ok': health.overall_ok, 'health-panel--warn': ! health.overall_ok }">
+            <div class="health-panel__title">
+                <i :class="health.overall_ok ? 'pi pi-check-circle' : 'pi pi-exclamation-triangle'" />
+                <span>{{ health.overall_ok ? t('imageTransfers.healthOk') : t('imageTransfers.healthWarn') }}</span>
+            </div>
+            <div class="health-grid">
+                <div class="health-card" :class="health.scheduler?.ok ? 'health-card--ok' : 'health-card--bad'">
+                    <header>
+                        <strong>{{ t('imageTransfers.schedulerTitle') }}</strong>
+                        <span>{{ health.scheduler?.ok ? t('imageTransfers.statusOk') : t('imageTransfers.statusDown') }}</span>
+                    </header>
+                    <p>{{ t('imageTransfers.schedulerCmd') }}: <code>image-transfers:process</code></p>
+                    <p>{{ t('imageTransfers.lastRun') }}: {{ formatTime(health.scheduler?.last_run_at) }}</p>
+                    <p v-if="health.scheduler?.hint" class="health-card__hint">{{ health.scheduler.hint }}</p>
+                </div>
+                <div class="health-card" :class="health.queue?.ok ? 'health-card--ok' : 'health-card--bad'">
+                    <header>
+                        <strong>{{ t('imageTransfers.queueTitle') }}</strong>
+                        <span>{{ health.queue?.ok ? t('imageTransfers.statusOk') : t('imageTransfers.statusDown') }}</span>
+                    </header>
+                    <p>{{ t('imageTransfers.queueDriver') }}: <code>{{ health.queue_connection }}</code></p>
+                    <p>{{ t('imageTransfers.pendingJobs') }}: {{ health.pending_queue_jobs ?? 0 }}</p>
+                    <p>{{ t('imageTransfers.lastRun') }}: {{ formatTime(health.queue?.last_run_at || health.batch?.last_run_at) }}</p>
+                    <p v-if="health.queue?.hint" class="health-card__hint">{{ health.queue.hint }}</p>
+                </div>
+            </div>
+        </div>
+
         <div v-if="loading && ! jobs.length" class="transfers-empty">
             <ProgressSpinner style="width: 28px; height: 28px" />
             <span>{{ t('imageTransfers.loading') }}</span>
@@ -176,6 +204,8 @@ const actionKind = ref('');
 const detailsOpen = ref(false);
 const detailsJob = ref(null);
 let pollTimer = null;
+
+const health = computed(() => meta.value?.health ?? null);
 
 const hasActive = computed(() => (meta.value?.active_count ?? 0) > 0
     || jobs.value.some((job) => ['queued', 'processing'].includes(job.status)));
@@ -395,6 +425,90 @@ onBeforeUnmount(clearPoll);
     margin: 0;
     color: var(--vs-text-muted);
     font-size: 0.9rem;
+}
+
+.health-panel {
+    border: 1px solid var(--admin-border);
+    border-radius: 14px;
+    padding: 0.85rem 1rem;
+    background: var(--admin-surface);
+    box-shadow: var(--admin-shadow);
+}
+
+.health-panel--ok {
+    border-color: color-mix(in srgb, #22c55e 35%, var(--admin-border));
+}
+
+.health-panel--warn {
+    border-color: color-mix(in srgb, #f59e0b 45%, var(--admin-border));
+}
+
+.health-panel__title {
+    display: flex;
+    align-items: center;
+    gap: 0.45rem;
+    font-weight: 700;
+    margin-bottom: 0.7rem;
+}
+
+.health-panel--ok .health-panel__title {
+    color: #15803d;
+}
+
+.health-panel--warn .health-panel__title {
+    color: #b45309;
+}
+
+.health-grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+
+.health-card {
+    border: 1px solid var(--admin-border);
+    border-radius: 12px;
+    padding: 0.7rem 0.8rem;
+    background: color-mix(in srgb, var(--admin-surface) 92%, #f8fafc);
+}
+
+.health-card header {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin-bottom: 0.35rem;
+}
+
+.health-card p {
+    margin: 0.2rem 0 0;
+    font-size: 0.8rem;
+    color: var(--vs-text-muted);
+}
+
+.health-card code {
+    font-size: 0.78rem;
+}
+
+.health-card--ok header span {
+    color: #15803d;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.health-card--bad header span {
+    color: #b45309;
+    font-size: 0.78rem;
+    font-weight: 700;
+}
+
+.health-card__hint {
+    color: #b45309 !important;
+}
+
+@media (max-width: 720px) {
+    .health-grid {
+        grid-template-columns: 1fr;
+    }
 }
 
 .transfers-summary {

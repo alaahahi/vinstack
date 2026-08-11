@@ -2,6 +2,7 @@
 
 namespace App\Console\Commands;
 
+use App\Services\ImageTransferHealthService;
 use App\Services\ImageTransferProcessor;
 use Illuminate\Console\Command;
 
@@ -15,6 +16,8 @@ class ProcessImageTransfers extends Command
     {
         $limit = max(1, (int) $this->option('limit'));
         $count = $processor->processPendingJobs($limit);
+
+        app(ImageTransferHealthService::class)->markSchedulerRun($count);
 
         $this->info("Processed {$count} image transfer job(s).");
 

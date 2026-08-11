@@ -5,6 +5,7 @@ namespace App\Http\Controllers\Admin;
 use App\Http\Controllers\Controller;
 use App\Models\ImageTransferJob;
 use App\Services\ContainerImageService;
+use App\Services\ImageTransferHealthService;
 use App\Services\ImageTransferProcessor;
 use App\Services\VehicleDetailService;
 use App\Services\VinstackGalleryService;
@@ -15,7 +16,7 @@ use Throwable;
 
 class ImageTransferController extends Controller
 {
-    public function index(Request $request): JsonResponse
+    public function index(Request $request, ImageTransferHealthService $health): JsonResponse
     {
         $page = max(1, (int) $request->input('page', 1));
         $perPage = min(max(1, (int) $request->input('per_page', 10)), 50);
@@ -47,6 +48,7 @@ class ImageTransferController extends Controller
                     ])
                     ->where('updated_at', '<=', now()->subMinutes(ImageTransferJob::STALE_AFTER_MINUTES))
                     ->count(),
+                'health' => $health->status(),
             ],
         ]);
     }
