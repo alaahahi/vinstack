@@ -7,6 +7,7 @@ use App\Models\ImageTransferJob;
 use App\Services\ContainerImageService;
 use App\Services\ImageTransferHealthService;
 use App\Services\ImageTransferProcessor;
+use App\Services\ImageTransferProgressStore;
 use App\Services\VehicleDetailService;
 use App\Services\VinstackGalleryService;
 use Illuminate\Http\JsonResponse;
@@ -16,8 +17,11 @@ use Throwable;
 
 class ImageTransferController extends Controller
 {
-    public function index(Request $request, ImageTransferHealthService $health): JsonResponse
-    {
+    public function index(
+        Request $request,
+        ImageTransferHealthService $health,
+        ImageTransferProgressStore $progress,
+    ): JsonResponse {
         $page = max(1, (int) $request->input('page', 1));
         $perPage = min(max(1, (int) $request->input('per_page', 10)), 50);
 
@@ -28,7 +32,13 @@ class ImageTransferController extends Controller
 
         return response()->json([
             'data' => $paginator->getCollection()
-                ->map(fn (ImageTransferJob $job) => $job->toApiArray())
+                ->map(function (ImageTransferJob $job) use ($progress) {
+                    if ($job->isActive()) {
+                        $progress->applyToJob($job);
+                    }
+
+                    return $job->toApiArray();
+                })
                 ->values(),
             'meta' => [
                 'page' => $paginator->currentPage(),
@@ -58,11 +68,17 @@ class ImageTransferController extends Controller
         ContainerImageService $images,
         VinstackGalleryService $gallery,
         VehicleDetailService $details,
+        ImageTransferProgressStore $progress,
     ): JsonResponse {
         $job = ImageTransferJob::query()
             ->with('vehicle')
             ->where('uuid', $uuid)
             ->firstOrFail();
+
+        if ($job->isActive()) {
+            $progress->applyToJob($job);
+        }
+
         $payload = $job->toApiArray(includeFailedItems: true);
 
         if (! in_array($job->status, [

@@ -20,17 +20,18 @@ class SystemCacheService
      * Clear application caches and invalidate versioned index caches.
      *
      * Also empties Laravel database cache tables when present (safe under
-     * CACHE_STORE=database / SQLite). Session tables are left untouched so
-     * users are not forced to re-login.
+     * CACHE_STORE=database / SQLite). Session tables are left untouched unless
+     * $clearSessions is true, so users are not forced to re-login by default.
      *
      * @return array{
      *     cleared: list<string>,
      *     database_tables_cleared: list<string>,
+     *     sessions_cleared: bool,
      *     vehicle_index_version_bumped: bool,
      *     purchase_dates_normalized: int
      * }
      */
-    public function clear(): array
+    public function clear(bool $clearSessions = false): array
     {
         $commands = [
             'cache:clear',
@@ -51,6 +52,7 @@ class SystemCacheService
         }
 
         $databaseTablesCleared = $this->clearDatabaseCacheTables();
+        $sessionsCleared = $clearSessions ? $this->clearSessionsTable() : false;
 
         $normalized = 0;
 
@@ -65,6 +67,7 @@ class SystemCacheService
         return [
             'cleared' => $cleared,
             'database_tables_cleared' => $databaseTablesCleared,
+            'sessions_cleared' => $sessionsCleared,
             'vehicle_index_version_bumped' => true,
             'purchase_dates_normalized' => $normalized,
         ];
@@ -94,5 +97,23 @@ class SystemCacheService
         }
 
         return $cleared;
+    }
+
+    /**
+     * Empty the sessions table when present (forces users to re-login).
+     */
+    private function clearSessionsTable(): bool
+    {
+        if (! Schema::hasTable('sessions')) {
+            return false;
+        }
+
+        try {
+            DB::table('sessions')->delete();
+
+            return true;
+        } catch (Throwable) {
+            return false;
+        }
     }
 }

@@ -35,6 +35,7 @@ class ProcessImageTransferBatch implements ShouldQueue
     {
         $message = trim((string) ($exception?->getMessage() ?? ''));
 
+        // SQLite locks are handled inside the processor (file progress); do not surface as hard fail.
         app(ImageTransferProcessor::class)->markFailedFromQueue(
             $this->transferJobId,
             $message !== ''
