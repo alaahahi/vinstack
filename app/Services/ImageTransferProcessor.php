@@ -8,6 +8,7 @@ use App\Models\ImageTransferJob;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VinstackSetting;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
@@ -25,70 +26,77 @@ class ImageTransferProcessor
      */
     public function processBatch(int $jobId): bool
     {
-        $job = ImageTransferJob::query()->lockForUpdate()->find($jobId);
+        return DB::transaction(function () use ($jobId) {
+            $job = ImageTransferJob::query()->lockForUpdate()->find($jobId);
 
-        if ($job === null || $job->isFinished()) {
+            if ($job === null || $job->isFinished()) {
+                return false;
+            }
+
+            if ($job->status === ImageTransferJob::STATUS_CANCELLED) {
+                return false;
+            }
+
+            if ($job->status === ImageTransferJob::STATUS_QUEUED) {
+                $job->status = ImageTransferJob::STATUS_PROCESSING;
+                $job->started_at = $job->started_at ?? now();
+
+                if ($job->type === ImageTransferJob::TYPE_CONTAINER_ZIP && $job->replace_existing) {
+                    ContainerImage::query()
+                        ->where('container_number', $job->container_number)
+                        ->delete();
+                }
+
+                $job->save();
+            }
+
+            $batchSize = max(1, (int) (VinstackSetting::current()->image_transfer_batch_size ?? 10));
+            $manifest = $job->manifest ?? [];
+            $processed = 0;
+
+            foreach ($manifest as $offset => $item) {
+                if (($item['status'] ?? '') !== 'pending') {
+                    continue;
+                }
+
+                if ($processed >= $batchSize) {
+                    break;
+                }
+
+                try {
+                    $this->processManifestItem($job, $item);
+                    $manifest[$offset]['status'] = 'done';
+                    $manifest[$offset]['error'] = null;
+                    $job->transferred_count++;
+                } catch (\Throwable $e) {
+                    Log::warning('Image transfer batch item failed', [
+                        'job' => $job->uuid,
+                        'type' => $job->type,
+                        'name' => $item['name'] ?? null,
+                        'error' => $e->getMessage(),
+                    ]);
+
+                    $manifest[$offset]['status'] = 'failed';
+                    $manifest[$offset]['error'] = $e->getMessage();
+                    $job->failed_count++;
+                }
+
+                $processed++;
+            }
+
+            $job->manifest = array_values($manifest);
+            $job->recalculateCountersFromManifest();
+
+            if ($job->hasPendingManifestItems()) {
+                $job->save();
+
+                return true;
+            }
+
+            $this->finalizeJob($job);
+
             return false;
-        }
-
-        if ($job->status === ImageTransferJob::STATUS_QUEUED) {
-            $job->status = ImageTransferJob::STATUS_PROCESSING;
-            $job->started_at = $job->started_at ?? now();
-
-            if ($job->type === ImageTransferJob::TYPE_CONTAINER_ZIP && $job->replace_existing) {
-                ContainerImage::query()
-                    ->where('container_number', $job->container_number)
-                    ->delete();
-            }
-
-            $job->save();
-        }
-
-        $batchSize = max(1, (int) (VinstackSetting::current()->image_transfer_batch_size ?? 10));
-        $manifest = $job->manifest ?? [];
-        $processed = 0;
-
-        foreach ($manifest as $offset => $item) {
-            if (($item['status'] ?? '') !== 'pending') {
-                continue;
-            }
-
-            if ($processed >= $batchSize) {
-                break;
-            }
-
-            try {
-                $this->processManifestItem($job, $item);
-                $manifest[$offset]['status'] = 'done';
-                $manifest[$offset]['error'] = null;
-                $job->transferred_count++;
-            } catch (\Throwable $e) {
-                Log::warning('Image transfer batch item failed', [
-                    'job' => $job->uuid,
-                    'type' => $job->type,
-                    'name' => $item['name'] ?? null,
-                    'error' => $e->getMessage(),
-                ]);
-
-                $manifest[$offset]['status'] = 'failed';
-                $manifest[$offset]['error'] = $e->getMessage();
-                $job->failed_count++;
-            }
-
-            $processed++;
-        }
-
-        $job->manifest = array_values($manifest);
-
-        if ($job->hasPendingManifestItems()) {
-            $job->save();
-
-            return true;
-        }
-
-        $this->finalizeJob($job);
-
-        return false;
+        });
     }
 
     /**
@@ -143,6 +151,8 @@ class ImageTransferProcessor
 
     public function processPendingJobs(int $limit = 5): int
     {
+        $this->reclaimStaleJobs();
+
         $jobs = ImageTransferJob::query()
             ->whereIn('status', [
                 ImageTransferJob::STATUS_QUEUED,
@@ -166,8 +176,122 @@ class ImageTransferProcessor
         return $touched;
     }
 
+    /**
+     * Force one batch now and re-dispatch if needed.
+     */
+    public function processNow(ImageTransferJob $job): ImageTransferJob
+    {
+        if ($job->isFinished()) {
+            return $job->fresh() ?? $job;
+        }
+
+        if ($job->status === ImageTransferJob::STATUS_CANCELLED) {
+            return $job;
+        }
+
+        $more = $this->processBatch($job->id);
+
+        if ($more) {
+            ProcessImageTransferBatch::dispatch($job->id);
+        }
+
+        return $job->fresh() ?? $job;
+    }
+
+    public function cancel(ImageTransferJob $job): ImageTransferJob
+    {
+        return DB::transaction(function () use ($job) {
+            $locked = ImageTransferJob::query()->lockForUpdate()->find($job->id);
+
+            if ($locked === null || $locked->isFinished()) {
+                return $locked ?? $job;
+            }
+
+            $locked->status = ImageTransferJob::STATUS_CANCELLED;
+            $locked->error_message = $locked->error_message
+                ?: 'تم إلغاء مهمة النقل بواسطة الإدارة.';
+            $locked->finished_at = now();
+            $locked->save();
+
+            $this->cleanupStaging($locked);
+
+            return $locked->fresh() ?? $locked;
+        });
+    }
+
+    public function retryFailed(ImageTransferJob $job): ImageTransferJob
+    {
+        if (! in_array($job->status, [
+            ImageTransferJob::STATUS_FAILED,
+            ImageTransferJob::STATUS_PARTIAL,
+        ], true)) {
+            throw new \RuntimeException('لا يمكن إعادة محاولة هذه المهمة في حالتها الحالية.');
+        }
+
+        $manifest = $job->manifest ?? [];
+
+        foreach ($manifest as $offset => $item) {
+            if (($item['status'] ?? '') === 'failed') {
+                $manifest[$offset]['status'] = 'pending';
+                $manifest[$offset]['error'] = null;
+            }
+        }
+
+        $job->manifest = array_values($manifest);
+        $job->recalculateCountersFromManifest();
+        $job->status = ImageTransferJob::STATUS_QUEUED;
+        $job->error_message = null;
+        $job->finished_at = null;
+        $job->save();
+
+        $more = $this->processBatch($job->id);
+
+        if ($more) {
+            ProcessImageTransferBatch::dispatch($job->id);
+        }
+
+        return $job->fresh() ?? $job;
+    }
+
+    public function markFailedFromQueue(int $jobId, string $message): void
+    {
+        $job = ImageTransferJob::query()->find($jobId);
+
+        if ($job === null || $job->isFinished()) {
+            return;
+        }
+
+        $job->status = ImageTransferJob::STATUS_FAILED;
+        $job->error_message = $message !== ''
+            ? $message
+            : 'توقفت مهمة النقل بعد فشل الطابور.';
+        $job->finished_at = now();
+        $job->save();
+    }
+
+    protected function reclaimStaleJobs(): void
+    {
+        $stale = ImageTransferJob::query()
+            ->whereIn('status', [
+                ImageTransferJob::STATUS_QUEUED,
+                ImageTransferJob::STATUS_PROCESSING,
+            ])
+            ->where('updated_at', '<=', now()->subMinutes(ImageTransferJob::STALE_AFTER_MINUTES))
+            ->orderBy('id')
+            ->limit(20)
+            ->get();
+
+        foreach ($stale as $job) {
+            ProcessImageTransferBatch::dispatch($job->id);
+        }
+    }
+
     protected function finalizeJob(ImageTransferJob $job): void
     {
+        if ($job->status === ImageTransferJob::STATUS_CANCELLED) {
+            return;
+        }
+
         if ($job->transferred_count <= 0 && $job->failed_count > 0) {
             $job->status = ImageTransferJob::STATUS_FAILED;
             $job->error_message = 'فشل نقل جميع الصور إلى Cloudinary.';

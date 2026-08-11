@@ -40,6 +40,15 @@ const routes = [
                 },
             },
             {
+                path: 'image-transfers',
+                name: 'admin.imageTransfers',
+                component: () => import('../pages/admin/ImageTransfersPage.vue'),
+                meta: {
+                    titleKey: 'pages.admin.imageTransfers.title',
+                    subtitleKey: 'pages.admin.imageTransfers.subtitle',
+                },
+            },
+            {
                 path: 'vehicles',
                 name: 'admin.vehicles',
                 component: () => import('../pages/admin/VehiclesPage.vue'),

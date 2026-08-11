@@ -3,7 +3,6 @@
 namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
-use App\Jobs\ProcessImageTransferBatch;
 use App\Models\ImageTransferJob;
 use App\Services\ContainerImageService;
 use App\Services\ImageTransferProcessor;
@@ -11,6 +10,8 @@ use App\Services\VehicleDetailService;
 use App\Services\VinstackGalleryService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use RuntimeException;
+use Throwable;
 
 class ImageTransferController extends Controller
 {
@@ -33,6 +34,19 @@ class ImageTransferController extends Controller
                 'per_page' => $paginator->perPage(),
                 'total' => $paginator->total(),
                 'has_more' => $paginator->hasMorePages(),
+                'active_count' => ImageTransferJob::query()
+                    ->whereIn('status', [
+                        ImageTransferJob::STATUS_QUEUED,
+                        ImageTransferJob::STATUS_PROCESSING,
+                    ])
+                    ->count(),
+                'stale_count' => ImageTransferJob::query()
+                    ->whereIn('status', [
+                        ImageTransferJob::STATUS_QUEUED,
+                        ImageTransferJob::STATUS_PROCESSING,
+                    ])
+                    ->where('updated_at', '<=', now()->subMinutes(ImageTransferJob::STALE_AFTER_MINUTES))
+                    ->count(),
             ],
         ]);
     }
@@ -47,7 +61,7 @@ class ImageTransferController extends Controller
             ->with('vehicle')
             ->where('uuid', $uuid)
             ->firstOrFail();
-        $payload = $job->toApiArray();
+        $payload = $job->toApiArray(includeFailedItems: true);
 
         if (! in_array($job->status, [
             ImageTransferJob::STATUS_COMPLETED,
@@ -80,39 +94,55 @@ class ImageTransferController extends Controller
     {
         $job = ImageTransferJob::query()->where('uuid', $uuid)->firstOrFail();
 
-        if (! in_array($job->status, [
-            ImageTransferJob::STATUS_FAILED,
-            ImageTransferJob::STATUS_PARTIAL,
-        ], true)) {
+        try {
+            $job = $processor->retryFailed($job);
+        } catch (RuntimeException $e) {
+            return response()->json(['message' => $e->getMessage()], 422);
+        } catch (Throwable $e) {
             return response()->json([
-                'message' => 'لا يمكن إعادة محاولة هذه المهمة في حالتها الحالية.',
-            ], 422);
-        }
-
-        $manifest = $job->manifest ?? [];
-
-        foreach ($manifest as $offset => $item) {
-            if (($item['status'] ?? '') === 'failed') {
-                $manifest[$offset]['status'] = 'pending';
-                $manifest[$offset]['error'] = null;
-            }
-        }
-
-        $job->manifest = $manifest;
-        $job->status = ImageTransferJob::STATUS_QUEUED;
-        $job->error_message = null;
-        $job->finished_at = null;
-        $job->save();
-
-        $more = $processor->processBatch($job->id);
-
-        if ($more) {
-            ProcessImageTransferBatch::dispatch($job->id);
+                'message' => 'تعذّرت إعادة محاولة النقل: '.$e->getMessage(),
+            ], 500);
         }
 
         return response()->json([
-            'data' => $job->fresh()->toApiArray(),
+            'data' => $job->toApiArray(includeFailedItems: true),
             'message' => 'أُعيدت محاولة نقل الصور الفاشلة.',
+        ]);
+    }
+
+    public function processNow(string $uuid, ImageTransferProcessor $processor): JsonResponse
+    {
+        $job = ImageTransferJob::query()->where('uuid', $uuid)->firstOrFail();
+
+        if ($job->isFinished()) {
+            return response()->json([
+                'message' => 'المهمة منتهية ولا تحتاج تشغيلًا يدويًا.',
+            ], 422);
+        }
+
+        $job = $processor->processNow($job);
+
+        return response()->json([
+            'data' => $job->toApiArray(includeFailedItems: true),
+            'message' => 'تم تشغيل دفعة نقل الآن.',
+        ]);
+    }
+
+    public function cancel(string $uuid, ImageTransferProcessor $processor): JsonResponse
+    {
+        $job = ImageTransferJob::query()->where('uuid', $uuid)->firstOrFail();
+
+        if ($job->isFinished()) {
+            return response()->json([
+                'message' => 'المهمة منتهية مسبقًا.',
+            ], 422);
+        }
+
+        $job = $processor->cancel($job);
+
+        return response()->json([
+            'data' => $job->toApiArray(includeFailedItems: true),
+            'message' => 'تم إلغاء مهمة النقل.',
         ]);
     }
 }

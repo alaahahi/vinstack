@@ -38,8 +38,46 @@ export async function fetchImageTransfers(apiPrefix = '/admin', { page = 1, perP
             per_page: perPage,
             total: 0,
             has_more: false,
+            active_count: 0,
+            stale_count: 0,
         },
     };
+}
+
+/**
+ * @param {string} transferId
+ * @param {string} [apiPrefix='/admin']
+ */
+export async function retryImageTransfer(transferId, apiPrefix = '/admin') {
+    const { data } = await api.post(
+        `${apiPrefix}/image-transfers/${encodeURIComponent(transferId)}/retry`,
+    );
+
+    return data.data ?? null;
+}
+
+/**
+ * @param {string} transferId
+ * @param {string} [apiPrefix='/admin']
+ */
+export async function processImageTransferNow(transferId, apiPrefix = '/admin') {
+    const { data } = await api.post(
+        `${apiPrefix}/image-transfers/${encodeURIComponent(transferId)}/process-now`,
+    );
+
+    return data.data ?? null;
+}
+
+/**
+ * @param {string} transferId
+ * @param {string} [apiPrefix='/admin']
+ */
+export async function cancelImageTransfer(transferId, apiPrefix = '/admin') {
+    const { data } = await api.post(
+        `${apiPrefix}/image-transfers/${encodeURIComponent(transferId)}/cancel`,
+    );
+
+    return data.data ?? null;
 }
 
 /**
@@ -80,7 +118,7 @@ export function watchBackgroundTransfer({
                 return;
             }
 
-            if (transfer.status === 'failed') {
+            if (['failed', 'cancelled'].includes(transfer.status)) {
                 stopBackgroundTransferWatch(transferId);
                 onFailed?.(transfer);
 

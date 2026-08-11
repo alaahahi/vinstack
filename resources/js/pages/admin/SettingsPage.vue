@@ -217,19 +217,11 @@
 
             <section class="admin-surface settings-card settings-card--gallery">
                 <header class="settings-card__head">
-                    <i class="pi pi-server" />
+                    <i class="pi pi-cloud-upload" />
                     <div>
-                        <h2 class="vs-card-title">نقل الصور إلى Cloudinary</h2>
-                        <p class="vs-card-subtitle">استلام ZIP فوراً ثم النقل بالخلفية على دفعات</p>
+                        <h2 class="vs-card-title">{{ t('pages.admin.imageTransfers.title') }}</h2>
+                        <p class="vs-card-subtitle">{{ t('imageTransfers.lead') }}</p>
                     </div>
-                    <Button
-                        icon="pi pi-refresh"
-                        label="تحديث"
-                        size="small"
-                        text
-                        :loading="loadingTransfers"
-                        @click="loadImageTransfers"
-                    />
                 </header>
 
                 <div class="settings-card__body">
@@ -252,40 +244,13 @@
                         />
                     </div>
 
-                    <div v-if="imageTransfers.length" class="transfer-monitor">
-                        <div
-                            v-for="job in imageTransfers"
-                            :key="job.id"
-                            class="transfer-row"
-                            :class="`transfer-row--${job.status}`"
-                        >
-                            <div class="transfer-row__main">
-                                <strong>{{ transferJobLabel(job) }}</strong>
-                                <span class="transfer-row__status">{{ transferStatusLabel(job.status) }}</span>
-                            </div>
-                            <div class="transfer-row__meta">
-                                {{ job.transferred_count }}/{{ job.total_images }}
-                                <span v-if="job.failed_count"> · فشل {{ job.failed_count }}</span>
-                                · {{ job.progress_percent }}%
-                            </div>
-                        </div>
-                        <div class="transfer-monitor__footer">
-                            <span v-if="transferTotal > 0" class="transfer-monitor__count">
-                                {{ t('settings.transferShowing', { shown: imageTransfers.length, total: transferTotal }) }}
-                            </span>
-                            <Button
-                                v-if="transferHasMore"
-                                :label="t('settings.transferShowMore')"
-                                icon="pi pi-angle-down"
-                                severity="secondary"
-                                outlined
-                                size="small"
-                                :loading="loadingMoreTransfers"
-                                @click="loadMoreImageTransfers"
-                            />
-                        </div>
-                    </div>
-                    <p v-else class="transfer-monitor-empty">لا توجد مهام نقل حديثة</p>
+                    <RouterLink
+                        :to="{ name: 'admin.imageTransfers' }"
+                        class="transfer-page-link"
+                    >
+                        <i class="pi pi-external-link" />
+                        {{ t('imageTransfers.openPage') }}
+                    </RouterLink>
                 </div>
             </section>
 
@@ -766,7 +731,6 @@ import AdminPageHeader from '../../components/AdminPageHeader.vue';
 import VehicleOptionsEditor from '../../components/VehicleOptionsEditor.vue';
 import { restoreVehicle } from '../../api/vehicles';
 import api from '../../api/client';
-import { fetchImageTransfers } from '../../utils/imageTransfer';
 import { formatDateTime } from '../../utils/formatDateTime';
 
 const { t } = useI18n();
@@ -776,13 +740,6 @@ const settings = ref({ has_token: false, last_sync_at: null, last_auto_sync_at: 
 const saving = ref(false);
 const testingGallery = ref(false);
 const testingCloudinary = ref(false);
-const imageTransfers = ref([]);
-const transferPage = ref(1);
-const transferTotal = ref(0);
-const transferHasMore = ref(false);
-const loadingTransfers = ref(false);
-const loadingMoreTransfers = ref(false);
-const TRANSFER_PER_PAGE = 10;
 const savingOptions = ref(false);
 const syncing = ref(false);
 const restorableVisible = ref(false);
@@ -954,72 +911,6 @@ async function testCloudinaryConnection() {
     } finally {
         testingCloudinary.value = false;
     }
-}
-
-function transferJobLabel(job) {
-    if (job.container_number) {
-        return job.container_number;
-    }
-
-    if (job.vehicle_vin) {
-        const stage = job.stage ? ` · ${job.stage}` : '';
-
-        return `${job.vehicle_vin}${stage}`;
-    }
-
-    return '—';
-}
-
-function transferStatusLabel(status) {
-    const labels = {
-        queued: 'بالانتظار',
-        processing: 'جاري النقل',
-        completed: 'مكتمل',
-        partial: 'جزئي',
-        failed: 'فاشل',
-    };
-
-    return labels[status] || status;
-}
-
-async function loadImageTransfers({ reset = true } = {}) {
-    if (reset) {
-        loadingTransfers.value = true;
-        transferPage.value = 1;
-    } else {
-        loadingMoreTransfers.value = true;
-    }
-
-    try {
-        const page = reset ? 1 : transferPage.value + 1;
-        const result = await fetchImageTransfers('/admin', {
-            page,
-            perPage: TRANSFER_PER_PAGE,
-        });
-        const rows = result.data ?? [];
-
-        imageTransfers.value = reset ? rows : [...imageTransfers.value, ...rows];
-        transferPage.value = result.meta?.page ?? page;
-        transferTotal.value = result.meta?.total ?? imageTransfers.value.length;
-        transferHasMore.value = Boolean(result.meta?.has_more);
-    } catch {
-        if (reset) {
-            imageTransfers.value = [];
-            transferTotal.value = 0;
-            transferHasMore.value = false;
-        }
-    } finally {
-        loadingTransfers.value = false;
-        loadingMoreTransfers.value = false;
-    }
-}
-
-async function loadMoreImageTransfers() {
-    if (loadingTransfers.value || loadingMoreTransfers.value || ! transferHasMore.value) {
-        return;
-    }
-
-    await loadImageTransfers({ reset: false });
 }
 
 async function save() {
@@ -1467,7 +1358,7 @@ async function restoreFromUpload() {
 onMounted(async () => {
     logMessage.value = t('settings.logPrompt');
     await load();
-    await Promise.all([loadMigrations(), loadLogs(), loadBackups(), loadImageTransfers()]);
+    await Promise.all([loadMigrations(), loadLogs(), loadBackups()]);
 });
 </script>
 
@@ -1840,69 +1731,25 @@ onMounted(async () => {
     width: 5rem;
 }
 
-.transfer-monitor {
-    display: flex;
-    flex-direction: column;
-    gap: 0.45rem;
-    margin-top: 0.75rem;
-}
-
-.transfer-monitor__footer {
-    display: flex;
-    flex-wrap: wrap;
+.transfer-page-link {
+    display: inline-flex;
     align-items: center;
-    justify-content: center;
-    gap: 0.75rem;
-    margin-top: 0.35rem;
-    padding-top: 0.65rem;
-    border-top: 1px solid var(--vs-border);
-}
-
-.transfer-monitor__count {
-    font-size: 0.78rem;
-    color: var(--vs-text-muted);
-}
-
-.transfer-row {
-    display: flex;
-    flex-direction: column;
-    gap: 0.2rem;
-    padding: 0.55rem 0.7rem;
+    gap: 0.45rem;
+    margin-top: 0.5rem;
+    padding: 0.55rem 0.75rem;
     border: 1px solid var(--vs-border);
     border-radius: 8px;
-    background: var(--vs-surface-elevated);
-    font-size: 0.82rem;
+    background: var(--vs-surface-elevated, #f8fafc);
+    color: var(--vs-primary, #4a3558);
+    font-size: 0.88rem;
+    font-weight: 600;
+    text-decoration: none;
+    transition: background 0.15s ease, border-color 0.15s ease;
 }
 
-.transfer-row__main {
-    display: flex;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.5rem;
-}
-
-.transfer-row__status {
-    font-size: 0.72rem;
-    color: var(--vs-text-muted);
-}
-
-.transfer-row__meta {
-    color: var(--vs-text-secondary);
-    font-variant-numeric: tabular-nums;
-}
-
-.transfer-row--completed {
-    border-color: rgb(22 163 74 / 25%);
-}
-
-.transfer-row--failed {
-    border-color: rgb(220 38 38 / 25%);
-}
-
-.transfer-monitor-empty {
-    margin: 0.75rem 0 0;
-    font-size: 0.82rem;
-    color: var(--vs-text-muted);
+.transfer-page-link:hover {
+    border-color: color-mix(in srgb, var(--vs-primary, #4a3558) 35%, var(--vs-border));
+    background: color-mix(in srgb, var(--vs-primary, #4a3558) 8%, #fff);
 }
 
 @media (max-width: 640px) {

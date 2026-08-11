@@ -128,6 +128,7 @@ const navGroups = computed(() => [
             { name: 'admin.dashboard', label: t('navigation.dashboard'), icon: 'pi pi-chart-bar' },
             { name: 'admin.vehicles', label: t('navigation.vehicles'), icon: 'pi pi-car' },
             { name: 'admin.containers', label: t('navigation.containers'), icon: 'pi pi-box' },
+            { name: 'admin.imageTransfers', label: t('navigation.imageTransfers'), icon: 'pi pi-cloud-upload' },
         ],
     },
     {

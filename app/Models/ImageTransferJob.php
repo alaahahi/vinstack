@@ -23,6 +23,10 @@ class ImageTransferJob extends Model
 
     public const STATUS_FAILED = 'failed';
 
+    public const STATUS_CANCELLED = 'cancelled';
+
+    public const STALE_AFTER_MINUTES = 5;
+
     protected $fillable = [
         'uuid',
         'type',
@@ -79,6 +83,15 @@ class ImageTransferJob extends Model
             self::STATUS_COMPLETED,
             self::STATUS_PARTIAL,
             self::STATUS_FAILED,
+            self::STATUS_CANCELLED,
+        ], true);
+    }
+
+    public function isActive(): bool
+    {
+        return in_array($this->status, [
+            self::STATUS_QUEUED,
+            self::STATUS_PROCESSING,
         ], true);
     }
 
@@ -93,12 +106,70 @@ class ImageTransferJob extends Model
         return false;
     }
 
+    public function isStale(int $minutes = self::STALE_AFTER_MINUTES): bool
+    {
+        if (! $this->isActive()) {
+            return false;
+        }
+
+        $reference = $this->updated_at ?? $this->started_at ?? $this->created_at;
+
+        if ($reference === null) {
+            return false;
+        }
+
+        return $reference->lte(now()->subMinutes($minutes));
+    }
+
+    /**
+     * Recalculate transferred/failed counters from the manifest.
+     */
+    public function recalculateCountersFromManifest(): void
+    {
+        $transferred = 0;
+        $failed = 0;
+
+        foreach ($this->manifest ?? [] as $item) {
+            $status = $item['status'] ?? '';
+
+            if ($status === 'done') {
+                $transferred++;
+            } elseif ($status === 'failed') {
+                $failed++;
+            }
+        }
+
+        $this->transferred_count = $transferred;
+        $this->failed_count = $failed;
+    }
+
+    /**
+     * @return list<array{name: string, error: string|null}>
+     */
+    public function failedManifestItems(): array
+    {
+        $items = [];
+
+        foreach ($this->manifest ?? [] as $item) {
+            if (($item['status'] ?? '') !== 'failed') {
+                continue;
+            }
+
+            $items[] = [
+                'name' => (string) ($item['name'] ?? 'image'),
+                'error' => isset($item['error']) ? (string) $item['error'] : null,
+            ];
+        }
+
+        return $items;
+    }
+
     /**
      * @return array<string, mixed>
      */
-    public function toApiArray(): array
+    public function toApiArray(bool $includeFailedItems = false): array
     {
-        return [
+        $payload = [
             'id' => $this->uuid,
             'type' => $this->type,
             'status' => $this->status,
@@ -111,9 +182,17 @@ class ImageTransferJob extends Model
             'failed_count' => $this->failed_count,
             'progress_percent' => $this->progressPercent(),
             'error_message' => $this->error_message,
+            'is_stale' => $this->isStale(),
             'started_at' => $this->started_at?->toIso8601String(),
             'finished_at' => $this->finished_at?->toIso8601String(),
             'created_at' => $this->created_at?->toIso8601String(),
+            'updated_at' => $this->updated_at?->toIso8601String(),
         ];
+
+        if ($includeFailedItems || $this->failed_count > 0) {
+            $payload['failed_items'] = $this->failedManifestItems();
+        }
+
+        return $payload;
     }
 }

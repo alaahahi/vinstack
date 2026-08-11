@@ -125,6 +125,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/image-transfers', [ImageTransferController::class, 'index']);
         Route::get('/image-transfers/{uuid}', [ImageTransferController::class, 'show']);
         Route::post('/image-transfers/{uuid}/retry', [ImageTransferController::class, 'retry']);
+        Route::post('/image-transfers/{uuid}/process-now', [ImageTransferController::class, 'processNow']);
+        Route::post('/image-transfers/{uuid}/cancel', [ImageTransferController::class, 'cancel']);
         Route::get('/containers/{container}/vehicles', [AdminContainerController::class, 'vehicles']);
         Route::get('/containers/{container}/tracking', [AdminContainerController::class, 'tracking']);
         Route::get('/vinstack/containers', [VinstackBrowseController::class, 'containers']);
