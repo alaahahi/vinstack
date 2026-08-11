@@ -132,19 +132,35 @@
 
 ---
 
-### SQLite في الإنتاج (جلسات / كاش / تلف الملف)
+### SQLite في الإنتاج (جلسات / كاش / قفل الملف)
 
-عند `DB_CONNECTION=sqlite` تكون **كل** بيانات التطبيق في ملف واحد `database/database.sqlite`. إذا كان `SESSION_DRIVER=database` و`CACHE_STORE=database` فإن الجلسات والكاش يكتبان في **نفس الملف**، وهذا يزيد خطر تلف SQLite على الاستضافات المشتركة.
+عند `DB_CONNECTION=sqlite` تكون **كل** بيانات التطبيق في ملف واحد `database/database.sqlite`. إذا كان `SESSION_DRIVER=database` و`CACHE_STORE=database` فإن الجلسات والكاش يكتبان في **نفس الملف** مع Sanctum وجدول الطابور، وهذا يسبب أخطاء شائعة:
 
-**موصى به مع SQLite:**
+- `SQLSTATE[HY000]: General error: 5 database is locked`
+- وأحيانًا تلف الملف (`database disk image is malformed`)
+
+**موصى به على السيرفر مع SQLite (ضعه في `.env` ثم امسح كاش الإعدادات):**
 
 ```env
+DB_CONNECTION=sqlite
+DB_BUSY_TIMEOUT=10000
+DB_JOURNAL_MODE=wal
+DB_SYNCHRONOUS=NORMAL
+
 SESSION_DRIVER=file
 CACHE_STORE=file
 QUEUE_CONNECTION=sync
 ```
 
-تأكد أن `storage/framework/sessions` و`storage/framework/cache` قابلان للكتابة. التفاصيل الكاملة لاستعادة ملف تالف في القسم الإنجليزي أدناه: **SQLite production note**.
+ملاحظات تشغيل:
+
+1. بعد تعديل `.env`: نفّذ `php artisan config:clear` (أو أعد بناء `config:cache` بعد التعديل).
+2. تأكد أن المجلدات قابلة للكتابة: `storage/framework/sessions` و`storage/framework/cache` و`database/` (وضع WAL ينشئ ملفات `-wal` / `-shm` بجانب `database.sqlite`).
+3. `QUEUE_CONNECTION=sync` مناسب للاستضافة المشتركة بدون عامل طابور دائم. إذا استخدمت `database` يجب تشغيل `php artisan queue:work` باستمرار — وهذا يزيد ضغط الكتابة على SQLite.
+4. التطبيق يفعّل WAL و`busy_timeout` تلقائيًا عبر `config/database.php`، ويخفّف تحديثات `personal_access_tokens.last_used_at` (كل ~5 دقائق بدل كل طلب API).
+5. بعد التحويل إلى جلسات ملفات قد يحتاج المستخدمون لتسجيل الدخول مرة أخرى.
+
+التفاصيل الكاملة لاستعادة ملف تالف في القسم الإنجليزي أدناه: **SQLite production note**.
 
 ---
 
@@ -201,20 +217,32 @@ Point the vhost to `public/` only. Migrations: Admin → **Settings**. Writable 
 
 ---
 
-### SQLite production note (sessions / cache / corruption)
+### SQLite production note (sessions / cache / locks / corruption)
 
-This app defaults to **one** file: `database/database.sqlite` for **all** Eloquent data. If `SESSION_DRIVER=database` and `CACHE_STORE=database`, session and cache rows share that same file. Concurrent PHP-FPM writers on shared hosting can corrupt SQLite (`SQLSTATE … database disk image is malformed`), often first seen on `UPDATE sessions …`.
+This app defaults to **one** file: `database/database.sqlite` for **all** Eloquent data. If `SESSION_DRIVER=database` and `CACHE_STORE=database`, session and cache rows share that same file with Sanctum token touches and (optionally) the jobs table. Concurrent PHP-FPM writers on shared hosting commonly produce:
+
+- `SQLSTATE[HY000]: General error: 5 database is locked` (often on `sessions` / `personal_access_tokens`)
+- later: `database disk image is malformed`
 
 **Recommended `.env` when staying on SQLite:**
 
 ```env
 DB_CONNECTION=sqlite
+DB_BUSY_TIMEOUT=10000
+DB_JOURNAL_MODE=wal
+DB_SYNCHRONOUS=NORMAL
+
 SESSION_DRIVER=file
 CACHE_STORE=file
 QUEUE_CONNECTION=sync
 ```
 
-Ensure `storage/framework/sessions` and `storage/framework/cache` are writable. Prefer MySQL/MariaDB for multi-process production when the host provides it.
+Then run `php artisan config:clear` (or rebuild config cache). Ensure `storage/framework/sessions`, `storage/framework/cache`, and `database/` are writable (WAL creates sibling `-wal` / `-shm` files). Prefer MySQL/MariaDB for multi-process production when the host provides it.
+
+App-side mitigations already in code:
+
+- SQLite connector pragmas: `journal_mode=WAL`, `busy_timeout=10000`, `synchronous=NORMAL`
+- Sanctum `last_used_at` writes throttled (~5 minutes) via `App\Models\PersonalAccessToken`
 
 **If the SQLite file is already corrupted** (path like `/home/…/database/database.sqlite`):
 
