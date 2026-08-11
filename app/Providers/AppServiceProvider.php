@@ -25,7 +25,7 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
-        // Throttle last_used_at writes (see PersonalAccessToken) to ease SQLite locks.
+        // Fail-soft / throttle / skip SQLite last_used_at writes (see PersonalAccessToken).
         Sanctum::usePersonalAccessTokenModel(PersonalAccessToken::class);
 
         Vehicle::observe(AdminVehicleIndexCacheObserver::class);

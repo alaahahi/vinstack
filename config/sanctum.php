@@ -58,14 +58,22 @@ return [
     |--------------------------------------------------------------------------
     |
     | When true, Sanctum updates personal_access_tokens.last_used_at on bearer
-    | token auth. App\Models\PersonalAccessToken throttles those writes so
-    | polling clients do not contend on SQLite every few seconds.
+    | token auth. App\Models\PersonalAccessToken throttles those writes (default
+    | 1 hour), skips them entirely on SQLite by default, and fail-softs lock
+    | errors so polling clients never crash auth on "database is locked".
     |
     */
 
     'last_used_at' => filter_var(env('SANCTUM_LAST_USED_AT', true), FILTER_VALIDATE_BOOL),
 
-    'last_used_at_throttle_seconds' => (int) (env('SANCTUM_LAST_USED_AT_THROTTLE', 300) ?: 300),
+    // 3600 = once per hour max (Sanctum auth never depends on this column).
+    'last_used_at_throttle_seconds' => (int) (env('SANCTUM_LAST_USED_AT_THROTTLE', 3600) ?: 3600),
+
+    // On SQLite, skip last_used_at UPDATEs entirely (avoids "database is locked").
+    'skip_last_used_at_on_sqlite' => filter_var(
+        env('SANCTUM_SKIP_LAST_USED_AT_ON_SQLITE', true),
+        FILTER_VALIDATE_BOOL
+    ),
 
     /*
     |--------------------------------------------------------------------------

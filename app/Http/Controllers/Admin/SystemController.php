@@ -19,7 +19,7 @@ class SystemController extends Controller
         $result = $cache->clear();
 
         return response()->json([
-            'message' => 'تم مسح الكاش بنجاح.',
+            'message' => 'تم حذف كاش قاعدة البيانات بنجاح.',
             'data' => $result,
         ]);
     }
