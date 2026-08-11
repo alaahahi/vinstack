@@ -18,7 +18,8 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
     public function save(array $options = []): bool
     {
         if ($this->shouldSkipLastUsedAtWrite()) {
-            $this->syncOriginalAttribute('last_used_at');
+            // Discard in-memory dirty last_used_at / updated_at without writing.
+            $this->syncOriginal();
 
             return true;
         }
@@ -32,9 +33,16 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
             return false;
         }
 
-        $dirty = $this->getDirty();
+        // Ignore automatic timestamp columns — Sanctum only force-fills last_used_at.
+        $dirty = collect($this->getDirty())
+            ->except([$this->getCreatedAtColumn(), $this->getUpdatedAtColumn()])
+            ->all();
 
-        if (count($dirty) !== 1 || ! array_key_exists('last_used_at', $dirty)) {
+        if ($dirty !== [] && array_keys($dirty) !== ['last_used_at']) {
+            return false;
+        }
+
+        if (! array_key_exists('last_used_at', $this->getDirty())) {
             return false;
         }
 
