@@ -100,6 +100,7 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/system/migrations', [SystemController::class, 'migrations']);
         Route::get('/system/database-insights', [SystemController::class, 'databaseInsights']);
+        Route::post('/system/database-vacuum', [SystemController::class, 'vacuumDatabase']);
         Route::post('/system/migrate', [SystemController::class, 'migrate']);
         Route::post('/system/cache/clear', [SystemController::class, 'clearCache']);
         Route::get('/system/logs', [SystemController::class, 'logs']);

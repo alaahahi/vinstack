@@ -531,6 +531,9 @@ export default {
         dbLargest: 'گەورەترین خشتە',
         dbOther: 'خشتەی تر',
         dbRows: '{n} ڕیز',
+        dbVacuumHint: '{size} شوێنی خاوێن دەتوانرێت وەرگیرێتەوە — VACUUM بکە بۆ بچووکردنەوەی فایلەکە',
+        dbVacuumBtn: 'VACUUM جێبەجێ بکە',
+        dbVacuuming: 'VACUUM دەکرێت…',
         status: {
             new_purchase: 'کڕینی نوێ',
             sent: 'نێردرا',

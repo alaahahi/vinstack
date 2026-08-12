@@ -22,6 +22,43 @@ class SystemController extends Controller
         ]);
     }
 
+    public function vacuumDatabase(): JsonResponse
+    {
+        $driver = (string) DB::getDriverName();
+
+        if (! in_array($driver, ['sqlite'], true)) {
+            return response()->json([
+                'message' => "VACUUM غير مدعوم لـ {$driver}.",
+                'skipped' => true,
+            ]);
+        }
+
+        try {
+            $before = null;
+            $path = (string) config('database.connections.sqlite.database');
+
+            if (File::exists($path)) {
+                $before = (int) File::size($path);
+            }
+
+            DB::statement('VACUUM');
+
+            $after = File::exists($path) ? (int) File::size($path) : null;
+            $saved = ($before !== null && $after !== null) ? max(0, $before - $after) : null;
+
+            return response()->json([
+                'message' => 'تم تنفيذ VACUUM بنجاح.',
+                'before_bytes' => $before,
+                'after_bytes' => $after,
+                'saved_bytes' => $saved,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'message' => 'فشل VACUUM: ' . $e->getMessage(),
+            ], 500);
+        }
+    }
+
     public function clearCache(ClearSystemCacheRequest $request, SystemCacheService $cache): JsonResponse
     {
         $result = $cache->clear();

@@ -212,6 +212,16 @@
                 <span>{{ t('dashboard.dbInsightsLoading') }}</span>
             </div>
 
+            <div v-if="db && db.free_bytes > 10 * 1024 * 1024" class="dash-db-vacuum-hint">
+                <i class="pi pi-exclamation-triangle" />
+                <span>{{ t('dashboard.dbVacuumHint', { size: formatBytes(db.free_bytes) }) }}</span>
+                <button class="dash-db-vacuum-btn" :disabled="vacuuming" @click="runVacuum">
+                    <i v-if="vacuuming" class="pi pi-spinner pi-spin" />
+                    <i v-else class="pi pi-database" />
+                    {{ vacuuming ? t('dashboard.dbVacuuming') : t('dashboard.dbVacuumBtn') }}
+                </button>
+            </div>
+
             <p v-else-if="dbError" class="dash-empty">{{ t('dashboard.dbInsightsFailed') }}</p>
 
             <template v-else-if="db">
@@ -272,6 +282,7 @@ const error = ref('');
 const dbLoading = ref(true);
 const db = ref(null);
 const dbError = ref(false);
+const vacuuming = ref(false);
 
 const dbChartColors = [
     '#6366f1', '#22c55e', '#f59e0b', '#3b82f6', '#ec4899',
@@ -315,6 +326,20 @@ function formatBytes(bytes) {
     if (bytes >= 1024) return (bytes / 1024).toFixed(0) + ' KB';
 
     return bytes + ' B';
+}
+
+async function runVacuum() {
+    vacuuming.value = true;
+
+    try {
+        const { data } = await api.post('/admin/system/database-vacuum');
+        await loadDbInsights();
+        alert(data.message + (data.saved_bytes ? `\nوُفِّر: ${formatBytes(data.saved_bytes)}` : ''));
+    } catch (e) {
+        alert(e.response?.data?.message || 'فشل VACUUM');
+    } finally {
+        vacuuming.value = false;
+    }
 }
 
 async function loadDbInsights() {
@@ -578,6 +603,46 @@ onMounted(() => {
     color: #a855f7;
     font-size: 1.1rem;
     margin-top: 0.15rem;
+}
+
+.dash-db-vacuum-hint {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    flex-wrap: wrap;
+    padding: 0.65rem 0.9rem;
+    border-radius: 10px;
+    background: color-mix(in srgb, #f59e0b 12%, transparent);
+    border: 1px solid color-mix(in srgb, #f59e0b 35%, transparent);
+    font-size: 0.84rem;
+    color: #b45309;
+    margin-bottom: 0.85rem;
+}
+
+.dash-db-vacuum-btn {
+    margin-inline-start: auto;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.8rem;
+    border-radius: 8px;
+    border: 1px solid #f59e0b;
+    background: #f59e0b;
+    color: #fff;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background 0.15s;
+}
+
+.dash-db-vacuum-btn:hover:not(:disabled) {
+    background: #d97706;
+    border-color: #d97706;
+}
+
+.dash-db-vacuum-btn:disabled {
+    opacity: 0.6;
+    cursor: not-allowed;
 }
 
 .dash-db-summary {

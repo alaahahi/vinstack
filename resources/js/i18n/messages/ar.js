@@ -531,6 +531,9 @@ export default {
         dbLargest: 'أكبر جدول',
         dbOther: 'جداول أخرى',
         dbRows: '{n} صف',
+        dbVacuumHint: '{size} مساحة حرة يمكن استرجاعها — شغّل VACUUM لتصغير الملف',
+        dbVacuumBtn: 'تشغيل VACUUM',
+        dbVacuuming: 'جارٍ تنفيذ VACUUM…',
         status: {
             new_purchase: 'شراء جديد',
             sent: 'تم الإرسال',

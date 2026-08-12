@@ -701,6 +701,9 @@ export default {
         dbLargest: 'Largest table',
         dbOther: 'Other tables',
         dbRows: '{n} rows',
+        dbVacuumHint: '{size} of free space can be reclaimed — run VACUUM to shrink the file',
+        dbVacuumBtn: 'Run VACUUM',
+        dbVacuuming: 'Running VACUUM…',
         status: {
             new_purchase: 'New purchase',
             sent: 'Sent',
