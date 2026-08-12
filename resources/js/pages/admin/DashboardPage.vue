@@ -199,6 +199,60 @@
             </section>
         </template>
 
+        <section class="dash-section">
+            <header class="dash-section__head">
+                <i class="pi pi-database dash-section__icon" aria-hidden="true" />
+                <div>
+                    <h2>{{ t('dashboard.dbInsightsTitle') }}</h2>
+                    <p>{{ t('dashboard.dbInsightsSub') }}</p>
+                </div>
+            </header>
+
+            <div v-if="dbLoading" class="dash-empty">
+                <ProgressSpinner style="width: 24px; height: 24px" />
+                <span>{{ t('dashboard.dbInsightsLoading') }}</span>
+            </div>
+
+            <p v-else-if="dbError" class="dash-empty">{{ t('dashboard.dbInsightsFailed') }}</p>
+
+            <template v-else-if="db">
+                <div class="dash-db-summary">
+                    <div class="dash-db-stat">
+                        <span>{{ t('dashboard.dbTotalSize') }}</span>
+                        <strong>{{ formatBytes(db.database_size_bytes) }}</strong>
+                    </div>
+                    <div v-if="db.used_bytes != null" class="dash-db-stat">
+                        <span>{{ t('dashboard.dbUsed') }}</span>
+                        <strong>{{ formatBytes(db.used_bytes) }}</strong>
+                    </div>
+                    <div v-if="db.free_bytes != null" class="dash-db-stat">
+                        <span>{{ t('dashboard.dbFree') }}</span>
+                        <strong class="dash-db-stat--free">{{ formatBytes(db.free_bytes) }}</strong>
+                    </div>
+                </div>
+
+                <div class="dash-db-body">
+                    <div class="dash-db-chart" aria-hidden="true">
+                        <div
+                            class="dash-db-donut"
+                            :style="{ background: dbChartGradient }"
+                        />
+                        <div class="dash-db-donut-hole" />
+                    </div>
+
+                    <ul class="dash-db-table-list">
+                        <li v-for="(row, idx) in dbTopTables" :key="row.name">
+                            <span class="dash-db-table-dot" :style="{ background: dbChartColors[idx % dbChartColors.length] }" />
+                            <span class="dash-db-table-name">{{ row.name }}</span>
+                            <span class="dash-db-table-rows">{{ t('dashboard.dbRows', { n: row.rows.toLocaleString() }) }}</span>
+                            <strong class="dash-db-table-size">{{ formatBytes(row.size_bytes) }}</strong>
+                            <span class="dash-db-table-pct">{{ row.percent_of_db != null ? row.percent_of_db.toFixed(1) + '%' : '' }}</span>
+                        </li>
+                    </ul>
+                </div>
+            </template>
+        </section>
+
         <p v-else class="dash-empty">{{ error || t('dashboard.loadFailed') }}</p>
     </div>
 </template>
@@ -214,6 +268,68 @@ const { t, locale } = useI18n();
 const loading = ref(true);
 const data = ref(null);
 const error = ref('');
+
+const dbLoading = ref(true);
+const db = ref(null);
+const dbError = ref(false);
+
+const dbChartColors = [
+    '#6366f1', '#22c55e', '#f59e0b', '#3b82f6', '#ec4899',
+    '#14b8a6', '#fb923c', '#a855f7', '#ef4444', '#64748b',
+];
+
+const dbTopTables = computed(() => (db.value?.tables ?? []).slice(0, 10));
+
+const dbChartGradient = computed(() => {
+    const tables = dbTopTables.value;
+
+    if (!tables.length) return '#334155';
+
+    const total = db.value?.database_size_bytes ?? tables.reduce((s, r) => s + (r.size_bytes ?? 0), 0);
+    let offset = 0;
+    const stops = [];
+
+    tables.forEach((row, idx) => {
+        const pct = total > 0 ? ((row.size_bytes ?? 0) / total) * 100 : 0;
+        const color = dbChartColors[idx % dbChartColors.length];
+        stops.push(`${color} ${offset.toFixed(2)}%`);
+        offset += pct;
+        stops.push(`${color} ${offset.toFixed(2)}%`);
+    });
+
+    if (offset < 100) {
+        stops.push(`#334155 ${offset.toFixed(2)}%`);
+        stops.push(`#334155 100%`);
+    }
+
+    return `conic-gradient(${stops.join(', ')})`;
+});
+
+function formatBytes(bytes) {
+    if (bytes == null) return '–';
+
+    if (bytes >= 1073741824) return (bytes / 1073741824).toFixed(2) + ' GB';
+
+    if (bytes >= 1048576) return (bytes / 1048576).toFixed(1) + ' MB';
+
+    if (bytes >= 1024) return (bytes / 1024).toFixed(0) + ' KB';
+
+    return bytes + ' B';
+}
+
+async function loadDbInsights() {
+    dbLoading.value = true;
+    dbError.value = false;
+
+    try {
+        const { data: payload } = await api.get('/admin/system/database-insights');
+        db.value = payload.data;
+    } catch {
+        dbError.value = true;
+    } finally {
+        dbLoading.value = false;
+    }
+}
 
 const maxBar = computed(() => {
     const months = data.value?.vehicles_added?.months ?? [];
@@ -260,7 +376,10 @@ async function load() {
     }
 }
 
-onMounted(load);
+onMounted(() => {
+    load();
+    loadDbInsights();
+});
 </script>
 
 <style scoped>

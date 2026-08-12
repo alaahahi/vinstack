@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ClearSystemCacheRequest;
+use App\Services\DatabaseInsightsService;
 use App\Services\SystemCacheService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\Artisan;
@@ -14,6 +15,13 @@ use Throwable;
 
 class SystemController extends Controller
 {
+    public function databaseInsights(DatabaseInsightsService $insights): JsonResponse
+    {
+        return response()->json([
+            'data' => $insights->summarize(),
+        ]);
+    }
+
     public function clearCache(ClearSystemCacheRequest $request, SystemCacheService $cache): JsonResponse
     {
         $result = $cache->clear();

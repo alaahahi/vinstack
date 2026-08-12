@@ -99,6 +99,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/settings/vehicle-options', [VehicleOptionsController::class, 'update']);
 
         Route::get('/system/migrations', [SystemController::class, 'migrations']);
+        Route::get('/system/database-insights', [SystemController::class, 'databaseInsights']);
         Route::post('/system/migrate', [SystemController::class, 'migrate']);
         Route::post('/system/cache/clear', [SystemController::class, 'clearCache']);
         Route::get('/system/logs', [SystemController::class, 'logs']);

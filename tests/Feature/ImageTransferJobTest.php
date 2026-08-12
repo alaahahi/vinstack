@@ -284,6 +284,35 @@ class ImageTransferJobTest extends TestCase
         $this->assertStringContainsString('queue worker crashed', (string) $job->error_message);
     }
 
+    public function test_queue_database_lock_does_not_mark_transfer_failed(): void
+    {
+        $job = ImageTransferJob::query()->create([
+            'uuid' => 'bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+            'type' => ImageTransferJob::TYPE_CONTAINER_ZIP,
+            'status' => ImageTransferJob::STATUS_PROCESSING,
+            'container_number' => 'MSCUBBBBBBB',
+            'replace_existing' => false,
+            'total_images' => 2,
+            'transferred_count' => 1,
+            'failed_count' => 0,
+            'manifest' => [
+                ['name' => 'a.jpg', 'status' => 'done'],
+                ['name' => 'b.jpg', 'status' => 'pending'],
+            ],
+            'staging_dir' => 'image-transfers/bbbbbbbb-bbbb-bbbb-bbbb-bbbbbbbbbbbb',
+        ]);
+
+        $batch = new ProcessImageTransferBatch($job->id);
+        $batch->failed(new \RuntimeException(
+            'SQLSTATE[HY000]: General error: 5 database is locked'
+        ));
+
+        $job->refresh();
+
+        $this->assertSame(ImageTransferJob::STATUS_PROCESSING, $job->status);
+        $this->assertNull($job->finished_at);
+    }
+
     public function test_list_marks_stale_active_jobs(): void
     {
         $admin = User::factory()->create(['role' => UserRole::Admin]);

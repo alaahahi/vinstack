@@ -769,7 +769,6 @@ const deletingFilename = ref('');
 const restoringUpload = ref(false);
 const restoreFile = ref(null);
 const restoreFileInput = ref(null);
-
 const vehicleOptions = ref({
     shipping_destinations: [],
     loading_points: [],
@@ -1033,6 +1032,27 @@ async function loadMigrations() {
     }
 }
 
+function formatBytes(bytes) {
+    const value = Number(bytes ?? 0);
+
+    if (! Number.isFinite(value) || value <= 0) {
+        return '0 B';
+    }
+
+    const units = ['B', 'KB', 'MB', 'GB', 'TB'];
+    let size = value;
+    let unitIndex = 0;
+
+    while (size >= 1024 && unitIndex < units.length - 1) {
+        size /= 1024;
+        unitIndex++;
+    }
+
+    const fractionDigits = size >= 100 || unitIndex === 0 ? 0 : 1;
+
+    return `${size.toFixed(fractionDigits)} ${units[unitIndex]}`;
+}
+
 function confirmMigrate() {
     migrateConfirmVisible.value = true;
 }
@@ -1179,7 +1199,7 @@ async function createBackup() {
             summary: data.message || 'تم إنشاء النسخة',
             life: 3000,
         });
-        await loadBackups();
+        await Promise.all([loadBackups(), loadDatabaseInsights()]);
     } catch (e) {
         toast.add({
             severity: 'error',
@@ -1248,7 +1268,7 @@ async function deleteBackup(filename) {
             summary: data.message || 'تم الحذف',
             life: 3000,
         });
-        await loadBackups();
+        await Promise.all([loadBackups(), loadDatabaseInsights()]);
     } catch (e) {
         toast.add({
             severity: 'error',
@@ -1304,7 +1324,7 @@ async function restoreFromList(filename) {
             summary: data.message || 'تم الاسترجاع',
             life: 4000,
         });
-        await Promise.all([loadMigrations(), loadBackups()]);
+        await Promise.all([loadMigrations(), loadBackups(), loadDatabaseInsights()]);
     } catch (e) {
         toast.add({
             severity: 'error',
@@ -1342,7 +1362,7 @@ async function restoreFromUpload() {
             restoreFileInput.value.value = '';
         }
 
-        await Promise.all([loadMigrations(), loadBackups()]);
+        await Promise.all([loadMigrations(), loadBackups(), loadDatabaseInsights()]);
     } catch (e) {
         toast.add({
             severity: 'error',
@@ -1358,7 +1378,7 @@ async function restoreFromUpload() {
 onMounted(async () => {
     logMessage.value = t('settings.logPrompt');
     await load();
-    await Promise.all([loadMigrations(), loadLogs(), loadBackups()]);
+    await Promise.all([loadMigrations(), loadLogs(), loadBackups(), loadDatabaseInsights()]);
 });
 </script>
 
@@ -1566,6 +1586,141 @@ onMounted(async () => {
     margin: 0.75rem 0;
 }
 
+.db-insights-section {
+    margin-top: 1.25rem;
+    padding-top: 1rem;
+    border-top: 1px solid var(--vs-border);
+}
+
+.db-insights-section__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.db-insights-summary {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+    gap: 0.75rem;
+    margin-top: 1rem;
+}
+
+.db-insight-stat {
+    padding: 0.8rem 0.9rem;
+    border: 1px solid var(--vs-border);
+    border-radius: 10px;
+    background: var(--vs-surface-elevated, rgba(0, 0, 0, 0.02));
+}
+
+.db-insight-stat span {
+    display: block;
+    color: var(--vs-text-muted);
+    font-size: 0.8rem;
+}
+
+.db-insight-stat strong {
+    display: block;
+    margin-top: 0.25rem;
+    font-size: 0.95rem;
+}
+
+.db-insights-layout {
+    display: grid;
+    grid-template-columns: minmax(180px, 220px) 1fr;
+    gap: 1rem;
+    align-items: start;
+    margin-top: 1rem;
+}
+
+.db-donut-wrap {
+    display: flex;
+    justify-content: center;
+}
+
+.db-donut {
+    width: 180px;
+    height: 180px;
+    border-radius: 50%;
+    display: grid;
+    place-items: center;
+}
+
+.db-donut__center {
+    width: 58%;
+    height: 58%;
+    border-radius: 50%;
+    background: var(--admin-surface, #fff);
+    border: 1px solid var(--vs-border);
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    text-align: center;
+    padding: 0.5rem;
+}
+
+.db-donut__center strong {
+    font-size: 1.2rem;
+}
+
+.db-donut__center span {
+    font-size: 0.78rem;
+    color: var(--vs-text-muted);
+}
+
+.db-table-list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.8rem;
+}
+
+.db-table-row {
+    padding: 0.75rem 0.85rem;
+    border: 1px solid var(--vs-border);
+    border-radius: 10px;
+    background: var(--vs-surface-elevated, rgba(0, 0, 0, 0.02));
+}
+
+.db-table-row__label,
+.db-table-row__meta {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+}
+
+.db-table-row__meta {
+    margin-top: 0.35rem;
+    color: var(--vs-text-muted);
+    font-size: 0.8rem;
+}
+
+.db-color-dot {
+    width: 0.7rem;
+    height: 0.7rem;
+    border-radius: 999px;
+    display: inline-block;
+    margin-inline-end: 0.45rem;
+    flex-shrink: 0;
+}
+
+.db-table-row__bar {
+    height: 8px;
+    border-radius: 999px;
+    background: color-mix(in srgb, var(--vs-border) 75%, transparent);
+    margin-top: 0.55rem;
+    overflow: hidden;
+}
+
+.db-table-row__bar span {
+    display: block;
+    height: 100%;
+    border-radius: inherit;
+}
+
 .migrations-table-wrap {
     overflow-x: auto;
     border: 1px solid var(--vs-border);
@@ -1753,6 +1908,10 @@ onMounted(async () => {
 }
 
 @media (max-width: 640px) {
+    .db-insights-layout {
+        grid-template-columns: 1fr;
+    }
+
     .settings-group__actions {
         flex-direction: column;
         align-items: stretch;
