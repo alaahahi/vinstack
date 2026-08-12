@@ -197,9 +197,8 @@
                     </article>
                 </div>
             </section>
-        </template>
 
-        <section class="dash-section">
+            <section class="dash-section">
             <header class="dash-section__head">
                 <i class="pi pi-database dash-section__icon" aria-hidden="true" />
                 <div>
@@ -251,7 +250,8 @@
                     </ul>
                 </div>
             </template>
-        </section>
+            </section>
+        </template>
 
         <p v-else class="dash-empty">{{ error || t('dashboard.loadFailed') }}</p>
     </div>
