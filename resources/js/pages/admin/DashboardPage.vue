@@ -198,7 +198,11 @@
                 </div>
             </section>
 
-            <section class="dash-section">
+        </template>
+
+        <p v-else class="dash-empty">{{ error || t('dashboard.loadFailed') }}</p>
+
+        <section class="dash-section">
             <header class="dash-section__head">
                 <i class="pi pi-database dash-section__icon" aria-hidden="true" />
                 <div>
@@ -212,19 +216,19 @@
                 <span>{{ t('dashboard.dbInsightsLoading') }}</span>
             </div>
 
-            <div v-if="db && db.free_bytes > 10 * 1024 * 1024" class="dash-db-vacuum-hint">
-                <i class="pi pi-exclamation-triangle" />
-                <span>{{ t('dashboard.dbVacuumHint', { size: formatBytes(db.free_bytes) }) }}</span>
-                <button class="dash-db-vacuum-btn" :disabled="vacuuming" @click="runVacuum">
-                    <i v-if="vacuuming" class="pi pi-spinner pi-spin" />
-                    <i v-else class="pi pi-database" />
-                    {{ vacuuming ? t('dashboard.dbVacuuming') : t('dashboard.dbVacuumBtn') }}
-                </button>
-            </div>
-
             <p v-else-if="dbError" class="dash-empty">{{ t('dashboard.dbInsightsFailed') }}</p>
 
             <template v-else-if="db">
+                <div v-if="db.free_bytes > 10 * 1024 * 1024" class="dash-db-vacuum-hint">
+                    <i class="pi pi-exclamation-triangle" />
+                    <span>{{ t('dashboard.dbVacuumHint', { size: formatBytes(db.free_bytes) }) }}</span>
+                    <button class="dash-db-vacuum-btn" :disabled="vacuuming" @click="runVacuum">
+                        <i v-if="vacuuming" class="pi pi-spinner pi-spin" />
+                        <i v-else class="pi pi-database" />
+                        {{ vacuuming ? t('dashboard.dbVacuuming') : t('dashboard.dbVacuumBtn') }}
+                    </button>
+                </div>
+
                 <div class="dash-db-summary">
                     <div class="dash-db-stat">
                         <span>{{ t('dashboard.dbTotalSize') }}</span>
@@ -260,10 +264,7 @@
                     </ul>
                 </div>
             </template>
-            </section>
-        </template>
-
-        <p v-else class="dash-empty">{{ error || t('dashboard.loadFailed') }}</p>
+        </section>
     </div>
 </template>
 
