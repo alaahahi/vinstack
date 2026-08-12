@@ -580,6 +580,123 @@ onMounted(() => {
     margin-top: 0.15rem;
 }
 
+.dash-db-summary {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.65rem;
+    margin-bottom: 1rem;
+}
+
+.dash-db-stat {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.6rem 0.85rem;
+    border: 1px solid var(--admin-border);
+    border-radius: 10px;
+    background: var(--admin-surface);
+    flex: 1 1 120px;
+}
+
+.dash-db-stat span {
+    font-size: 0.75rem;
+    color: var(--vs-text-muted);
+}
+
+.dash-db-stat strong {
+    font-size: 0.95rem;
+    font-weight: 700;
+}
+
+.dash-db-stat--free {
+    color: #22c55e;
+}
+
+.dash-db-body {
+    display: grid;
+    grid-template-columns: 160px 1fr;
+    gap: 1.1rem;
+    align-items: start;
+}
+
+.dash-db-chart {
+    position: relative;
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+    flex-shrink: 0;
+}
+
+.dash-db-donut {
+    width: 140px;
+    height: 140px;
+    border-radius: 50%;
+}
+
+.dash-db-donut-hole {
+    position: absolute;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    width: 60%;
+    height: 60%;
+    border-radius: 50%;
+    background: var(--admin-surface);
+    border: 1px solid var(--admin-border);
+}
+
+.dash-db-table-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.dash-db-table-list li {
+    display: grid;
+    grid-template-columns: 0.6rem 1fr auto auto auto;
+    align-items: center;
+    gap: 0.5rem;
+    font-size: 0.8rem;
+}
+
+.dash-db-table-dot {
+    width: 0.6rem;
+    height: 0.6rem;
+    border-radius: 999px;
+    flex-shrink: 0;
+}
+
+.dash-db-table-name {
+    font-family: ui-monospace, monospace;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dash-db-table-rows,
+.dash-db-table-pct {
+    color: var(--vs-text-muted);
+    white-space: nowrap;
+}
+
+.dash-db-table-size {
+    white-space: nowrap;
+    font-weight: 700;
+}
+
+@media (max-width: 640px) {
+    .dash-db-body {
+        grid-template-columns: 1fr;
+    }
+
+    .dash-db-chart {
+        margin: 0 auto;
+    }
+}
+
 @media (max-width: 640px) {
     .dash-bars {
         min-height: 150px;
