@@ -1199,7 +1199,7 @@ async function createBackup() {
             summary: data.message || 'تم إنشاء النسخة',
             life: 3000,
         });
-        await Promise.all([loadBackups(), loadDatabaseInsights()]);
+        await loadBackups();
     } catch (e) {
         toast.add({
             severity: 'error',
