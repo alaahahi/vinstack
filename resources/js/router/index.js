@@ -49,6 +49,24 @@ const routes = [
                 },
             },
             {
+                path: 'auctions',
+                name: 'admin.auctions',
+                component: () => import('../pages/auctions/AuctionSearch.vue'),
+                meta: {
+                    titleKey: 'pages.admin.auctions.title',
+                    subtitleKey: 'pages.admin.auctions.subtitle',
+                },
+            },
+            {
+                path: 'auctions/:identifier',
+                name: 'admin.auctionDetail',
+                component: () => import('../pages/auctions/AuctionDetailPage.vue'),
+                meta: {
+                    titleKey: 'pages.admin.auctionDetail.title',
+                    subtitleKey: 'pages.admin.auctionDetail.subtitle',
+                },
+            },
+            {
                 path: 'vehicles',
                 name: 'admin.vehicles',
                 component: () => import('../pages/admin/VehiclesPage.vue'),
@@ -123,6 +141,18 @@ const routes = [
                 name: 'dealer.vehicles',
                 component: () => import('../pages/dealer/VehiclesPage.vue'),
                 meta: { titleKey: 'pages.dealer.vehicles.title' },
+            },
+            {
+                path: 'auctions',
+                name: 'dealer.auctions',
+                component: () => import('../pages/auctions/AuctionSearch.vue'),
+                meta: { titleKey: 'pages.dealer.auctions.title' },
+            },
+            {
+                path: 'auctions/:identifier',
+                name: 'dealer.auctionDetail',
+                component: () => import('../pages/auctions/AuctionDetailPage.vue'),
+                meta: { titleKey: 'pages.dealer.auctionDetail.title' },
             },
             {
                 path: 'containers/:containerRef',

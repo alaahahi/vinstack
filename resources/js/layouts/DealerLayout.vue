@@ -127,8 +127,9 @@ const headerMenuWrap = ref(null);
 const headerMenuOpen = ref(false);
 
 const navItems = computed(() => [
-    { name: 'dealer.vehicles', label: 'السيارات', icon: 'pi pi-car' },
-    { name: 'dealer.containers', label: 'الكونتينر', icon: 'pi pi-box' },
+    { name: 'dealer.vehicles', label: t('navigation.vehicles'), icon: 'pi pi-car' },
+    { name: 'dealer.auctions', label: t('navigation.auctions'), icon: 'pi pi-shopping-bag' },
+    { name: 'dealer.containers', label: t('navigation.containers'), icon: 'pi pi-box' },
 ]);
 
 const pageTitle = computed(() => (

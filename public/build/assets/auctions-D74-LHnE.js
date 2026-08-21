@@ -1,0 +1,1 @@
+import{W as n}from"./app-DupVlRPS.js";function u(t={}){return n.get("/auctions",{params:t})}function i(t={}){return n.get("/auctions/usage",{params:t})}function s(t,o={}){return n.get(`/auctions/${encodeURIComponent(t)}`,{params:o})}function c(t,o={}){return n.get(`/auctions/${encodeURIComponent(t)}/history`,{params:o})}export{s as a,c as b,i as g,u as s};

@@ -20,6 +20,8 @@ use App\Http\Controllers\Admin\VehicleUploadedImageController;
 use App\Http\Controllers\Admin\VehicleVinstackImageController;
 use App\Http\Controllers\Admin\VinstackBrowseController;
 use App\Http\Controllers\Admin\VinstackSettingsController;
+use App\Http\Controllers\Api\AuctionController;
+use App\Http\Controllers\Api\AuctionFavoriteController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PublicSettingsController;
 use App\Http\Controllers\Api\TwoFactorController;
@@ -46,6 +48,21 @@ Route::post('/two-factor/challenge', [TwoFactorController::class, 'challenge']);
 Route::middleware('auth:sanctum')->group(function () {
     Route::get('/me', [AuthController::class, 'me']);
     Route::post('/logout', [AuthController::class, 'logout']);
+
+    Route::middleware('role:admin,dealer')->prefix('auctions')->group(function () {
+        Route::get('/test', [AuctionController::class, 'test']);
+        Route::get('/usage', [AuctionController::class, 'usage']);
+        Route::get('/favorites/ids', [AuctionFavoriteController::class, 'identifiers']);
+        Route::get('/favorites', [AuctionFavoriteController::class, 'index']);
+        Route::post('/favorites', [AuctionFavoriteController::class, 'store']);
+        Route::delete('/favorites/{identifier}', [AuctionFavoriteController::class, 'destroy'])
+            ->where('identifier', '[^/]+');
+        Route::get('/', [AuctionController::class, 'index']);
+        Route::get('/{identifier}/history', [AuctionController::class, 'history'])
+            ->where('identifier', '[^/]+');
+        Route::get('/{identifier}', [AuctionController::class, 'show'])
+            ->where('identifier', '[^/]+');
+    });
 
     Route::middleware('role:admin')->prefix('admin')->group(function () {
         Route::get('/dashboard', [DashboardController::class, 'show']);
