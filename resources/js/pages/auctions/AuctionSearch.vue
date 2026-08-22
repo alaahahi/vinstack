@@ -74,6 +74,7 @@
                         <InputText
                             v-model="filters.q"
                             class="w-full"
+                            size="small"
                             dir="ltr"
                             :placeholder="t('auctions.keywordPlaceholder')"
                             @keyup.enter="search(false)"
@@ -133,7 +134,8 @@
                     <label>{{ t('auctions.make') }}</label>
                     <Select
                         v-model="filters.make"
-                        class="w-full"
+                        class="w-full filter-select"
+                        size="small"
                         :options="makeOptions"
                         :placeholder="t('auctions.all')"
                         :loading="filtersLoading"
@@ -147,7 +149,8 @@
                     <label>{{ t('auctions.model') }}</label>
                     <Select
                         v-model="filters.model"
-                        class="w-full"
+                        class="w-full filter-select"
+                        size="small"
                         :options="modelOptions"
                         :placeholder="t('auctions.all')"
                         :disabled="! filters.make"
@@ -160,7 +163,8 @@
                     <label>{{ t('auctions.vehicleType') }}</label>
                     <Select
                         v-model="filters.type"
-                        class="w-full"
+                        class="w-full filter-select"
+                        size="small"
                         :options="typeOptions"
                         option-label="label"
                         option-value="value"
@@ -176,7 +180,8 @@
                         <label>{{ t('auctions.yearFrom') }}</label>
                         <Select
                             v-model="filters.year_from"
-                            class="w-full year-select"
+                            class="w-full filter-select year-select"
+                            size="small"
                             :options="yearOptions"
                             :placeholder="String(DEFAULT_YEAR_FROM)"
                             filter
@@ -187,7 +192,8 @@
                         <label>{{ t('auctions.yearTo') }}</label>
                         <Select
                             v-model="filters.year_to"
-                            class="w-full year-select"
+                            class="w-full filter-select year-select"
+                            size="small"
                             :options="yearOptions"
                             :placeholder="String(DEFAULT_YEAR_TO)"
                             filter
@@ -200,7 +206,8 @@
                     <label>{{ t('auctions.state') }}</label>
                     <Select
                         v-model="filters.state"
-                        class="w-full"
+                        class="w-full filter-select"
+                        size="small"
                         :options="stateOptions"
                         :placeholder="t('auctions.all')"
                         filter
@@ -1279,8 +1286,46 @@ onMounted(async () => {
     direction: ltr;
 }
 
-.year-select :deep(.p-select) {
+.auction-filters :deep(.p-select),
+.auction-filters :deep(.p-inputtext),
+.auction-filters :deep(.p-iconfield .p-inputtext) {
     width: 100%;
+    min-height: 2.15rem;
+    height: 2.15rem;
+    border-radius: 999px;
+}
+
+.auction-filters :deep(.p-select.p-select-sm),
+.auction-filters :deep(.p-inputtext.p-inputtext-sm) {
+    min-height: 2.15rem;
+    height: 2.15rem;
+    border-radius: 999px;
+    padding-block: 0;
+}
+
+.auction-filters :deep(.p-select .p-select-label) {
+    padding-block: 0.35rem;
+    padding-inline: 0.85rem;
+    font-size: 0.82rem;
+    line-height: 1.35;
+    display: flex;
+    align-items: center;
+}
+
+.auction-filters :deep(.p-select .p-select-dropdown) {
+    width: 2rem;
+}
+
+.auction-filters :deep(.p-iconfield .p-inputtext) {
+    padding-block: 0.35rem;
+    padding-inline-start: 2.2rem;
+    padding-inline-end: 0.85rem;
+    font-size: 0.82rem;
+}
+
+.auction-filters :deep(.p-iconfield .p-inputicon) {
+    inset-inline-start: 0.75rem;
+    font-size: 0.85rem;
 }
 
 .w-full { width: 100%; }
@@ -1465,8 +1510,8 @@ onMounted(async () => {
     z-index: 2;
 }
 
-.slide-btn--prev { inset-inline-start: 0.45rem; }
-.slide-btn--next { inset-inline-end: 0.45rem; }
+.slide-btn--prev { left: 0.45rem; right: auto; }
+.slide-btn--next { right: 0.45rem; left: auto; }
 
 .slide-dots {
     position: absolute;
