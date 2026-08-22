@@ -38,7 +38,7 @@
             </div>
         </header>
 
-        <section v-if="usage" class="auction-usage admin-surface">
+        <section v-if="isAdmin && usage" class="auction-usage admin-surface">
             <div class="auction-usage__stats">
                 <div>
                     <span>{{ t('auctions.usage.billed') }}</span>
@@ -769,6 +769,12 @@ async function loadFavoriteIds() {
 }
 
 async function loadUsage() {
+    if (! isAdmin.value) {
+        usage.value = null;
+
+        return;
+    }
+
     try {
         const { data } = await getAuctionUsage();
         usage.value = data.data?.local ?? null;

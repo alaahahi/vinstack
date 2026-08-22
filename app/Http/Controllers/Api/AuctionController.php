@@ -61,12 +61,14 @@ class AuctionController extends Controller
 
     public function usage(Request $request): JsonResponse
     {
-        $this->authorizeAuctionAccess($request);
+        if ($request->user()?->role !== UserRole::Admin) {
+            abort(403, 'Unauthorized for this area.');
+        }
 
         $local = $this->usage->monthlySummary();
         $remote = null;
 
-        if ($request->boolean('include_remote') && $request->user()?->role === UserRole::Admin) {
+        if ($request->boolean('include_remote')) {
             try {
                 $remotePayload = $this->auctions->remoteUsage($request->boolean('force_refresh'));
                 $remote = $remotePayload['data'] ?? null;

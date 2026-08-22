@@ -136,6 +136,13 @@ class ApibaraAuctionApiTest extends TestCase
             ->assertJsonPath('data.local.max_per_page', 10);
     }
 
+    public function test_dealer_cannot_access_usage_endpoint(): void
+    {
+        Sanctum::actingAs($this->makeUser(UserRole::Dealer));
+
+        $this->getJson('/api/auctions/usage')->assertForbidden();
+    }
+
     public function test_maps_401_to_friendly_message(): void
     {
         Http::fake([
