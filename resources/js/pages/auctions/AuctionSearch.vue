@@ -24,7 +24,7 @@
                     >
                         <i class="pi pi-heart-fill" />
                         {{ t('auctions.favoritesTab') }}
-                        <span v-if="favoriteIds.length" class="view-tab__count">{{ favoriteIds.length }}</span>
+                        <span v-if="favoritesBadgeCount" class="view-tab__count">{{ favoritesBadgeCount }}</span>
                     </button>
                 </div>
                 <Button
@@ -222,7 +222,9 @@
                     <div>
                         <h3>{{ viewMode === 'favorites' ? t('auctions.favoritesTab') : t('auctions.resultsTitle') }}</h3>
                         <p class="muted">
-                            <template v-if="viewMode === 'favorites'">{{ t('auctions.favoritesHint') }}</template>
+                            <template v-if="viewMode === 'favorites'">
+                                {{ isAdmin ? t('auctions.favoritesHintAdmin') : t('auctions.favoritesHint') }}
+                            </template>
                             <template v-else>{{ t('auctions.resultsHint') }}</template>
                         </p>
                     </div>
@@ -268,7 +270,7 @@
                 >
                     <article
                         v-for="row in displayRows"
-                        :key="rowKey(row)"
+                        :key="cardKey(row)"
                         class="vehicle-card admin-surface"
                         @click="openDetail(row)"
                     >
@@ -286,7 +288,7 @@
                                 class="fav-btn"
                                 :class="{ 'fav-btn--on': isFavorite(row) }"
                                 :title="isFavorite(row) ? t('auctions.removeFavorite') : t('auctions.addFavorite')"
-                                :disabled="favoriteBusy === favoriteKey(row)"
+                                :disabled="favoriteBusy === favoriteBusyKey(row)"
                                 @click.stop="toggleFavorite(row)"
                             >
                                 <i :class="isFavorite(row) ? 'pi pi-heart-fill' : 'pi pi-heart'" />
@@ -296,6 +298,12 @@
                         <div class="vehicle-card__body">
                             <div class="badge-row">
                                 <span class="pill" :class="platformClass(row.platform)">{{ platformLabel(row.platform) }}</span>
+                                <span
+                                    v-if="viewMode === 'favorites' && ownerLabel(row)"
+                                    class="pill pill--owner"
+                                >
+                                    {{ ownerLabel(row) }}
+                                </span>
                                 <span v-if="damageOf(row) !== '—'" class="pill">{{ damageOf(row) }}</span>
                                 <span v-if="runConditionOf(row)" class="pill">{{ runConditionOf(row) }}</span>
                             </div>
@@ -361,12 +369,15 @@ import {
     searchAuctions,
 } from '../../api/auctions';
 import { useAuctionSearchStore } from '../../stores/auctionSearch';
+import { useAuthStore } from '../../stores/auth';
 
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 const auctionSearchStore = useAuctionSearchStore();
+const auth = useAuthStore();
 
+const isAdmin = computed(() => auth.isAdmin);
 const viewMode = ref('search');
 const resultLayout = ref('grid');
 const filtersMeta = ref(null);
@@ -390,6 +401,7 @@ const filters = reactive({
 const rows = ref([]);
 const favoriteRows = ref([]);
 const favoriteIds = ref([]);
+const favoritesCount = ref(0);
 const favoriteBusy = ref('');
 const meta = ref(null);
 const loading = ref(false);
@@ -398,6 +410,10 @@ const error = ref('');
 const searched = ref(false);
 const lastCached = ref(false);
 const usage = ref(null);
+
+const favoritesBadgeCount = computed(() => (
+    isAdmin.value ? favoritesCount.value : favoriteIds.value.length
+));
 
 const platformOptions = computed(() => [
     { value: '', label: t('auctions.all') },
@@ -659,12 +675,37 @@ async function loadFavorites() {
     try {
         const { data } = await listAuctionFavorites();
         favoriteRows.value = Array.isArray(data.data) ? data.data : [];
-        favoriteIds.value = favoriteRows.value.map((row) => row.identifier).filter(Boolean);
+        favoritesCount.value = Number(data.meta?.count ?? favoriteRows.value.length);
+
+        if (isAdmin.value) {
+            await loadFavoriteIds();
+        } else {
+            favoriteIds.value = favoriteRows.value.map((row) => row.identifier).filter(Boolean);
+        }
     } catch (e) {
         error.value = e.response?.data?.message || t('auctions.loadFailed');
         favoriteRows.value = [];
     } finally {
         loading.value = false;
+    }
+}
+
+async function refreshFavoritesCount() {
+    if (! isAdmin.value) {
+        favoritesCount.value = favoriteIds.value.length;
+
+        return;
+    }
+
+    try {
+        const { data } = await listAuctionFavorites();
+        favoritesCount.value = Number(data.meta?.count ?? (Array.isArray(data.data) ? data.data.length : 0));
+
+        if (viewMode.value === 'favorites') {
+            favoriteRows.value = Array.isArray(data.data) ? data.data : [];
+        }
+    } catch {
+        // optional
     }
 }
 
@@ -713,7 +754,39 @@ function favoriteKey(row) {
     return row.identifier || row.slug_vin || row.vin || row.lot_number || '';
 }
 
+function favoriteBusyKey(row) {
+    return `${row.user_id || 'me'}:${favoriteKey(row)}`;
+}
+
+function cardKey(row) {
+    return row.id ? `fav-${row.id}` : rowKey(row);
+}
+
+function ownerLabel(row) {
+    const owner = row.owner;
+
+    if (! owner) return '';
+
+    if (owner.company_name) {
+        return owner.company_name;
+    }
+
+    if (owner.name) {
+        return owner.name;
+    }
+
+    if (owner.role === 'admin') {
+        return t('auctions.ownerAdmin');
+    }
+
+    return t('auctions.ownerDealer');
+}
+
 function isFavorite(row) {
+    if (viewMode.value === 'favorites') {
+        return true;
+    }
+
     const key = favoriteKey(row);
 
     return key !== '' && favoriteIds.value.includes(key);
@@ -724,13 +797,47 @@ async function toggleFavorite(row) {
 
     if (! key) return;
 
-    favoriteBusy.value = key;
+    const busyKey = favoriteBusyKey(row);
+    favoriteBusy.value = busyKey;
 
     try {
+        if (viewMode.value === 'favorites') {
+            const params = {};
+
+            if (isAdmin.value && row.user_id) {
+                params.user_id = row.user_id;
+            }
+
+            await removeAuctionFavorite(key, params);
+            favoriteRows.value = favoriteRows.value.filter((item) => {
+                if (row.id) return item.id !== row.id;
+
+                return !(item.identifier === key && Number(item.user_id) === Number(row.user_id || auth.user?.id));
+            });
+            favoritesCount.value = Math.max(0, favoritesCount.value - 1);
+
+            if (! row.user_id || Number(row.user_id) === Number(auth.user?.id)) {
+                favoriteIds.value = favoriteIds.value.filter((id) => id !== key);
+            }
+
+            return;
+        }
+
         if (isFavorite(row)) {
             await removeAuctionFavorite(key);
             favoriteIds.value = favoriteIds.value.filter((id) => id !== key);
-            favoriteRows.value = favoriteRows.value.filter((item) => item.identifier !== key);
+            favoriteRows.value = favoriteRows.value.filter((item) => {
+                if (Number(item.user_id || auth.user?.id) !== Number(auth.user?.id)) {
+                    return true;
+                }
+
+                return item.identifier !== key;
+            });
+            if (! isAdmin.value) {
+                favoritesCount.value = favoriteIds.value.length;
+            } else {
+                favoritesCount.value = Math.max(0, favoritesCount.value - 1);
+            }
         } else {
             const payload = {
                 identifier: key,
@@ -760,7 +867,12 @@ async function toggleFavorite(row) {
                 favoriteIds.value = [...favoriteIds.value, key];
             }
             if (data.data) {
-                favoriteRows.value = [data.data, ...favoriteRows.value.filter((item) => item.identifier !== key)];
+                favoriteRows.value = [data.data, ...favoriteRows.value.filter((item) => item.id !== data.data.id)];
+            }
+            if (! isAdmin.value) {
+                favoritesCount.value = favoriteIds.value.length;
+            } else {
+                favoritesCount.value += 1;
             }
         }
     } catch (e) {
@@ -879,6 +991,7 @@ onMounted(async () => {
         loadFilterMeta({ applyDefaults: ! restored }),
         loadUsage(),
         loadFavoriteIds(),
+        refreshFavoritesCount(),
     ]);
 });
 </script>
@@ -1301,6 +1414,11 @@ onMounted(async () => {
 .pill--iaai {
     background: color-mix(in srgb, #0284c7 18%, transparent);
     color: #0369a1;
+}
+
+.pill--owner {
+    background: color-mix(in srgb, #7c3aed 16%, transparent);
+    color: #6d28d9;
 }
 
 .vehicle-card__title {

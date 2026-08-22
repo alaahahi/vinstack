@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Enums\UserRole;
 use App\Models\AuctionFavorite;
 use App\Models\User;
 use Illuminate\Support\Str;
@@ -13,11 +14,39 @@ class AuctionFavoriteService
      */
     public function listFor(User $user): array
     {
+        if ($user->role === UserRole::Admin) {
+            return $this->listAllForAdmin();
+        }
+
         return $user->auctionFavorites()
             ->latest('id')
             ->get()
             ->map(fn (AuctionFavorite $favorite) => $favorite->toApiArray())
             ->all();
+    }
+
+    /**
+     * Admin overview: every favorite across dealers (and admin accounts).
+     *
+     * @return list<array<string, mixed>>
+     */
+    public function listAllForAdmin(): array
+    {
+        return AuctionFavorite::query()
+            ->with(['user.dealer'])
+            ->latest('id')
+            ->get()
+            ->map(fn (AuctionFavorite $favorite) => $favorite->toApiArray(includeOwner: true))
+            ->all();
+    }
+
+    public function countFor(User $user): int
+    {
+        if ($user->role === UserRole::Admin) {
+            return AuctionFavorite::query()->count();
+        }
+
+        return $user->auctionFavorites()->count();
     }
 
     /**
@@ -55,16 +84,21 @@ class AuctionFavoriteService
             $this->mapVehicle($vehicle, $identifier),
         );
 
-        return $favorite->toApiArray();
+        return $favorite->toApiArray($user->role === UserRole::Admin);
     }
 
-    public function remove(User $user, string $identifier): bool
+    public function remove(User $user, string $identifier, ?int $ownerUserId = null): bool
     {
-        $deleted = $user->auctionFavorites()
-            ->where('identifier', $this->normalizeIdentifier($identifier))
-            ->delete();
+        $query = AuctionFavorite::query()
+            ->where('identifier', $this->normalizeIdentifier($identifier));
 
-        return $deleted > 0;
+        if ($user->role === UserRole::Admin && $ownerUserId) {
+            $query->where('user_id', $ownerUserId);
+        } else {
+            $query->where('user_id', $user->id);
+        }
+
+        return $query->delete() > 0;
     }
 
     /**

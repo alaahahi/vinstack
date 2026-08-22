@@ -76,7 +76,72 @@ class AuctionFavoriteApiTest extends TestCase
         $this->getJson('/api/auctions/favorites')
             ->assertOk()
             ->assertJsonPath('meta.count', 0)
+            ->assertJsonPath('meta.scope', 'own')
             ->assertJsonCount(0, 'data');
+    }
+
+    public function test_admin_sees_all_dealer_favorites(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin, 'name' => 'Admin User']);
+        $dealer = User::factory()->create(['role' => UserRole::Dealer, 'name' => 'Dealer One']);
+
+        AuctionFavorite::query()->create([
+            'user_id' => $dealer->id,
+            'identifier' => 'dealer-vin-1',
+            'platform' => 'copart',
+            'make' => 'TOYOTA',
+        ]);
+
+        AuctionFavorite::query()->create([
+            'user_id' => $admin->id,
+            'identifier' => 'admin-vin-1',
+            'platform' => 'iaai',
+            'make' => 'FORD',
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $response = $this->getJson('/api/auctions/favorites')
+            ->assertOk()
+            ->assertJsonPath('meta.scope', 'all')
+            ->assertJsonPath('meta.count', 2)
+            ->assertJsonCount(2, 'data');
+
+        $owners = collect($response->json('data'))->pluck('owner.name')->all();
+        $this->assertContains('Dealer One', $owners);
+        $this->assertContains('Admin User', $owners);
+
+        Sanctum::actingAs($dealer);
+
+        $this->getJson('/api/auctions/favorites')
+            ->assertOk()
+            ->assertJsonPath('meta.scope', 'own')
+            ->assertJsonPath('meta.count', 1)
+            ->assertJsonPath('data.0.identifier', 'dealer-vin-1');
+    }
+
+    public function test_admin_can_remove_dealer_favorite(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $dealer = User::factory()->create(['role' => UserRole::Dealer]);
+
+        AuctionFavorite::query()->create([
+            'user_id' => $dealer->id,
+            'identifier' => 'shared-vin',
+            'platform' => 'copart',
+            'make' => 'BMW',
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $this->deleteJson('/api/auctions/favorites/shared-vin?user_id='.$dealer->id)
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        $this->assertDatabaseMissing('auction_favorites', [
+            'user_id' => $dealer->id,
+            'identifier' => 'shared-vin',
+        ]);
     }
 
     public function test_store_requires_identifier(): void

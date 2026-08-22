@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Enums\UserRole;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
@@ -74,7 +75,7 @@ class AuctionFavorite extends Model
             $payload['owner'] = [
                 'id' => $user?->id ?? $this->user_id,
                 'name' => $user?->name,
-                'role' => $user?->role instanceof \BackedEnum
+                'role' => $user?->role instanceof UserRole
                     ? $user->role->value
                     : ($user?->role ? (string) $user->role : null),
                 'company_name' => $dealer?->company_name,
