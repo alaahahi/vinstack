@@ -112,9 +112,17 @@ class ApibaraAuctionApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('cached', true);
 
+        $this->getJson('/api/auctions/cache?platform=copart&make=Toyota&per_page=10')
+            ->assertOk()
+            ->assertJsonPath('data.available', true);
+
+        $this->getJson('/api/auctions?platform=copart&make=Toyota&per_page=10&cache_only=1')
+            ->assertOk()
+            ->assertJsonPath('cached', true);
+
         Http::assertSentCount(1);
 
-        $this->assertDatabaseCount('apibara_request_logs', 2);
+        $this->assertDatabaseCount('apibara_request_logs', 3);
         $this->assertDatabaseHas('apibara_request_logs', [
             'billed' => true,
             'cached' => false,
@@ -125,6 +133,23 @@ class ApibaraAuctionApiTest extends TestCase
         ]);
     }
 
+    public function test_cache_only_miss_does_not_call_upstream(): void
+    {
+        Http::fake();
+
+        Sanctum::actingAs($this->makeUser(UserRole::Admin));
+
+        $this->getJson('/api/auctions?make=MissingCar&cache_only=1')
+            ->assertNotFound()
+            ->assertJsonPath('code', 'apibara_cache_miss');
+
+        $this->getJson('/api/auctions/cache?make=MissingCar')
+            ->assertOk()
+            ->assertJsonPath('data.available', false);
+
+        Http::assertNothingSent();
+    }
+
     public function test_usage_endpoint_returns_local_summary(): void
     {
         Sanctum::actingAs($this->makeUser(UserRole::Admin));
@@ -133,7 +158,8 @@ class ApibaraAuctionApiTest extends TestCase
             ->assertOk()
             ->assertJsonPath('ok', true)
             ->assertJsonPath('data.local.free_quota', 100)
-            ->assertJsonPath('data.local.max_per_page', 10);
+            ->assertJsonPath('data.local.max_per_page', 10)
+            ->assertJsonPath('data.local.cache_ttl_seconds', 86400);
     }
 
     public function test_dealer_cannot_access_usage_endpoint(): void
@@ -302,6 +328,174 @@ class ApibaraAuctionApiTest extends TestCase
             ->assertJsonPath('cached', true);
 
         Http::assertSentCount(1);
+    }
+
+    public function test_cache_only_miss_does_not_hit_upstream(): void
+    {
+        Http::fake([
+            'apibara.tech/*' => Http::response(['ok' => true, 'data' => []], 200),
+        ]);
+
+        Sanctum::actingAs($this->makeUser(UserRole::Admin));
+
+        $this->getJson('/api/auctions?make=Toyota&cache_only=1')
+            ->assertNotFound()
+            ->assertJsonPath('code', 'apibara_cache_miss');
+
+        Http::assertNothingSent();
+    }
+
+    public function test_cache_status_and_cache_only_hit(): void
+    {
+        Http::fake([
+            'apibara.tech/*' => Http::response([
+                'ok' => true,
+                'data' => [['vin' => 'CACHEDVIN']],
+                'meta' => null,
+            ], 200),
+        ]);
+
+        Sanctum::actingAs($this->makeUser(UserRole::Admin));
+
+        $this->getJson('/api/auctions/cache?platform=copart&make=Toyota&per_page=10')
+            ->assertOk()
+            ->assertJsonPath('data.available', false);
+
+        $this->getJson('/api/auctions?platform=copart&make=Toyota&per_page=10')
+            ->assertOk()
+            ->assertJsonPath('cached', false);
+
+        $this->getJson('/api/auctions/cache?platform=copart&make=Toyota&per_page=10')
+            ->assertOk()
+            ->assertJsonPath('data.available', true);
+
+        $this->getJson('/api/auctions?platform=copart&make=Toyota&per_page=10&cache_only=1')
+            ->assertOk()
+            ->assertJsonPath('cached', true)
+            ->assertJsonPath('data.0.vin', 'CACHEDVIN');
+
+        Http::assertSentCount(1);
+    }
+
+    public function test_force_refresh_bypasses_cache(): void
+    {
+        Http::fake([
+            'apibara.tech/*' => Http::response([
+                'ok' => true,
+                'data' => [['vin' => 'LIVE']],
+            ], 200),
+        ]);
+
+        Sanctum::actingAs($this->makeUser(UserRole::Admin));
+
+        $this->getJson('/api/auctions?make=Honda&per_page=10')->assertOk();
+        $this->getJson('/api/auctions?make=Honda&per_page=10&force_refresh=1')
+            ->assertOk()
+            ->assertJsonPath('cached', false);
+
+        Http::assertSentCount(2);
+    }
+
+    public function test_usage_lists_who_spent_requests(): void
+    {
+        $admin = $this->makeUser(UserRole::Admin);
+
+        Sanctum::actingAs($admin);
+
+        Http::fake([
+            'apibara.tech/*' => Http::response(['ok' => true, 'data' => []], 200),
+        ]);
+
+        $this->getJson('/api/auctions?make=Kia&per_page=10')->assertOk();
+
+        $this->getJson('/api/auctions/usage')
+            ->assertOk()
+            ->assertJsonPath('data.local.by_user.0.name', $admin->name)
+            ->assertJsonPath('data.local.by_user.0.role', 'admin')
+            ->assertJsonPath('data.local.active_provider.name', 'Apibara 1');
+    }
+
+    public function test_exhausted_provider_fails_over_to_next_key(): void
+    {
+        Http::fake([
+            'apibara.tech/*' => Http::response(['ok' => true, 'data' => [['vin' => 'NEXT']]], 200),
+        ]);
+
+        Sanctum::actingAs($this->makeUser(UserRole::Admin));
+
+        $first = \App\Models\AuctionApiProvider::query()->create([
+            'name' => 'Key A',
+            'base_url' => 'https://apibara.tech/api/v1/vehicle-auction',
+            'api_key' => 'first-key',
+            'monthly_quota' => 1,
+            'sort_order' => 1,
+            'is_enabled' => true,
+            'is_active' => true,
+        ]);
+
+        \App\Models\AuctionApiProvider::query()->create([
+            'name' => 'Key B',
+            'base_url' => 'https://apibara.tech/api/v1/vehicle-auction',
+            'api_key' => 'second-key',
+            'monthly_quota' => 100,
+            'sort_order' => 2,
+            'is_enabled' => true,
+            'is_active' => false,
+        ]);
+
+        \App\Models\ApibaraRequestLog::query()->create([
+            'provider_id' => $first->id,
+            'endpoint' => '/vehicles',
+            'method' => 'GET',
+            'billed' => true,
+            'cached' => false,
+            'status' => 200,
+        ]);
+
+        $this->getJson('/api/auctions?make=Ford&per_page=10')
+            ->assertOk()
+            ->assertJsonPath('data.0.vin', 'NEXT');
+
+        Http::assertSent(fn ($request) => $request->hasHeader('X-API-Key', 'second-key'));
+
+        $this->assertDatabaseHas('auction_api_providers', [
+            'name' => 'Key B',
+            'is_active' => true,
+        ]);
+    }
+
+    public function test_admin_can_add_and_manually_activate_provider(): void
+    {
+        Sanctum::actingAs($this->makeUser(UserRole::Admin));
+
+        $this->postJson('/api/admin/auction-providers', [
+            'name' => 'Backup key',
+            'base_url' => 'https://apibara.tech/api/v1/vehicle-auction',
+            'api_key' => 'backup-secret-key',
+            'monthly_quota' => 80,
+            'activate' => true,
+        ])
+            ->assertCreated()
+            ->assertJsonPath('data.name', 'Backup key')
+            ->assertJsonPath('data.is_active', true)
+            ->assertJsonMissingPath('data.api_key');
+
+        $id = \App\Models\AuctionApiProvider::query()->where('name', 'Backup key')->value('id');
+
+        $this->postJson("/api/admin/auction-providers/{$id}/activate")
+            ->assertOk()
+            ->assertJsonPath('data.is_active', true);
+
+        $this->getJson('/api/admin/auction-providers')
+            ->assertOk()
+            ->assertJsonPath('data.active.name', 'Backup key');
+    }
+
+    public function test_dealer_cannot_manage_auction_providers(): void
+    {
+        Sanctum::actingAs($this->makeUser(UserRole::Dealer));
+
+        $this->getJson('/api/admin/auction-providers')->assertForbidden();
     }
 
     protected function makeUser(UserRole $role): User

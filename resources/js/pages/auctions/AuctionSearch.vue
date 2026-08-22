@@ -405,7 +405,7 @@
                                     <strong>{{ auctionDate(row) }}</strong>
                                 </div>
                             </div>
-                            <div class="vehicle-card__footer" @click.stop>
+                            <div v-if="viewMode === 'search'" class="vehicle-card__footer" @click.stop>
                                 <Button
                                     :label="t('auctions.refreshItem')"
                                     icon="pi pi-refresh"
@@ -434,7 +434,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref, watch } from 'vue';
+import { computed, onMounted, onUnmounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import Button from 'primevue/button';
@@ -1259,7 +1259,12 @@ onMounted(async () => {
         loadUsage(),
         loadFavoriteIds(),
         refreshFavoritesCount(),
+        checkServerCache(),
     ]);
+});
+
+onUnmounted(() => {
+    clearTimeout(cacheCheckTimer);
 });
 </script>
 
@@ -1357,6 +1362,43 @@ onMounted(async () => {
 }
 
 .text-warn { color: #d97706; }
+
+.auction-usage__hint {
+    margin: 0.65rem 0 0;
+    font-size: 0.78rem;
+    color: var(--vs-text-muted);
+}
+
+.auction-usage__users {
+    margin-top: 0.75rem;
+}
+
+.auction-usage__users ul {
+    list-style: none;
+    margin: 0.4rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.auction-usage__users li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.auction-usage__user-name {
+    font-weight: 600;
+}
+
+.vehicle-card__footer {
+    margin-top: 0.65rem;
+    display: flex;
+    justify-content: flex-end;
+}
 
 .auction-cache-badge {
     margin: 0;
@@ -1857,6 +1899,11 @@ onMounted(async () => {
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
+}
+
+.vehicle-card__footer {
+    display: flex;
+    justify-content: flex-end;
 }
 
 .auction-search__pager {

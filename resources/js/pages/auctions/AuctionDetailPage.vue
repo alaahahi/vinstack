@@ -24,7 +24,7 @@
                     outlined
                     size="small"
                     :loading="loading"
-                    @click="load"
+                    @click="load(true)"
                 />
             </div>
         </div>
@@ -218,13 +218,13 @@ async function loadFavoriteIds() {
     }
 }
 
-async function load() {
+async function load(forceRefresh = false) {
     loading.value = true;
     error.value = '';
 
     try {
         const [{ data }] = await Promise.all([
-            getAuction(String(route.params.identifier)),
+            getAuction(String(route.params.identifier), forceRefresh ? { force_refresh: true } : {}),
             loadFavoriteIds(),
         ]);
         vehicle.value = data.data ?? null;

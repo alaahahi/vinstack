@@ -374,6 +374,127 @@
                 </div>
             </section>
 
+            <section class="admin-surface settings-card settings-card--wide">
+                <header class="settings-card__head">
+                    <i class="pi pi-key" />
+                    <div>
+                        <h2 class="vs-card-title">{{ t('settings.sections.auctionApis') }}</h2>
+                        <p class="vs-card-subtitle">{{ t('settings.sections.auctionApisSub') }}</p>
+                    </div>
+                </header>
+
+                <div class="settings-card__body">
+                    <div v-if="auctionActive" class="auction-api-active">
+                        <Tag severity="success" :value="t('settings.auctionApiActive')" />
+                        <strong>{{ auctionActive.name }}</strong>
+                        <span dir="ltr">{{ auctionActive.key_hint }}</span>
+                        <span>
+                            {{ t('settings.auctionApiRemaining', {
+                                remaining: auctionActive.remaining,
+                                quota: auctionActive.monthly_quota,
+                            }) }}
+                        </span>
+                    </div>
+
+                    <p v-if="! auctionProviders.length" class="settings-card__empty">
+                        {{ t('settings.auctionApiEmpty') }}
+                    </p>
+
+                    <ul v-else class="auction-api-list">
+                        <li
+                            v-for="provider in auctionProviders"
+                            :key="provider.id"
+                            class="auction-api-row"
+                            :class="{ 'auction-api-row--active': provider.is_active }"
+                        >
+                            <div class="auction-api-row__meta">
+                                <strong>{{ provider.name }}</strong>
+                                <span dir="ltr">{{ provider.base_url }}</span>
+                                <span dir="ltr">{{ provider.key_hint }}</span>
+                                <span>
+                                    {{ t('settings.auctionApiRemaining', {
+                                        remaining: provider.remaining,
+                                        quota: provider.monthly_quota,
+                                    }) }}
+                                </span>
+                            </div>
+                            <div class="auction-api-row__actions">
+                                <Button
+                                    v-if="! provider.is_active"
+                                    :label="t('settings.auctionApiActivate')"
+                                    icon="pi pi-check"
+                                    size="small"
+                                    outlined
+                                    :loading="auctionBusyId === `activate-${provider.id}`"
+                                    @click="activateAuctionProvider(provider)"
+                                />
+                                <Button
+                                    icon="pi pi-trash"
+                                    severity="danger"
+                                    text
+                                    rounded
+                                    size="small"
+                                    :loading="auctionBusyId === `delete-${provider.id}`"
+                                    @click="confirmDeleteAuctionProvider(provider)"
+                                />
+                            </div>
+                        </li>
+                    </ul>
+
+                    <div class="auction-api-form">
+                        <div class="field">
+                            <label class="vs-form-label">{{ t('settings.auctionApiName') }}</label>
+                            <InputText v-model="auctionForm.name" class="w-full" />
+                        </div>
+                        <div class="field">
+                            <label class="vs-form-label">{{ t('settings.auctionApiUrl') }}</label>
+                            <InputText
+                                v-model="auctionForm.base_url"
+                                class="w-full"
+                                dir="ltr"
+                                placeholder="https://apibara.tech/api/v1/vehicle-auction"
+                            />
+                        </div>
+                        <div class="field">
+                            <label class="vs-form-label">{{ t('settings.auctionApiKey') }}</label>
+                            <Password
+                                v-model="auctionForm.api_key"
+                                toggle-mask
+                                input-class="w-full"
+                                class="w-full"
+                            />
+                        </div>
+                        <div class="field">
+                            <label class="vs-form-label">{{ t('settings.auctionApiQuota') }}</label>
+                            <InputNumber
+                                v-model="auctionForm.monthly_quota"
+                                :min="1"
+                                :max="100000"
+                                class="w-full"
+                            />
+                        </div>
+                        <div class="field-checkbox">
+                            <Checkbox
+                                input-id="auction-activate-now"
+                                v-model="auctionForm.activate"
+                                :binary="true"
+                            />
+                            <label for="auction-activate-now">{{ t('settings.auctionApiUseNow') }}</label>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="settings-card__footer">
+                    <Button
+                        :label="t('settings.auctionApiAdd')"
+                        icon="pi pi-plus"
+                        class="btn-add"
+                        :loading="savingAuctionProvider"
+                        @click="addAuctionProvider"
+                    />
+                </div>
+            </section>
+
             <section class="admin-surface settings-card settings-card--wide settings-card--system">
                 <header class="settings-card__head">
                     <i class="pi pi-database" />
@@ -777,6 +898,17 @@ const vehicleOptions = ref({
     delivery_types: [],
     title_types: [],
 });
+const auctionProviders = ref([]);
+const auctionActive = ref(null);
+const savingAuctionProvider = ref(false);
+const auctionBusyId = ref('');
+const auctionForm = reactive({
+    name: '',
+    base_url: 'https://apibara.tech/api/v1/vehicle-auction',
+    api_key: '',
+    monthly_quota: 100,
+    activate: false,
+});
 
 const DEFAULT_GALLERY_BASE = 'https://app.vinstack.com/api/client-portal';
 
@@ -846,6 +978,7 @@ async function load() {
     form.cloudinary_api_key = '';
     form.cloudinary_api_secret = '';
     vehicleOptions.value = optionsRes.data.data;
+    await loadAuctionProviders();
 }
 
 async function saveVehicleOptions() {
@@ -863,6 +996,113 @@ async function saveVehicleOptions() {
         });
     } finally {
         savingOptions.value = false;
+    }
+}
+
+async function loadAuctionProviders() {
+    try {
+        const { data } = await api.get('/admin/auction-providers');
+        auctionProviders.value = Array.isArray(data.data?.providers) ? data.data.providers : [];
+        auctionActive.value = data.data?.active ?? null;
+    } catch {
+        auctionProviders.value = [];
+        auctionActive.value = null;
+    }
+}
+
+function resetAuctionForm() {
+    auctionForm.name = '';
+    auctionForm.base_url = 'https://apibara.tech/api/v1/vehicle-auction';
+    auctionForm.api_key = '';
+    auctionForm.monthly_quota = 100;
+    auctionForm.activate = false;
+}
+
+async function addAuctionProvider() {
+    savingAuctionProvider.value = true;
+
+    try {
+        const { data } = await api.post('/admin/auction-providers', {
+            name: auctionForm.name,
+            base_url: auctionForm.base_url,
+            api_key: auctionForm.api_key,
+            monthly_quota: auctionForm.monthly_quota,
+            activate: auctionForm.activate,
+        });
+        toast.add({
+            severity: 'success',
+            summary: data.message || t('settings.auctionApiAdded'),
+            life: 3000,
+        });
+        resetAuctionForm();
+        await loadAuctionProviders();
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || t('settings.saveFailed'),
+            life: 4000,
+        });
+    } finally {
+        savingAuctionProvider.value = false;
+    }
+}
+
+async function activateAuctionProvider(provider) {
+    auctionBusyId.value = `activate-${provider.id}`;
+
+    try {
+        const { data } = await api.post(`/admin/auction-providers/${provider.id}/activate`);
+        toast.add({
+            severity: 'success',
+            summary: data.message || t('settings.auctionApiActivated'),
+            life: 3000,
+        });
+        await loadAuctionProviders();
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || t('settings.saveFailed'),
+            life: 4000,
+        });
+    } finally {
+        auctionBusyId.value = '';
+    }
+}
+
+function confirmDeleteAuctionProvider(provider) {
+    confirm.require({
+        message: t('settings.auctionApiDeleteConfirm'),
+        header: t('settings.auctionApiDeleteConfirm'),
+        icon: 'pi pi-trash',
+        rejectLabel: t('actions.cancel'),
+        acceptLabel: t('actions.confirm'),
+        acceptClass: 'p-button-danger',
+        accept: () => deleteAuctionProvider(provider),
+    });
+}
+
+async function deleteAuctionProvider(provider) {
+    auctionBusyId.value = `delete-${provider.id}`;
+
+    try {
+        const { data } = await api.delete(`/admin/auction-providers/${provider.id}`);
+        toast.add({
+            severity: 'success',
+            summary: data.message || t('settings.auctionApiDeleted'),
+            life: 3000,
+        });
+        await loadAuctionProviders();
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || t('settings.saveFailed'),
+            life: 4000,
+        });
+    } finally {
+        auctionBusyId.value = '';
     }
 }
 
@@ -1781,5 +2021,71 @@ onMounted(async () => {
     .backup-row-actions {
         justify-content: flex-end;
     }
+}
+
+.auction-api-active {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.5rem 0.85rem;
+    margin-bottom: 0.85rem;
+    padding: 0.65rem 0.75rem;
+    border-radius: 8px;
+    border: 1px solid color-mix(in srgb, #15803d 28%, var(--vs-border));
+    background: color-mix(in srgb, #15803d 8%, transparent);
+}
+
+.auction-api-list {
+    list-style: none;
+    margin: 0 0 1rem;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.auction-api-row {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: space-between;
+    gap: 0.65rem;
+    padding: 0.7rem 0.8rem;
+    border: 1px solid var(--vs-border);
+    border-radius: 8px;
+}
+
+.auction-api-row--active {
+    border-color: color-mix(in srgb, #0f766e 40%, var(--vs-border));
+    background: color-mix(in srgb, #0f766e 8%, transparent);
+}
+
+.auction-api-row__meta {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.auction-api-row__meta span {
+    font-size: 0.78rem;
+    color: var(--vs-text-muted);
+    word-break: break-all;
+}
+
+.auction-api-row__actions {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.auction-api-form {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(min(100%, 220px), 1fr));
+    gap: 0.75rem;
+}
+
+.settings-card__empty {
+    margin: 0 0 0.85rem;
+    color: var(--vs-text-muted);
 }
 </style>

@@ -25,4 +25,13 @@ class UpdateAuctionApiProviderRequest extends FormRequest
             'is_enabled' => ['sometimes', 'boolean'],
         ];
     }
+
+    protected function prepareForValidation(): void
+    {
+        if ($this->exists('is_enabled')) {
+            $this->merge([
+                'is_enabled' => filter_var($this->input('is_enabled'), FILTER_VALIDATE_BOOLEAN),
+            ]);
+        }
+    }
 }

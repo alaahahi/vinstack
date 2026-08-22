@@ -26,4 +26,15 @@ class StoreAuctionApiProviderRequest extends FormRequest
             'activate' => ['sometimes', 'boolean'],
         ];
     }
+
+    protected function prepareForValidation(): void
+    {
+        foreach (['is_enabled', 'activate'] as $key) {
+            if ($this->exists($key)) {
+                $this->merge([
+                    $key => filter_var($this->input($key), FILTER_VALIDATE_BOOLEAN),
+                ]);
+            }
+        }
+    }
 }

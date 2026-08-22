@@ -520,6 +520,8 @@ class ApibaraAuctionService
                 $provider->id,
             );
 
+            $this->providers->rotateIfExhausted($provider->fresh() ?? $provider);
+
             return $normalized;
         }
 

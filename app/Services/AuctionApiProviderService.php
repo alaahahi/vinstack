@@ -80,6 +80,10 @@ class AuctionApiProviderService
             return $active;
         }
 
+        if ($active) {
+            $this->markExhausted($active);
+        }
+
         $next = $this->nextAvailable($skipIds);
 
         if ($next) {
@@ -107,6 +111,7 @@ class AuctionApiProviderService
             $provider->forceFill([
                 'is_active' => true,
                 'is_enabled' => true,
+                'quota_exhausted_at' => $reason === 'manual' ? null : $provider->quota_exhausted_at,
                 'last_switched_at' => now(),
                 'last_switch_reason' => $reason,
             ])->save();
@@ -120,6 +125,25 @@ class AuctionApiProviderService
         $provider->forceFill([
             'quota_exhausted_at' => now(),
         ])->save();
+    }
+
+    public function rotateIfExhausted(AuctionApiProvider $provider): void
+    {
+        if ($this->remaining($provider) > 0) {
+            return;
+        }
+
+        $this->markExhausted($provider);
+
+        if (! $provider->is_active) {
+            return;
+        }
+
+        $next = $this->nextAvailable([$provider->id]);
+
+        if ($next) {
+            $this->activate($next, 'auto_quota');
+        }
     }
 
     /**
