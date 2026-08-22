@@ -174,6 +174,35 @@ class ApibaraAuctionApiTest extends TestCase
             ->assertJsonPath('data.0.lot_number', '1');
     }
 
+    public function test_show_falls_back_from_slug_vin_to_vin_on_404(): void
+    {
+        Http::fake(function ($request) {
+            $url = $request->url();
+
+            if (str_contains($url, '2026-kia-k4-lxs-3KPFT4DE8TE273956')) {
+                return Http::response(['ok' => false, 'message' => 'Not found'], 404);
+            }
+
+            if (str_contains($url, '3KPFT4DE8TE273956')) {
+                return Http::response([
+                    'ok' => true,
+                    'data' => [
+                        'vin' => '3KPFT4DE8TE273956',
+                        'title' => '2026 KIA K4 LXS',
+                    ],
+                ], 200);
+            }
+
+            return Http::response(['ok' => false], 404);
+        });
+
+        Sanctum::actingAs($this->makeUser(UserRole::Admin));
+
+        $this->getJson('/api/auctions/2026-kia-k4-lxs-3KPFT4DE8TE273956')
+            ->assertOk()
+            ->assertJsonPath('data.vin', '3KPFT4DE8TE273956');
+    }
+
     public function test_filters_endpoint_is_cached(): void
     {
         Http::fake([

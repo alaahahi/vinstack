@@ -200,7 +200,7 @@ const favoriteKey = computed(() => {
 
     if (! row) return String(route.params.identifier || '');
 
-    return row.slug_vin || row.vin || row.lot_number || String(route.params.identifier || '');
+    return row.vin || row.lot_number || row.slug_vin || String(route.params.identifier || '');
 });
 
 const isFavorite = computed(() => {

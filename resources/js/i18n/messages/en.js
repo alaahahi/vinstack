@@ -807,6 +807,8 @@ export default {
         favoritesHintAdmin: 'All dealer favorites (and yours)',
         ownerAdmin: 'Admin',
         ownerDealer: 'Dealer',
+        prevPhoto: 'Previous photo',
+        nextPhoto: 'Next photo',
         items: 'items',
         gridView: 'Grid view',
         listView: 'List view',

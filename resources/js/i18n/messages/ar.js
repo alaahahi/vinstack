@@ -637,6 +637,8 @@ export default {
         favoritesHintAdmin: 'مفضلات كل التجار (ومفضلتك)',
         ownerAdmin: 'مدير',
         ownerDealer: 'تاجر',
+        prevPhoto: 'الصورة السابقة',
+        nextPhoto: 'الصورة التالية',
         items: 'عنصر',
         gridView: 'عرض شبكي',
         listView: 'عرض قائمة',

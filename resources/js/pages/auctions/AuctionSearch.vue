@@ -171,27 +171,27 @@
                     />
                 </div>
 
-                <div class="field-row">
+                <div class="field-row year-row">
                     <div class="field">
                         <label>{{ t('auctions.yearFrom') }}</label>
-                        <InputNumber
+                        <Select
                             v-model="filters.year_from"
-                            class="w-full"
-                            :min="yearBounds.min"
-                            :max="yearBounds.max"
-                            :use-grouping="false"
-                            :placeholder="String(yearBounds.min)"
+                            class="w-full year-select"
+                            :options="yearOptions"
+                            :placeholder="String(DEFAULT_YEAR_FROM)"
+                            filter
+                            show-clear
                         />
                     </div>
                     <div class="field">
                         <label>{{ t('auctions.yearTo') }}</label>
-                        <InputNumber
+                        <Select
                             v-model="filters.year_to"
-                            class="w-full"
-                            :min="yearBounds.min"
-                            :max="yearBounds.max"
-                            :use-grouping="false"
-                            :placeholder="String(yearBounds.max)"
+                            class="w-full year-select"
+                            :options="yearOptions"
+                            :placeholder="String(DEFAULT_YEAR_TO)"
+                            filter
+                            show-clear
                         />
                     </div>
                 </div>
@@ -274,14 +274,49 @@
                         class="vehicle-card admin-surface"
                         @click="openDetail(row)"
                     >
-                        <div class="vehicle-card__media">
-                            <img
-                                v-if="thumb(row)"
-                                :src="thumb(row)"
-                                alt=""
-                                loading="lazy"
-                            />
-                            <div v-else class="vehicle-card__no-photo">{{ t('auctions.noPhotos') }}</div>
+                        <div class="vehicle-card__media" @click.stop>
+                            <template v-if="photosOf(row).length">
+                                <img
+                                    :src="currentPhoto(row)"
+                                    alt=""
+                                    loading="lazy"
+                                    @click="openDetail(row)"
+                                />
+                                <template v-if="photosOf(row).length > 1">
+                                    <button
+                                        type="button"
+                                        class="slide-btn slide-btn--prev"
+                                        :aria-label="t('auctions.prevPhoto')"
+                                        @click="shiftSlide(row, -1)"
+                                    >
+                                        <i class="pi pi-chevron-left" />
+                                    </button>
+                                    <button
+                                        type="button"
+                                        class="slide-btn slide-btn--next"
+                                        :aria-label="t('auctions.nextPhoto')"
+                                        @click="shiftSlide(row, 1)"
+                                    >
+                                        <i class="pi pi-chevron-right" />
+                                    </button>
+                                    <div class="slide-dots">
+                                        <button
+                                            v-for="(_, idx) in Math.min(photosOf(row).length, 8)"
+                                            :key="idx"
+                                            type="button"
+                                            class="slide-dot"
+                                            :class="{ 'slide-dot--active': slideIndex(row) === idx }"
+                                            @click="goSlide(row, idx)"
+                                        />
+                                    </div>
+                                    <span class="slide-count" dir="ltr">
+                                        {{ slideIndex(row) + 1 }}/{{ photosOf(row).length }}
+                                    </span>
+                                </template>
+                            </template>
+                            <div v-else class="vehicle-card__no-photo" @click="openDetail(row)">
+                                {{ t('auctions.noPhotos') }}
+                            </div>
                             <span class="status-pill">{{ statusOf(row) }}</span>
                             <button
                                 type="button"
@@ -312,7 +347,7 @@
 
                             <ul class="vehicle-card__specs">
                                 <li><i class="pi pi-map-marker" /> {{ locationOf(row) }}</li>
-                                <li><i class="pi pi-gauge" /> {{ odometerOf(row) }}</li>
+                                <li dir="ltr"><i class="pi pi-gauge" /> {{ odometerOf(row) }}</li>
                                 <li><i class="pi pi-cog" /> {{ drivetrainOf(row) }}</li>
                             </ul>
 
@@ -354,7 +389,6 @@ import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
-import InputNumber from 'primevue/inputnumber';
 import InputIcon from 'primevue/inputicon';
 import IconField from 'primevue/iconfield';
 import ProgressSpinner from 'primevue/progressspinner';
@@ -377,6 +411,9 @@ const router = useRouter();
 const auctionSearchStore = useAuctionSearchStore();
 const auth = useAuthStore();
 
+const DEFAULT_YEAR_FROM = 2025;
+const DEFAULT_YEAR_TO = 2027;
+
 const isAdmin = computed(() => auth.isAdmin);
 const viewMode = ref('search');
 const resultLayout = ref('grid');
@@ -389,8 +426,8 @@ const filters = reactive({
     make: null,
     model: null,
     type: null,
-    year_from: null,
-    year_to: null,
+    year_from: DEFAULT_YEAR_FROM,
+    year_to: DEFAULT_YEAR_TO,
     q: '',
     state: null,
     lot_status: 'All',
@@ -403,6 +440,7 @@ const favoriteRows = ref([]);
 const favoriteIds = ref([]);
 const favoritesCount = ref(0);
 const favoriteBusy = ref('');
+const slideByKey = reactive({});
 const meta = ref(null);
 const loading = ref(false);
 const loadingMore = ref(false);
@@ -493,9 +531,19 @@ const yearBounds = computed(() => {
     const year = filtersMeta.value?.ranges?.year || {};
 
     return {
-        min: Number(year.min || 1900),
-        max: Number(year.max || 2027),
+        min: Number(year.min || 1980),
+        max: Number(year.max || DEFAULT_YEAR_TO),
     };
+});
+
+const yearOptions = computed(() => {
+    const years = [];
+
+    for (let y = yearBounds.value.max; y >= yearBounds.value.min; y -= 1) {
+        years.push(y);
+    }
+
+    return years;
 });
 
 const detailRouteName = computed(() => (
@@ -574,13 +622,8 @@ async function loadFilterMeta({ applyDefaults = true } = {}) {
         if (defaults?.lot_status) filters.lot_status = defaults.lot_status;
         if (defaults?.lot_sub_status) filters.lot_sub_status = defaults.lot_sub_status;
 
-        const year = filtersMeta.value?.ranges?.year;
-        if (year?.from_default != null && filters.year_from == null) {
-            filters.year_from = Number(year.from_default);
-        }
-        if (year?.to_default != null && filters.year_to == null) {
-            filters.year_to = Number(year.to_default);
-        }
+        if (filters.year_from == null) filters.year_from = DEFAULT_YEAR_FROM;
+        if (filters.year_to == null) filters.year_to = DEFAULT_YEAR_TO;
     } catch {
         // selects still work with fallbacks
     } finally {
@@ -612,8 +655,8 @@ function restoreSearchSnapshot() {
             make: saved.make ?? null,
             model: saved.model ?? null,
             type: saved.type ?? null,
-            year_from: saved.year_from ?? null,
-            year_to: saved.year_to ?? null,
+            year_from: saved.year_from ?? DEFAULT_YEAR_FROM,
+            year_to: saved.year_to ?? DEFAULT_YEAR_TO,
             q: saved.q ?? '',
             state: saved.state ?? null,
             lot_status: saved.lot_status || 'All',
@@ -736,10 +779,8 @@ function clearFilters() {
     filters.state = null;
     filters.lot_status = filtersMeta.value?.lot?.defaults?.lot_status || 'All';
     filters.lot_sub_status = filtersMeta.value?.lot?.defaults?.lot_sub_status || 'Open';
-
-    const year = filtersMeta.value?.ranges?.year;
-    filters.year_from = year?.from_default != null ? Number(year.from_default) : null;
-    filters.year_to = year?.to_default != null ? Number(year.to_default) : null;
+    filters.year_from = DEFAULT_YEAR_FROM;
+    filters.year_to = DEFAULT_YEAR_TO;
 
     rows.value = [];
     meta.value = null;
@@ -751,7 +792,7 @@ function clearFilters() {
 }
 
 function favoriteKey(row) {
-    return row.identifier || row.slug_vin || row.vin || row.lot_number || '';
+    return row.vin || row.lot_number || row.identifier || row.slug_vin || '';
 }
 
 function favoriteBusyKey(row) {
@@ -886,11 +927,67 @@ function rowKey(row) {
     return favoriteKey(row) || `${row.platform}-${row.lot_number}-${row.vin}`;
 }
 
+function textOf(value) {
+    if (value == null || value === '') return '';
+
+    if (typeof value === 'string' || typeof value === 'number' || typeof value === 'boolean') {
+        return String(value);
+    }
+
+    if (typeof value === 'object') {
+        return textOf(value.label ?? value.value ?? value.raw ?? value.name ?? value.display ?? '');
+    }
+
+    return '';
+}
+
+function photosOf(row) {
+    const items = row?.media?.items;
+
+    if (Array.isArray(items) && items.length) {
+        return items
+            .filter((item) => item && (item.type === 'image' || item.thumb || item.large || item.full))
+            .map((item) => item.large || item.full || item.thumb)
+            .filter(Boolean);
+    }
+
+    const thumbs = row?.media?.thumbs;
+
+    if (Array.isArray(thumbs) && thumbs.length) {
+        return thumbs.filter((url) => typeof url === 'string' && url);
+    }
+
+    if (row?.thumb_url) {
+        return [row.thumb_url];
+    }
+
+    return [];
+}
+
+function slideIndex(row) {
+    return Number(slideByKey[cardKey(row)] || 0);
+}
+
+function currentPhoto(row) {
+    const photos = photosOf(row);
+    if (! photos.length) return null;
+
+    return photos[Math.min(slideIndex(row), photos.length - 1)];
+}
+
+function goSlide(row, idx) {
+    const photos = photosOf(row);
+    if (! photos.length) return;
+
+    slideByKey[cardKey(row)] = ((idx % photos.length) + photos.length) % photos.length;
+}
+
+function shiftSlide(row, delta) {
+    goSlide(row, slideIndex(row) + delta);
+}
+
 function thumb(row) {
-    return row.thumb_url
-        || row.media?.thumbs?.[0]
-        || row.media?.items?.find((item) => item.type === 'image')?.thumb
-        || null;
+    return currentPhoto(row) || row.thumb_url || null;
 }
 
 function titleOf(row) {
@@ -912,19 +1009,21 @@ function locationOf(row) {
 }
 
 function damageOf(row) {
-    return row.condition?.primary_damage || row.primary_damage || '—';
+    return textOf(row.condition?.primary_damage) || textOf(row.primary_damage) || '—';
 }
 
 function runConditionOf(row) {
-    return row.condition?.run_condition || row.condition?.starts_drives || null;
+    return textOf(row.condition?.run_condition)
+        || textOf(row.condition?.starts_drives)
+        || '';
 }
 
 function odometerOf(row) {
     if (row.odometer?.mi != null) {
-        const mi = Number(row.odometer.mi).toLocaleString();
+        const mi = Number(row.odometer.mi).toLocaleString('en-US');
         const km = row.odometer.km != null
-            ? Number(row.odometer.km).toLocaleString()
-            : Math.round(Number(row.odometer.mi) * 1.60934).toLocaleString();
+            ? Number(row.odometer.km).toLocaleString('en-US')
+            : Math.round(Number(row.odometer.mi) * 1.60934).toLocaleString('en-US');
 
         return `${mi} mi / ${km} km`;
     }
@@ -933,18 +1032,18 @@ function odometerOf(row) {
 }
 
 function drivetrainOf(row) {
-    const fuel = row.vehicle_specs?.fuel_type || row.fuel_type;
-    const transmission = row.vehicle_specs?.transmission || row.transmission;
-    const engine = row.vehicle_specs?.engine || row.engine;
+    const fuel = textOf(row.vehicle_specs?.fuel_type || row.fuel_type);
+    const transmission = textOf(row.vehicle_specs?.transmission || row.transmission);
+    const engine = textOf(row.vehicle_specs?.engine || row.engine);
 
     return [fuel, transmission, engine].filter(Boolean).join(' · ') || '—';
 }
 
 function statusOf(row) {
-    return row.auction?.lot_status
-        || row.auction?.state
-        || row.lot_status
-        || filters.lot_sub_status
+    return textOf(row.auction?.lot_status)
+        || textOf(row.auction?.state)
+        || textOf(row.lot_status)
+        || textOf(filters.lot_sub_status)
         || 'OPEN';
 }
 
@@ -959,10 +1058,10 @@ function money(value) {
 }
 
 function auctionDate(row) {
-    return row.auction?.formatted
-        || row.auction?.auction_at
-        || row.auction_at
-        || row.ad
+    return textOf(row.auction?.formatted)
+        || textOf(row.auction?.auction_at)
+        || textOf(row.auction_at)
+        || textOf(row.ad)
         || '—';
 }
 
@@ -976,8 +1075,12 @@ function platformClass(platform) {
     return platform === 'iaai' ? 'pill--iaai' : 'pill--copart';
 }
 
+function detailIdentifier(row) {
+    return row.vin || row.lot_number || row.slug_vin || row.identifier || '';
+}
+
 function openDetail(row) {
-    const id = favoriteKey(row);
+    const id = detailIdentifier(row);
 
     if (! id) return;
 
@@ -1165,6 +1268,19 @@ onMounted(async () => {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0.55rem;
+    align-items: end;
+}
+
+.year-row .field {
+    min-width: 0;
+}
+
+.year-select {
+    direction: ltr;
+}
+
+.year-select :deep(.p-select) {
+    width: 100%;
 }
 
 .w-full { width: 100%; }
@@ -1330,6 +1446,64 @@ onMounted(async () => {
     height: 100%;
     object-fit: cover;
     display: block;
+    cursor: pointer;
+}
+
+.slide-btn {
+    position: absolute;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 1.85rem;
+    height: 1.85rem;
+    border: none;
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.72);
+    color: #f8fafc;
+    display: grid;
+    place-items: center;
+    cursor: pointer;
+    z-index: 2;
+}
+
+.slide-btn--prev { inset-inline-start: 0.45rem; }
+.slide-btn--next { inset-inline-end: 0.45rem; }
+
+.slide-dots {
+    position: absolute;
+    left: 50%;
+    bottom: 0.45rem;
+    transform: translateX(-50%);
+    display: flex;
+    gap: 0.28rem;
+    z-index: 2;
+}
+
+.slide-dot {
+    width: 0.42rem;
+    height: 0.42rem;
+    border-radius: 999px;
+    border: none;
+    padding: 0;
+    background: rgba(248, 250, 252, 0.45);
+    cursor: pointer;
+}
+
+.slide-dot--active {
+    background: #fff;
+    width: 0.85rem;
+}
+
+.slide-count {
+    position: absolute;
+    bottom: 0.4rem;
+    inset-inline-end: 0.5rem;
+    background: rgba(15, 23, 42, 0.75);
+    color: #e2e8f0;
+    font-size: 0.68rem;
+    font-weight: 700;
+    border-radius: 999px;
+    padding: 0.15rem 0.4rem;
+    z-index: 2;
 }
 
 .vehicle-card__no-photo {

@@ -9,6 +9,7 @@ use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Str;
 use Throwable;
 
 class ApibaraAuctionService
@@ -70,9 +71,9 @@ class ApibaraAuctionService
      */
     public function show(string $identifier, bool $forceRefresh = false): array
     {
-        $slug = $this->encodeIdentifier($identifier);
-
-        return $this->request('GET', "/vehicles/{$slug}", [], $forceRefresh);
+        return $this->requestWithIdentifierFallbacks($identifier, function (string $encoded) use ($forceRefresh) {
+            return $this->request('GET', "/vehicles/{$encoded}", [], $forceRefresh);
+        });
     }
 
     /**
@@ -81,7 +82,6 @@ class ApibaraAuctionService
      */
     public function history(string $identifier, array $query = [], bool $forceRefresh = false): array
     {
-        $slug = $this->encodeIdentifier($identifier);
         $maxPerPage = max(1, (int) config('apibara.max_per_page', 10));
         $params = array_filter([
             'per_page' => isset($query['per_page'])
@@ -90,7 +90,68 @@ class ApibaraAuctionService
             'cursor' => isset($query['cursor']) ? (string) $query['cursor'] : null,
         ], fn ($value) => $value !== null && $value !== '');
 
-        return $this->request('GET', "/vehicles/{$slug}/history", $params, $forceRefresh);
+        return $this->requestWithIdentifierFallbacks($identifier, function (string $encoded) use ($params, $forceRefresh) {
+            return $this->request('GET', "/vehicles/{$encoded}/history", $params, $forceRefresh);
+        });
+    }
+
+    /**
+     * slug_vin often 404s; VIN / lot_number work. Try sensible fallbacks.
+     *
+     * @param  callable(string): array{ok: bool, data: mixed, meta: array<string, mixed>|null, cached?: bool}  $callback
+     * @return array{ok: bool, data: mixed, meta: array<string, mixed>|null, cached?: bool}
+     */
+    protected function requestWithIdentifierFallbacks(string $identifier, callable $callback): array
+    {
+        $candidates = $this->identifierCandidates($identifier);
+        $lastException = null;
+
+        foreach ($candidates as $candidate) {
+            try {
+                return $callback($this->encodeIdentifier($candidate));
+            } catch (ApibaraAuctionException $e) {
+                $lastException = $e;
+
+                if ($e->status() !== 404) {
+                    throw $e;
+                }
+            }
+        }
+
+        if ($lastException) {
+            throw $lastException;
+        }
+
+        throw new ApibaraAuctionException(
+            'معرّف السيارة مطلوب (VIN أو رقم اللوت).',
+            422,
+            'apibara_invalid_identifier',
+        );
+    }
+
+    /**
+     * @return list<string>
+     */
+    protected function identifierCandidates(string $identifier): array
+    {
+        $identifier = trim($identifier);
+        $candidates = [];
+
+        if ($identifier !== '') {
+            $candidates[] = $identifier;
+        }
+
+        // slug_vin like "2026-kia-k4-lxs-3KPFT4DE8TE273956" → try trailing VIN
+        if (str_contains($identifier, '-')) {
+            $tail = (string) Str::afterLast($identifier, '-');
+            $tail = strtoupper(trim($tail));
+
+            if (strlen($tail) >= 11 && strlen($tail) <= 20 && preg_match('/^[A-HJ-NPR-Z0-9]+$/', $tail)) {
+                $candidates[] = $tail;
+            }
+        }
+
+        return array_values(array_unique($candidates));
     }
 
     /**

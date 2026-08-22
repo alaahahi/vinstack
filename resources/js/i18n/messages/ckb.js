@@ -637,6 +637,8 @@ export default {
         favoritesHintAdmin: 'دڵخوازەکانی هەموو بازرگانەکان (و هی خۆت)',
         ownerAdmin: 'بەڕێوەبەر',
         ownerDealer: 'بازرگان',
+        prevPhoto: 'وێنەی پێشوو',
+        nextPhoto: 'وێنەی داهاتوو',
         items: 'بڕگە',
         gridView: 'پیشاندانی تۆڕ',
         listView: 'پیشاندانی لیست',
