@@ -1,0 +1,1 @@
+import{aF as l,an as c}from"./app-BudDdJc8.js";function n(){const e=l(),{locale:o,availableLocales:a,direction:s,isRtl:t}=c(e);return{locale:o,availableLocales:a,direction:s,isRtl:t,setLocale:e.setLocale.bind(e)}}export{n as u};
