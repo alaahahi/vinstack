@@ -877,6 +877,7 @@ export default {
         spotlightEnable: 'Enable spotlight',
         spotlightDisable: 'Disable',
         spotlightClear: 'Clear',
+        spotlightEmptyHint: 'Open any auction vehicle — it will appear here for everyone.',
         fromCache: 'Served from cache — no remote quota used.',
         loadCached: 'Load cached results',
         refreshItem: 'Refresh from auction',

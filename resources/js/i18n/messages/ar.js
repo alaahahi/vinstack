@@ -685,6 +685,7 @@ export default {
         spotlightEnable: 'تفعيل السلايدر',
         spotlightDisable: 'إيقاف',
         spotlightClear: 'تفريغ',
+        spotlightEmptyHint: 'افتح أي سيارة مزاد — ستظهر هنا للجميع.',
         fromCache: 'من الكاش — لم يُخصم من الحصة البعيدة.',
         loadCached: 'تحميل النتيجة المخزّنة',
         refreshItem: 'تحديث من المزاد',

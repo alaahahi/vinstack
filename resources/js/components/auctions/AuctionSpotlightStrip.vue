@@ -55,6 +55,15 @@
             />
         </div>
     </section>
+
+    <section v-else-if="isAdmin && loaded && enabled && !items.length" class="spotlight spotlight--empty admin-surface">
+        <div class="spotlight__head">
+            <div>
+                <h3>{{ t('auctions.spotlightTitle') }}</h3>
+                <p class="muted">{{ t('auctions.spotlightEmptyHint') }}</p>
+            </div>
+        </div>
+    </section>
 </template>
 
 <script setup>
@@ -167,7 +176,8 @@ defineExpose({ reload: load });
     gap: 0.75rem;
 }
 
-.spotlight--off {
+.spotlight--off,
+.spotlight--empty {
     opacity: 0.92;
 }
 

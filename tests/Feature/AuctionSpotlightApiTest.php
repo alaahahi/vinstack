@@ -5,7 +5,6 @@ namespace Tests\Feature;
 use App\Enums\UserRole;
 use App\Models\AuctionSpotlightItem;
 use App\Models\User;
-use App\Models\VinstackSetting;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -40,6 +39,32 @@ class AuctionSpotlightApiTest extends TestCase
             ->assertJsonPath('meta.count', 1)
             ->assertJsonPath('data.0.vin', 'KNDNB5K33T6603272')
             ->assertJsonPath('data.0.make', 'KIA');
+    }
+
+    public function test_uppercase_platform_and_nested_payload_are_accepted(): void
+    {
+        Sanctum::actingAs(User::factory()->create(['role' => UserRole::Dealer]));
+
+        $this->postJson('/api/auctions/spotlight', [
+            'vin' => 'UPPERCASEVIN001',
+            'platform' => 'COPART',
+            'year' => '2025',
+            'title' => 'Test Truck',
+            'make' => 'FORD',
+            'pricing' => ['current_bid_usd' => 500],
+            'media' => ['thumbs' => ['https://cdn.example.com/very/long/path/photo.jpg']],
+            'ad' => ['formatted' => 'not-a-string'],
+            'thumb_urls' => ['https://cdn.example.com/very/long/path/photo.jpg'],
+            'current_bid_usd' => 500,
+        ])->assertCreated()
+            ->assertJsonPath('data.platform', 'copart')
+            ->assertJsonPath('data.vin', 'UPPERCASEVIN001');
+
+        $this->assertDatabaseHas('auction_spotlight_items', [
+            'identifier' => 'UPPERCASEVIN001',
+            'platform' => 'copart',
+            'year' => 2025,
+        ]);
     }
 
     public function test_admin_can_disable_spotlight(): void

@@ -292,26 +292,22 @@ async function recordSpotlightView(row) {
             }
         }
 
+        const platform = String(row.platform || '').toLowerCase();
+
         await recordAuctionSpotlight({
             identifier: row.vin || row.lot_number || row.slug_vin,
-            slug_vin: row.slug_vin,
-            vin: row.vin,
-            lot_number: row.lot_number,
-            platform: row.platform,
-            title: row.title,
-            year: row.year,
-            make: row.make,
-            model: row.model,
-            pricing: row.pricing,
-            location: row.location,
-            condition: row.condition,
-            media: row.media,
-            auction: row.auction,
-            ad: row.ad,
-            thumb_urls: thumbs.slice(0, 8),
-            current_bid_usd: row.pricing?.current_bid_usd,
-            location_display: row.location?.display,
-            primary_damage: row.condition?.primary_damage,
+            slug_vin: row.slug_vin || null,
+            vin: row.vin || null,
+            lot_number: row.lot_number || null,
+            platform: platform === 'copart' || platform === 'iaai' ? platform : null,
+            title: row.title || null,
+            year: row.year ? Number(row.year) : null,
+            make: row.make || null,
+            model: row.model || null,
+            thumb_urls: [...new Set(thumbs.filter((u) => typeof u === 'string' && u))].slice(0, 8),
+            current_bid_usd: row.pricing?.current_bid_usd ?? null,
+            location_display: row.location?.display ?? null,
+            primary_damage: row.condition?.primary_damage ?? null,
         });
     } catch {
         // spotlight is optional — never block detail view
