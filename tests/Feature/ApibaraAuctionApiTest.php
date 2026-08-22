@@ -174,6 +174,53 @@ class ApibaraAuctionApiTest extends TestCase
             ->assertJsonPath('data.0.lot_number', '1');
     }
 
+    public function test_filters_endpoint_is_cached(): void
+    {
+        Http::fake([
+            'apibara.tech/*/vehicles/filters' => Http::response([
+                'ok' => true,
+                'data' => [
+                    'make_model' => [
+                        'makes' => ['TOYOTA', 'HONDA'],
+                        'models_by_make' => [
+                            'TOYOTA' => ['CAMRY', 'COROLLA'],
+                        ],
+                    ],
+                    'types' => [
+                        ['id' => 1, 'name' => 'SEDAN'],
+                    ],
+                    'lot' => [
+                        'status' => [
+                            ['value' => 'All', 'label' => 'All'],
+                        ],
+                        'sub_status' => [
+                            ['value' => 'Open', 'label' => 'Open'],
+                        ],
+                        'defaults' => [
+                            'lot_status' => 'All',
+                            'lot_sub_status' => 'Open',
+                        ],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        Sanctum::actingAs($this->makeUser(UserRole::Admin));
+
+        $this->getJson('/api/auctions/filters')
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('data.make_model.makes.0', 'TOYOTA')
+            ->assertJsonPath('cached', false);
+
+        $this->getJson('/api/auctions/filters')
+            ->assertOk()
+            ->assertJsonPath('data.make_model.makes.0', 'TOYOTA')
+            ->assertJsonPath('cached', true);
+
+        Http::assertSentCount(1);
+    }
+
     protected function makeUser(UserRole $role): User
     {
         return User::factory()->create([

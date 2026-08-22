@@ -19,12 +19,14 @@ class AuctionFavoriteController extends Controller
     {
         $this->authorizeAccess($request);
         $user = $request->user();
+        $isAdmin = $user->role === UserRole::Admin;
 
         return response()->json([
             'ok' => true,
             'data' => $this->favorites->listFor($user),
             'meta' => [
-                'count' => $user->auctionFavorites()->count(),
+                'count' => $this->favorites->countFor($user),
+                'scope' => $isAdmin ? 'all' : 'own',
             ],
         ]);
     }
@@ -54,7 +56,15 @@ class AuctionFavoriteController extends Controller
     {
         $this->authorizeAccess($request);
 
-        $removed = $this->favorites->remove($request->user(), $identifier);
+        $ownerUserId = $request->user()?->role === UserRole::Admin
+            ? ($request->integer('user_id') ?: null)
+            : null;
+
+        $removed = $this->favorites->remove(
+            $request->user(),
+            $identifier,
+            $ownerUserId,
+        );
 
         if (! $removed) {
             return response()->json([

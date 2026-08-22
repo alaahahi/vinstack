@@ -5,14 +5,37 @@
                 <h2 class="auction-search__title">{{ t('auctions.title') }}</h2>
                 <p class="auction-search__sub">{{ t('auctions.subtitle') }}</p>
             </div>
-            <Button
-                :label="t('actions.refresh')"
-                icon="pi pi-refresh"
-                outlined
-                size="small"
-                :loading="loading"
-                @click="refreshCurrent"
-            />
+            <div class="auction-search__head-actions">
+                <div class="view-tabs" role="tablist">
+                    <button
+                        type="button"
+                        class="view-tab"
+                        :class="{ 'view-tab--active': viewMode === 'search' }"
+                        @click="switchView('search')"
+                    >
+                        <i class="pi pi-search" />
+                        {{ t('auctions.searchTab') }}
+                    </button>
+                    <button
+                        type="button"
+                        class="view-tab"
+                        :class="{ 'view-tab--active': viewMode === 'favorites' }"
+                        @click="switchView('favorites')"
+                    >
+                        <i class="pi pi-heart-fill" />
+                        {{ t('auctions.favoritesTab') }}
+                        <span v-if="favoriteIds.length" class="view-tab__count">{{ favoriteIds.length }}</span>
+                    </button>
+                </div>
+                <Button
+                    :label="t('actions.refresh')"
+                    icon="pi pi-refresh"
+                    outlined
+                    size="small"
+                    :loading="loading"
+                    @click="refreshCurrent"
+                />
+            </div>
         </header>
 
         <section v-if="usage" class="auction-usage admin-surface">
@@ -29,235 +52,338 @@
                     <span>{{ t('auctions.usage.cached') }}</span>
                     <strong>{{ usage.cached }}</strong>
                 </div>
-                <div>
-                    <span>{{ t('auctions.usage.cacheTtl') }}</span>
-                    <strong>{{ Math.round((usage.cache_ttl_seconds || 3600) / 60) }} {{ t('auctions.usage.minutes') }}</strong>
-                </div>
             </div>
-            <div v-if="usage.by_user?.length" class="auction-usage__users">
-                <h4>{{ t('auctions.usage.byUser') }}</h4>
-                <ul>
-                    <li v-for="row in usage.by_user.slice(0, 8)" :key="`${row.user_id}-${row.name}`">
-                        <span>{{ row.name }} <small>({{ row.role || '—' }})</small></span>
-                        <strong>{{ row.billed }} {{ t('auctions.usage.billedShort') }} · {{ row.cached }} {{ t('auctions.usage.cachedShort') }}</strong>
-                    </li>
-                </ul>
-            </div>
-            <p class="auction-usage__hint">{{ t('auctions.usage.hint') }}</p>
         </section>
 
-        <p v-if="viewMode === 'search' && lastCached" class="auction-cache-badge">{{ t('auctions.fromCache') }}</p>
+        <p v-if="viewMode === 'search' && (lastCached || restoredFromCache)" class="auction-cache-badge">
+            {{ t('auctions.fromCache') }}
+        </p>
+        <p v-if="error" class="auction-search__error">{{ error }}</p>
 
-        <div class="view-tabs" role="tablist">
-            <button
-                type="button"
-                class="view-tab"
-                :class="{ 'view-tab--active': viewMode === 'search' }"
-                @click="switchView('search')"
-            >
-                <i class="pi pi-search" />
-                {{ t('auctions.searchTab') }}
-            </button>
-            <button
-                type="button"
-                class="view-tab"
-                :class="{ 'view-tab--active': viewMode === 'favorites' }"
-                @click="switchView('favorites')"
-            >
-                <i class="pi pi-heart-fill" />
-                {{ t('auctions.favoritesTab') }}
-                <span v-if="favoriteIds.length" class="view-tab__count">{{ favoriteIds.length }}</span>
-            </button>
-        </div>
+        <div class="auction-layout" :class="{ 'auction-layout--favorites': viewMode === 'favorites' }">
+            <aside v-if="viewMode === 'search'" class="auction-filters admin-surface">
+                <div class="auction-filters__head">
+                    <strong><i class="pi pi-filter" /> {{ t('auctions.filters') }}</strong>
+                    <button type="button" class="link-btn" @click="clearFilters">{{ t('actions.clearFilters') }}</button>
+                </div>
 
-        <section v-if="viewMode === 'search'" class="auction-search__filters admin-surface">
-            <div class="platform-tabs" role="tablist">
-                <button
-                    v-for="opt in platformOptions"
-                    :key="opt.value || 'all'"
-                    type="button"
-                    class="platform-tab"
-                    :class="{ 'platform-tab--active': filters.platform === (opt.value || '') }"
-                    @click="filters.platform = opt.value"
-                >
-                    {{ opt.label }}
-                </button>
-            </div>
+                <div class="field">
+                    <label>{{ t('auctions.keyword') }}</label>
+                    <IconField>
+                        <InputIcon class="pi pi-search" />
+                        <InputText
+                            v-model="filters.q"
+                            class="w-full"
+                            dir="ltr"
+                            :placeholder="t('auctions.keywordPlaceholder')"
+                            @keyup.enter="search(false)"
+                        />
+                    </IconField>
+                </div>
 
-            <div class="filter-grid">
+                <div class="field">
+                    <label>{{ t('auctions.lotStatus') }}</label>
+                    <div class="chip-row">
+                        <button
+                            v-for="opt in lotStatusOptions"
+                            :key="opt.value"
+                            type="button"
+                            class="chip"
+                            :class="{ 'chip--active chip--navy': filters.lot_status === opt.value }"
+                            @click="filters.lot_status = opt.value"
+                        >
+                            {{ opt.label }}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>{{ t('auctions.lotSubStatus') }}</label>
+                    <div class="chip-row">
+                        <button
+                            v-for="opt in lotSubStatusOptions"
+                            :key="opt.value"
+                            type="button"
+                            class="chip"
+                            :class="{ 'chip--active chip--teal': filters.lot_sub_status === opt.value }"
+                            @click="filters.lot_sub_status = opt.value"
+                        >
+                            {{ opt.label }}
+                        </button>
+                    </div>
+                </div>
+
+                <div class="field">
+                    <label>{{ t('auctions.auctionType') }}</label>
+                    <div class="chip-row">
+                        <button
+                            v-for="opt in platformOptions"
+                            :key="opt.value || 'all'"
+                            type="button"
+                            class="chip"
+                            :class="{ 'chip--active chip--orange': filters.platform === (opt.value || '') }"
+                            @click="filters.platform = opt.value"
+                        >
+                            {{ opt.label }}
+                        </button>
+                    </div>
+                </div>
+
                 <div class="field">
                     <label>{{ t('auctions.make') }}</label>
-                    <InputText v-model="filters.make" class="w-full" :placeholder="t('auctions.make')" />
+                    <Select
+                        v-model="filters.make"
+                        class="w-full"
+                        :options="makeOptions"
+                        :placeholder="t('auctions.all')"
+                        :loading="filtersLoading"
+                        filter
+                        show-clear
+                        @change="onMakeChange"
+                    />
                 </div>
+
                 <div class="field">
                     <label>{{ t('auctions.model') }}</label>
-                    <InputText v-model="filters.model" class="w-full" :placeholder="t('auctions.model')" />
+                    <Select
+                        v-model="filters.model"
+                        class="w-full"
+                        :options="modelOptions"
+                        :placeholder="t('auctions.all')"
+                        :disabled="! filters.make"
+                        filter
+                        show-clear
+                    />
                 </div>
+
                 <div class="field">
-                    <label>{{ t('auctions.yearFrom') }}</label>
-                    <InputNumber v-model="filters.year_from" class="w-full" :min="1980" :max="2100" :use-grouping="false" />
+                    <label>{{ t('auctions.vehicleType') }}</label>
+                    <Select
+                        v-model="filters.type"
+                        class="w-full"
+                        :options="typeOptions"
+                        option-label="label"
+                        option-value="value"
+                        :placeholder="t('auctions.all')"
+                        :loading="filtersLoading"
+                        filter
+                        show-clear
+                    />
                 </div>
-                <div class="field">
-                    <label>{{ t('auctions.yearTo') }}</label>
-                    <InputNumber v-model="filters.year_to" class="w-full" :min="1980" :max="2100" :use-grouping="false" />
+
+                <div class="field-row">
+                    <div class="field">
+                        <label>{{ t('auctions.yearFrom') }}</label>
+                        <InputNumber
+                            v-model="filters.year_from"
+                            class="w-full"
+                            :min="yearBounds.min"
+                            :max="yearBounds.max"
+                            :use-grouping="false"
+                            :placeholder="String(yearBounds.min)"
+                        />
+                    </div>
+                    <div class="field">
+                        <label>{{ t('auctions.yearTo') }}</label>
+                        <InputNumber
+                            v-model="filters.year_to"
+                            class="w-full"
+                            :min="yearBounds.min"
+                            :max="yearBounds.max"
+                            :use-grouping="false"
+                            :placeholder="String(yearBounds.max)"
+                        />
+                    </div>
                 </div>
-                <div class="field">
-                    <label>{{ t('auctions.vin') }}</label>
-                    <InputText v-model="filters.vin" class="w-full" dir="ltr" />
-                </div>
-                <div class="field">
-                    <label>{{ t('auctions.lotNumber') }}</label>
-                    <InputText v-model="filters.lot_number" class="w-full" dir="ltr" />
-                </div>
+
                 <div class="field">
                     <label>{{ t('auctions.state') }}</label>
-                    <InputText v-model="filters.state" class="w-full" dir="ltr" placeholder="FL / TX / CA" />
+                    <Select
+                        v-model="filters.state"
+                        class="w-full"
+                        :options="stateOptions"
+                        :placeholder="t('auctions.all')"
+                        filter
+                        show-clear
+                    />
                 </div>
-            </div>
 
-            <div class="filter-actions">
                 <Button
                     :label="t('auctions.search')"
                     icon="pi pi-search"
-                    class="btn-add"
+                    class="btn-add auction-filters__search"
                     :loading="loading"
                     @click="search(false)"
                 />
-                <Button
-                    :label="t('actions.clearFilters')"
-                    icon="pi pi-filter-slash"
-                    outlined
-                    severity="secondary"
-                    @click="clearFilters"
-                />
-            </div>
-        </section>
+            </aside>
 
-        <p v-if="error" class="auction-search__error">{{ error }}</p>
+            <section class="auction-results">
+                <div class="auction-results__head admin-surface">
+                    <div>
+                        <h3>{{ viewMode === 'favorites' ? t('auctions.favoritesTab') : t('auctions.resultsTitle') }}</h3>
+                        <p class="muted">
+                            <template v-if="viewMode === 'favorites'">{{ t('auctions.favoritesHint') }}</template>
+                            <template v-else>{{ t('auctions.resultsHint') }}</template>
+                        </p>
+                    </div>
+                    <div class="auction-results__meta">
+                        <span v-if="displayRows.length" class="items-badge">{{ displayRows.length }} {{ t('auctions.items') }}</span>
+                        <div class="layout-toggle">
+                            <button
+                                type="button"
+                                class="layout-btn"
+                                :class="{ 'layout-btn--active': resultLayout === 'grid' }"
+                                :title="t('auctions.gridView')"
+                                @click="resultLayout = 'grid'"
+                            >
+                                <i class="pi pi-th-large" />
+                            </button>
+                            <button
+                                type="button"
+                                class="layout-btn"
+                                :class="{ 'layout-btn--active': resultLayout === 'list' }"
+                                :title="t('auctions.listView')"
+                                @click="resultLayout = 'list'"
+                            >
+                                <i class="pi pi-list" />
+                            </button>
+                        </div>
+                    </div>
+                </div>
 
-        <section class="auction-search__results admin-surface">
-            <div v-if="loading && !displayRows.length" class="auction-search__loading">
-                <ProgressSpinner style="width: 32px; height: 32px" />
-                <span>{{ viewMode === 'favorites' ? t('auctions.loadingFavorites') : t('auctions.loading') }}</span>
-            </div>
+                <div v-if="loading && ! displayRows.length" class="auction-search__loading admin-surface">
+                    <ProgressSpinner style="width: 32px; height: 32px" />
+                    <span>{{ viewMode === 'favorites' ? t('auctions.loadingFavorites') : t('auctions.loading') }}</span>
+                </div>
 
-            <p v-else-if="! loading && ! displayRows.length" class="auction-search__empty">
-                <template v-if="viewMode === 'favorites'">{{ t('auctions.favoritesEmpty') }}</template>
-                <template v-else>{{ searched ? t('auctions.empty') : t('auctions.prompt') }}</template>
-            </p>
+                <p v-else-if="! loading && ! displayRows.length" class="auction-search__empty admin-surface">
+                    <template v-if="viewMode === 'favorites'">{{ t('auctions.favoritesEmpty') }}</template>
+                    <template v-else>{{ searched ? t('auctions.empty') : t('auctions.prompt') }}</template>
+                </p>
 
-            <div v-else class="table-wrap">
-                <table class="auction-table">
-                    <thead>
-                        <tr>
-                            <th class="col-fav">{{ t('auctions.col.favorite') }}</th>
-                            <th>{{ t('auctions.col.image') }}</th>
-                            <th>{{ t('auctions.col.source') }}</th>
-                            <th>{{ t('auctions.col.lot') }}</th>
-                            <th>{{ t('auctions.col.vin') }}</th>
-                            <th>{{ t('auctions.col.year') }}</th>
-                            <th>{{ t('auctions.col.make') }}</th>
-                            <th>{{ t('auctions.col.model') }}</th>
-                            <th>{{ t('auctions.col.currentBid') }}</th>
-                            <th>{{ t('auctions.col.buyNow') }}</th>
-                            <th>{{ t('auctions.col.auctionDate') }}</th>
-                            <th>{{ t('auctions.col.location') }}</th>
-                            <th>{{ t('auctions.col.damage') }}</th>
-                        </tr>
-                    </thead>
-                    <tbody>
-                        <tr
-                            v-for="row in displayRows"
-                            :key="rowKey(row)"
-                            class="auction-table__row"
-                            @click="openDetail(row)"
-                        >
-                            <td class="col-fav" @click.stop>
-                                <button
-                                    type="button"
-                                    class="fav-btn"
-                                    :class="{ 'fav-btn--on': isFavorite(row) }"
-                                    :title="isFavorite(row) ? t('auctions.removeFavorite') : t('auctions.addFavorite')"
-                                    :disabled="favoriteBusy === favoriteKey(row)"
-                                    @click="toggleFavorite(row)"
-                                >
-                                    <i :class="isFavorite(row) ? 'pi pi-heart-fill' : 'pi pi-heart'" />
-                                </button>
-                            </td>
-                            <td>
-                                <img
-                                    v-if="thumb(row)"
-                                    :src="thumb(row)"
-                                    alt=""
-                                    class="auction-thumb"
-                                    loading="lazy"
-                                />
-                                <span v-else class="auction-thumb auction-thumb--empty">—</span>
-                            </td>
-                            <td>
-                                <Tag :value="platformLabel(row.platform)" :severity="platformSeverity(row.platform)" />
-                            </td>
-                            <td dir="ltr">{{ row.lot_number || '—' }}</td>
-                            <td dir="ltr" class="mono">{{ row.vin || '—' }}</td>
-                            <td>{{ row.year || '—' }}</td>
-                            <td>{{ row.make || '—' }}</td>
-                            <td>{{ row.model || '—' }}</td>
-                            <td class="money">{{ money(bidOf(row)) }}</td>
-                            <td class="money">{{ money(buyNowOf(row)) }}</td>
-                            <td>{{ auctionDate(row) }}</td>
-                            <td>{{ locationOf(row) }}</td>
-                            <td>{{ damageOf(row) }}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </div>
+                <div
+                    v-else
+                    class="vehicle-grid"
+                    :class="{ 'vehicle-grid--list': resultLayout === 'list' }"
+                >
+                    <article
+                        v-for="row in displayRows"
+                        :key="rowKey(row)"
+                        class="vehicle-card admin-surface"
+                        @click="openDetail(row)"
+                    >
+                        <div class="vehicle-card__media">
+                            <img
+                                v-if="thumb(row)"
+                                :src="thumb(row)"
+                                alt=""
+                                loading="lazy"
+                            />
+                            <div v-else class="vehicle-card__no-photo">{{ t('auctions.noPhotos') }}</div>
+                            <span class="status-pill">{{ statusOf(row) }}</span>
+                            <button
+                                type="button"
+                                class="fav-btn"
+                                :class="{ 'fav-btn--on': isFavorite(row) }"
+                                :title="isFavorite(row) ? t('auctions.removeFavorite') : t('auctions.addFavorite')"
+                                :disabled="favoriteBusy === favoriteKey(row)"
+                                @click.stop="toggleFavorite(row)"
+                            >
+                                <i :class="isFavorite(row) ? 'pi pi-heart-fill' : 'pi pi-heart'" />
+                            </button>
+                        </div>
 
-            <div v-if="viewMode === 'search' && meta?.next_cursor" class="auction-search__pager">
-                <Button
-                    :label="t('auctions.loadMore')"
-                    icon="pi pi-angle-down"
-                    outlined
-                    :loading="loadingMore"
-                    @click="search(true)"
-                />
-            </div>
-        </section>
+                        <div class="vehicle-card__body">
+                            <div class="badge-row">
+                                <span class="pill" :class="platformClass(row.platform)">{{ platformLabel(row.platform) }}</span>
+                                <span v-if="damageOf(row) !== '—'" class="pill">{{ damageOf(row) }}</span>
+                                <span v-if="runConditionOf(row)" class="pill">{{ runConditionOf(row) }}</span>
+                            </div>
+
+                            <h4 class="vehicle-card__title">{{ titleOf(row) }}</h4>
+
+                            <ul class="vehicle-card__specs">
+                                <li><i class="pi pi-map-marker" /> {{ locationOf(row) }}</li>
+                                <li><i class="pi pi-gauge" /> {{ odometerOf(row) }}</li>
+                                <li><i class="pi pi-cog" /> {{ drivetrainOf(row) }}</li>
+                            </ul>
+
+                            <div class="vehicle-card__prices">
+                                <div>
+                                    <span>{{ t('auctions.col.currentBid') }}</span>
+                                    <strong>{{ money(bidOf(row)) }}</strong>
+                                </div>
+                                <div>
+                                    <span>{{ t('auctions.col.buyNow') }}</span>
+                                    <strong>{{ money(buyNowOf(row)) }}</strong>
+                                </div>
+                                <div>
+                                    <span>{{ t('auctions.col.auctionDate') }}</span>
+                                    <strong>{{ auctionDate(row) }}</strong>
+                                </div>
+                            </div>
+                        </div>
+                    </article>
+                </div>
+
+                <div v-if="viewMode === 'search' && meta?.next_cursor" class="auction-search__pager">
+                    <Button
+                        :label="t('auctions.loadMore')"
+                        icon="pi pi-angle-down"
+                        outlined
+                        :loading="loadingMore"
+                        @click="search(true)"
+                    />
+                </div>
+            </section>
+        </div>
     </div>
 </template>
 
 <script setup>
-import { computed, onMounted, reactive, ref } from 'vue';
+import { computed, onMounted, reactive, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import InputText from 'primevue/inputtext';
 import InputNumber from 'primevue/inputnumber';
+import InputIcon from 'primevue/inputicon';
+import IconField from 'primevue/iconfield';
 import ProgressSpinner from 'primevue/progressspinner';
-import Tag from 'primevue/tag';
+import Select from 'primevue/select';
 import {
     addAuctionFavorite,
+    getAuctionFilters,
     getAuctionUsage,
     listAuctionFavoriteIds,
     listAuctionFavorites,
     removeAuctionFavorite,
     searchAuctions,
 } from '../../api/auctions';
+import { useAuctionSearchStore } from '../../stores/auctionSearch';
 
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
+const auctionSearchStore = useAuctionSearchStore();
 
 const viewMode = ref('search');
+const resultLayout = ref('grid');
+const filtersMeta = ref(null);
+const filtersLoading = ref(false);
+const restoredFromCache = ref(false);
+
 const filters = reactive({
     platform: '',
-    make: '',
-    model: '',
+    make: null,
+    model: null,
+    type: null,
     year_from: null,
     year_to: null,
-    vin: '',
-    lot_number: '',
-    state: '',
+    q: '',
+    state: null,
     lot_status: 'All',
+    lot_sub_status: 'Open',
     per_page: 10,
 });
 
@@ -274,10 +400,87 @@ const lastCached = ref(false);
 const usage = ref(null);
 
 const platformOptions = computed(() => [
-    { value: '', label: t('auctions.platformAll') },
+    { value: '', label: t('auctions.all') },
     { value: 'copart', label: 'Copart' },
     { value: 'iaai', label: 'IAAI' },
 ]);
+
+const lotStatusOptions = computed(() => {
+    const remote = filtersMeta.value?.lot?.status;
+
+    if (Array.isArray(remote) && remote.length) {
+        return remote.map((item) => ({
+            value: item.value,
+            label: item.label || item.value,
+        }));
+    }
+
+    return [
+        { value: 'All', label: t('auctions.all') },
+        { value: 'Buy Now', label: t('auctions.buyNow') },
+        { value: 'Timed', label: t('auctions.timed') },
+    ];
+});
+
+const lotSubStatusOptions = computed(() => {
+    const remote = filtersMeta.value?.lot?.sub_status;
+
+    if (Array.isArray(remote) && remote.length) {
+        return remote.map((item) => ({
+            value: item.value,
+            label: item.label || item.value,
+        }));
+    }
+
+    return [
+        { value: 'Open', label: t('auctions.open') },
+        { value: 'Live', label: t('auctions.live') },
+        { value: 'Ended', label: t('auctions.ended') },
+    ];
+});
+
+const makeOptions = computed(() => {
+    const makes = filtersMeta.value?.make_model?.makes;
+
+    return Array.isArray(makes) ? makes : [];
+});
+
+const modelOptions = computed(() => {
+    if (! filters.make) return [];
+
+    const map = filtersMeta.value?.make_model?.models_by_make || {};
+
+    return Array.isArray(map[filters.make]) ? map[filters.make] : [];
+});
+
+const typeOptions = computed(() => {
+    const types = filtersMeta.value?.types;
+
+    if (! Array.isArray(types)) return [];
+
+    return [
+        ...types.map((item) => ({
+            value: item.name,
+            label: item.name,
+        })),
+    ];
+});
+
+const stateOptions = computed(() => {
+    const states = filtersMeta.value?.location_filters?.state?.options
+        || filtersMeta.value?.location_filters?.state;
+
+    return Array.isArray(states) ? states : [];
+});
+
+const yearBounds = computed(() => {
+    const year = filtersMeta.value?.ranges?.year || {};
+
+    return {
+        min: Number(year.min || 1900),
+        max: Number(year.max || 2027),
+    };
+});
 
 const detailRouteName = computed(() => (
     route.path.startsWith('/dealer') ? 'dealer.auctionDetail' : 'admin.auctionDetail'
@@ -287,20 +490,37 @@ const displayRows = computed(() => (
     viewMode.value === 'favorites' ? favoriteRows.value : rows.value
 ));
 
+watch(() => filters.make, (next, prev) => {
+    if (next !== prev) {
+        filters.model = null;
+    }
+});
+
+watch(resultLayout, () => {
+    if (searched.value || rows.value.length) {
+        persistSearchSnapshot();
+    }
+});
+
+function onMakeChange() {
+    filters.model = null;
+}
+
 function buildParams(cursor = null) {
     const params = {
         lot_status: filters.lot_status || 'All',
+        lot_sub_status: filters.lot_sub_status || 'Open',
         per_page: filters.per_page || 10,
     };
 
     if (filters.platform) params.platform = filters.platform;
-    if (filters.make?.trim()) params.make = filters.make.trim();
-    if (filters.model?.trim()) params.model = filters.model.trim();
+    if (filters.make) params.make = filters.make;
+    if (filters.model) params.model = filters.model;
+    if (filters.type) params.type = filters.type;
     if (filters.year_from) params.year_from = filters.year_from;
     if (filters.year_to) params.year_to = filters.year_to;
-    if (filters.vin?.trim()) params.vin = filters.vin.trim();
-    if (filters.lot_number?.trim()) params.lot_number = filters.lot_number.trim();
-    if (filters.state?.trim()) params.state = filters.state.trim();
+    if (filters.q?.trim()) params.q = filters.q.trim();
+    if (filters.state) params.state = filters.state;
     if (cursor) params.cursor = cursor;
 
     return params;
@@ -323,10 +543,85 @@ async function refreshCurrent() {
     }
 }
 
+async function loadFilterMeta({ applyDefaults = true } = {}) {
+    filtersLoading.value = true;
+
+    try {
+        const { data } = await getAuctionFilters();
+        filtersMeta.value = data.data ?? null;
+
+        if (! applyDefaults) {
+            return;
+        }
+
+        const defaults = filtersMeta.value?.lot?.defaults;
+        if (defaults?.lot_status) filters.lot_status = defaults.lot_status;
+        if (defaults?.lot_sub_status) filters.lot_sub_status = defaults.lot_sub_status;
+
+        const year = filtersMeta.value?.ranges?.year;
+        if (year?.from_default != null && filters.year_from == null) {
+            filters.year_from = Number(year.from_default);
+        }
+        if (year?.to_default != null && filters.year_to == null) {
+            filters.year_to = Number(year.to_default);
+        }
+    } catch {
+        // selects still work with fallbacks
+    } finally {
+        filtersLoading.value = false;
+    }
+}
+
+function persistSearchSnapshot() {
+    auctionSearchStore.saveSnapshot({
+        filters: { ...filters },
+        rows: rows.value,
+        meta: meta.value,
+        resultLayout: resultLayout.value,
+        searched: searched.value,
+        lastCached: lastCached.value || restoredFromCache.value,
+    });
+}
+
+function restoreSearchSnapshot() {
+    if (! auctionSearchStore.hydrate()) {
+        return false;
+    }
+
+    const saved = auctionSearchStore.filters;
+
+    if (saved && typeof saved === 'object') {
+        Object.assign(filters, {
+            platform: saved.platform ?? '',
+            make: saved.make ?? null,
+            model: saved.model ?? null,
+            type: saved.type ?? null,
+            year_from: saved.year_from ?? null,
+            year_to: saved.year_to ?? null,
+            q: saved.q ?? '',
+            state: saved.state ?? null,
+            lot_status: saved.lot_status || 'All',
+            lot_sub_status: saved.lot_sub_status || 'Open',
+            per_page: saved.per_page || 10,
+        });
+    }
+
+    rows.value = Array.isArray(auctionSearchStore.rows) ? [...auctionSearchStore.rows] : [];
+    meta.value = auctionSearchStore.meta ?? null;
+    resultLayout.value = auctionSearchStore.resultLayout === 'list' ? 'list' : 'grid';
+    searched.value = Boolean(auctionSearchStore.searched);
+    lastCached.value = true;
+    restoredFromCache.value = true;
+    viewMode.value = 'search';
+
+    return true;
+}
+
 async function search(loadMore = false) {
     viewMode.value = 'search';
     error.value = '';
     searched.value = true;
+    restoredFromCache.value = false;
 
     if (loadMore) {
         loadingMore.value = true;
@@ -343,6 +638,7 @@ async function search(loadMore = false) {
         rows.value = loadMore ? [...rows.value, ...list] : list;
         meta.value = data.meta ?? null;
         lastCached.value = Boolean(data.cached);
+        persistSearchSnapshot();
         await Promise.all([loadUsage(), loadFavoriteIds()]);
     } catch (e) {
         error.value = e.response?.data?.message || t('auctions.loadFailed');
@@ -386,24 +682,31 @@ async function loadUsage() {
         const { data } = await getAuctionUsage();
         usage.value = data.data?.local ?? null;
     } catch {
-        // usage is optional; ignore failures
+        // optional
     }
 }
 
 function clearFilters() {
     filters.platform = '';
-    filters.make = '';
-    filters.model = '';
-    filters.year_from = null;
-    filters.year_to = null;
-    filters.vin = '';
-    filters.lot_number = '';
-    filters.state = '';
+    filters.make = null;
+    filters.model = null;
+    filters.type = null;
+    filters.q = '';
+    filters.state = null;
+    filters.lot_status = filtersMeta.value?.lot?.defaults?.lot_status || 'All';
+    filters.lot_sub_status = filtersMeta.value?.lot?.defaults?.lot_sub_status || 'Open';
+
+    const year = filtersMeta.value?.ranges?.year;
+    filters.year_from = year?.from_default != null ? Number(year.from_default) : null;
+    filters.year_to = year?.to_default != null ? Number(year.to_default) : null;
+
     rows.value = [];
     meta.value = null;
     searched.value = false;
     error.value = '';
     lastCached.value = false;
+    restoredFromCache.value = false;
+    auctionSearchStore.clear();
 }
 
 function favoriteKey(row) {
@@ -435,7 +738,7 @@ async function toggleFavorite(row) {
                 vin: row.vin,
                 lot_number: row.lot_number,
                 platform: row.platform,
-                title: row.title,
+                title: row.title || titleOf(row),
                 year: row.year,
                 make: row.make,
                 model: row.model,
@@ -478,6 +781,12 @@ function thumb(row) {
         || null;
 }
 
+function titleOf(row) {
+    if (row.title) return String(row.title).toUpperCase();
+
+    return `${row.year || ''} ${row.make || ''} ${row.model || ''}`.trim().toUpperCase() || '—';
+}
+
 function bidOf(row) {
     return row.pricing?.current_bid_usd ?? row.current_bid_usd ?? null;
 }
@@ -492,6 +801,39 @@ function locationOf(row) {
 
 function damageOf(row) {
     return row.condition?.primary_damage || row.primary_damage || '—';
+}
+
+function runConditionOf(row) {
+    return row.condition?.run_condition || row.condition?.starts_drives || null;
+}
+
+function odometerOf(row) {
+    if (row.odometer?.mi != null) {
+        const mi = Number(row.odometer.mi).toLocaleString();
+        const km = row.odometer.km != null
+            ? Number(row.odometer.km).toLocaleString()
+            : Math.round(Number(row.odometer.mi) * 1.60934).toLocaleString();
+
+        return `${mi} mi / ${km} km`;
+    }
+
+    return '—';
+}
+
+function drivetrainOf(row) {
+    const fuel = row.vehicle_specs?.fuel_type || row.fuel_type;
+    const transmission = row.vehicle_specs?.transmission || row.transmission;
+    const engine = row.vehicle_specs?.engine || row.engine;
+
+    return [fuel, transmission, engine].filter(Boolean).join(' · ') || '—';
+}
+
+function statusOf(row) {
+    return row.auction?.lot_status
+        || row.auction?.state
+        || row.lot_status
+        || filters.lot_sub_status
+        || 'OPEN';
 }
 
 function money(value) {
@@ -518,8 +860,8 @@ function platformLabel(platform) {
     return String(platform).toUpperCase();
 }
 
-function platformSeverity(platform) {
-    return platform === 'iaai' ? 'info' : 'warn';
+function platformClass(platform) {
+    return platform === 'iaai' ? 'pill--iaai' : 'pill--copart';
 }
 
 function openDetail(row) {
@@ -531,7 +873,13 @@ function openDetail(row) {
 }
 
 onMounted(async () => {
-    await Promise.all([loadUsage(), loadFavoriteIds()]);
+    const restored = restoreSearchSnapshot();
+
+    await Promise.all([
+        loadFilterMeta({ applyDefaults: ! restored }),
+        loadUsage(),
+        loadFavoriteIds(),
+    ]);
 });
 </script>
 
@@ -547,6 +895,14 @@ onMounted(async () => {
     align-items: flex-start;
     justify-content: space-between;
     gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.auction-search__head-actions {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    flex-wrap: wrap;
 }
 
 .auction-search__title {
@@ -564,20 +920,20 @@ onMounted(async () => {
 .view-tabs {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
+    gap: 0.4rem;
 }
 
 .view-tab {
     display: inline-flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.35rem;
     border: 1px solid var(--admin-border, var(--vs-border));
     background: transparent;
     color: var(--vs-text-muted);
     border-radius: 10px;
-    padding: 0.45rem 0.9rem;
+    padding: 0.4rem 0.8rem;
     font-weight: 600;
-    font-size: 0.85rem;
+    font-size: 0.82rem;
     cursor: pointer;
 }
 
@@ -588,27 +944,24 @@ onMounted(async () => {
 }
 
 .view-tab__count {
-    min-width: 1.25rem;
-    height: 1.25rem;
+    min-width: 1.2rem;
+    height: 1.2rem;
     border-radius: 999px;
     background: color-mix(in srgb, #be123c 18%, transparent);
     color: #be123c;
-    font-size: 0.72rem;
+    font-size: 0.7rem;
     display: inline-grid;
     place-items: center;
-    padding: 0 0.3rem;
+    padding: 0 0.25rem;
 }
 
 .auction-usage {
-    padding: 0.9rem 1rem;
-    display: flex;
-    flex-direction: column;
-    gap: 0.75rem;
+    padding: 0.75rem 1rem;
 }
 
 .auction-usage__stats {
     display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(120px, 1fr));
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
     gap: 0.65rem;
 }
 
@@ -623,209 +976,412 @@ onMounted(async () => {
     color: var(--vs-text-muted);
 }
 
-.auction-usage__stats strong {
-    font-size: 1rem;
-}
-
 .text-warn { color: #d97706; }
 
-.auction-usage__users h4 {
-    margin: 0 0 0.35rem;
-    font-size: 0.85rem;
-}
-
-.auction-usage__users ul {
-    list-style: none;
-    margin: 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.3rem;
-}
-
-.auction-usage__users li {
-    display: flex;
-    justify-content: space-between;
-    gap: 0.75rem;
-    font-size: 0.8rem;
-}
-
-.auction-usage__hint,
 .auction-cache-badge {
     margin: 0;
     font-size: 0.78rem;
-    color: var(--vs-text-muted);
-}
-
-.auction-cache-badge {
     color: #15803d;
     font-weight: 600;
 }
 
-.auction-search__filters {
-    padding: 1rem 1.1rem;
+.auction-search__error {
+    margin: 0;
+    color: #b91c1c;
+    font-size: 0.9rem;
 }
 
-.platform-tabs {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.45rem;
-    margin-bottom: 1rem;
-}
-
-.platform-tab {
-    border: 1px solid var(--admin-border, var(--vs-border));
-    background: transparent;
-    color: var(--vs-text-muted);
-    border-radius: 999px;
-    padding: 0.4rem 0.9rem;
-    font-weight: 600;
-    font-size: 0.85rem;
-    cursor: pointer;
-}
-
-.platform-tab--active {
-    background: color-mix(in srgb, var(--admin-accent, #4a3558) 14%, transparent);
-    border-color: var(--admin-accent, #4a3558);
-    color: var(--admin-accent, #4a3558);
-}
-
-.filter-grid {
+.auction-layout {
     display: grid;
-    grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
-    gap: 0.75rem;
+    grid-template-columns: minmax(260px, 300px) minmax(0, 1fr);
+    gap: 1rem;
+    align-items: start;
+}
+
+.auction-layout--favorites {
+    grid-template-columns: 1fr;
+}
+
+.auction-filters {
+    padding: 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    position: sticky;
+    top: 0.75rem;
+}
+
+.auction-filters__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.auction-filters__head strong {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    font-size: 0.9rem;
+}
+
+.link-btn {
+    border: none;
+    background: transparent;
+    color: var(--admin-accent, #4a3558);
+    font-weight: 600;
+    font-size: 0.8rem;
+    cursor: pointer;
 }
 
 .field {
     display: flex;
     flex-direction: column;
-    gap: 0.3rem;
+    gap: 0.35rem;
 }
 
 .field label {
-    font-size: 0.78rem;
+    font-size: 0.75rem;
+    font-weight: 700;
     color: var(--vs-text-muted);
-    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.02em;
+}
+
+.field-row {
+    display: grid;
+    grid-template-columns: 1fr 1fr;
+    gap: 0.55rem;
 }
 
 .w-full { width: 100%; }
 
-.filter-actions {
+.chip-row {
     display: flex;
     flex-wrap: wrap;
-    gap: 0.5rem;
-    margin-top: 1rem;
+    gap: 0.35rem;
 }
 
-.auction-search__results {
-    padding: 0.75rem;
+.chip {
+    border: 1px solid var(--admin-border, var(--vs-border));
+    background: transparent;
+    color: var(--vs-text-muted);
+    border-radius: 999px;
+    padding: 0.35rem 0.7rem;
+    font-size: 0.78rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.chip--active.chip--navy {
+    background: #1e293b;
+    border-color: #1e293b;
+    color: #fff;
+}
+
+.chip--active.chip--teal {
+    background: #0d9488;
+    border-color: #0d9488;
+    color: #fff;
+}
+
+.chip--active.chip--orange {
+    background: #ea580c;
+    border-color: #ea580c;
+    color: #fff;
+}
+
+.auction-filters__search {
+    width: 100%;
+    margin-top: 0.25rem;
+}
+
+.auction-results {
+    display: flex;
+    flex-direction: column;
+    gap: 0.85rem;
+    min-width: 0;
+}
+
+.auction-results__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.85rem 1rem;
+    flex-wrap: wrap;
+    align-items: center;
+}
+
+.auction-results__head h3 {
+    margin: 0;
+    font-size: 1rem;
+}
+
+.muted {
+    margin: 0.2rem 0 0;
+    color: var(--vs-text-muted);
+    font-size: 0.8rem;
+}
+
+.auction-results__meta {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.items-badge {
+    font-size: 0.72rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+    border: 1px solid var(--admin-border, var(--vs-border));
+    border-radius: 999px;
+    padding: 0.3rem 0.65rem;
+    color: var(--vs-text-muted);
+}
+
+.layout-toggle {
+    display: inline-flex;
+    border: 1px solid var(--admin-border, var(--vs-border));
+    border-radius: 10px;
     overflow: hidden;
 }
 
+.layout-btn {
+    border: none;
+    background: transparent;
+    color: var(--vs-text-muted);
+    padding: 0.4rem 0.55rem;
+    cursor: pointer;
+}
+
+.layout-btn--active {
+    background: color-mix(in srgb, var(--admin-accent, #4a3558) 14%, transparent);
+    color: var(--admin-accent, #4a3558);
+}
+
 .auction-search__loading,
-.auction-search__empty,
-.auction-search__error {
+.auction-search__empty {
     display: flex;
     align-items: center;
     justify-content: center;
     gap: 0.75rem;
-    min-height: 8rem;
+    min-height: 12rem;
     color: var(--vs-text-muted);
+    padding: 1rem;
 }
 
-.auction-search__error {
-    color: #b91c1c;
-    min-height: auto;
-    justify-content: flex-start;
-    padding: 0.5rem 0;
+.vehicle-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+    gap: 0.9rem;
 }
 
-.table-wrap {
-    overflow-x: auto;
+.vehicle-grid--list {
+    grid-template-columns: 1fr;
 }
 
-.auction-table {
+.vehicle-card {
+    overflow: hidden;
+    cursor: pointer;
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.15s ease, box-shadow 0.15s ease;
+}
+
+.vehicle-grid--list .vehicle-card {
+    display: grid;
+    grid-template-columns: minmax(220px, 320px) minmax(0, 1fr);
+}
+
+.vehicle-card:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 24px rgba(0, 0, 0, 0.18);
+}
+
+.vehicle-card__media {
+    position: relative;
+    aspect-ratio: 16 / 10;
+    background: #0f172a;
+    overflow: hidden;
+}
+
+.vehicle-grid--list .vehicle-card__media {
+    aspect-ratio: auto;
+    min-height: 180px;
+    height: 100%;
+}
+
+.vehicle-card__media img {
     width: 100%;
-    border-collapse: collapse;
-    font-size: 0.82rem;
+    height: 100%;
+    object-fit: cover;
+    display: block;
 }
 
-.auction-table th,
-.auction-table td {
-    padding: 0.55rem 0.45rem;
-    text-align: start;
-    border-bottom: 1px solid var(--admin-border, var(--vs-border));
-    white-space: nowrap;
+.vehicle-card__no-photo {
+    height: 100%;
+    display: grid;
+    place-items: center;
+    color: #94a3b8;
+    font-size: 0.85rem;
+    padding: 1rem;
+    text-align: center;
 }
 
-.auction-table th {
-    font-size: 0.72rem;
+.status-pill {
+    position: absolute;
+    top: 0.65rem;
+    inset-inline-start: 0.65rem;
+    background: rgba(15, 23, 42, 0.82);
+    color: #e2e8f0;
+    font-size: 0.68rem;
+    font-weight: 800;
+    letter-spacing: 0.04em;
     text-transform: uppercase;
-    letter-spacing: 0.02em;
-    color: var(--vs-text-muted);
-}
-
-.col-fav {
-    width: 2.5rem;
-    text-align: center !important;
+    border-radius: 999px;
+    padding: 0.28rem 0.55rem;
 }
 
 .fav-btn {
+    position: absolute;
+    top: 0.55rem;
+    inset-inline-end: 0.55rem;
+    width: 2rem;
+    height: 2rem;
     border: none;
-    background: transparent;
-    color: var(--vs-text-muted);
+    border-radius: 999px;
+    background: rgba(15, 23, 42, 0.75);
+    color: #e2e8f0;
     cursor: pointer;
-    font-size: 1.05rem;
-    padding: 0.2rem;
-    line-height: 1;
-}
-
-.fav-btn:disabled {
-    opacity: 0.5;
-    cursor: wait;
+    display: grid;
+    place-items: center;
 }
 
 .fav-btn--on {
-    color: #be123c;
+    color: #fb7185;
 }
 
-.auction-table__row {
-    cursor: pointer;
+.fav-btn:disabled {
+    opacity: 0.55;
+    cursor: wait;
 }
 
-.auction-table__row:hover {
-    background: color-mix(in srgb, var(--admin-accent, #4a3558) 6%, transparent);
+.vehicle-card__body {
+    padding: 0.85rem 0.9rem 1rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.65rem;
 }
 
-.auction-thumb {
-    width: 64px;
-    height: 48px;
-    object-fit: cover;
-    border-radius: 6px;
-    display: block;
-    background: #111827;
+.badge-row {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
 }
 
-.auction-thumb--empty {
-    display: grid;
-    place-items: center;
-    color: var(--vs-text-muted);
-    font-size: 0.75rem;
-}
-
-.mono {
-    font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, monospace;
-    font-size: 0.75rem;
-}
-
-.money {
-    font-variant-numeric: tabular-nums;
+.pill {
+    display: inline-flex;
+    align-items: center;
+    border-radius: 999px;
+    padding: 0.22rem 0.55rem;
+    font-size: 0.68rem;
     font-weight: 700;
+    letter-spacing: 0.02em;
+    text-transform: uppercase;
+    background: color-mix(in srgb, var(--admin-accent, #4a3558) 12%, transparent);
+    color: var(--vs-text);
+}
+
+.pill--copart {
+    background: color-mix(in srgb, #ea580c 18%, transparent);
+    color: #c2410c;
+}
+
+.pill--iaai {
+    background: color-mix(in srgb, #0284c7 18%, transparent);
+    color: #0369a1;
+}
+
+.vehicle-card__title {
+    margin: 0;
+    font-size: 1rem;
+    line-height: 1.25;
+    font-weight: 800;
+}
+
+.vehicle-card__specs {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    color: var(--vs-text-muted);
+    font-size: 0.82rem;
+}
+
+.vehicle-card__specs li {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.45rem;
+}
+
+.vehicle-card__specs i {
+    margin-top: 0.15rem;
+    font-size: 0.85rem;
+}
+
+.vehicle-card__prices {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.4rem;
+    margin-top: 0.15rem;
+}
+
+.vehicle-card__prices > div {
+    border: 1px solid var(--admin-border, var(--vs-border));
+    border-radius: 10px;
+    padding: 0.45rem 0.4rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    min-width: 0;
+}
+
+.vehicle-card__prices span {
+    font-size: 0.62rem;
+    text-transform: uppercase;
+    letter-spacing: 0.03em;
+    color: var(--vs-text-muted);
+    font-weight: 700;
+}
+
+.vehicle-card__prices strong {
+    font-size: 0.82rem;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
 }
 
 .auction-search__pager {
     display: flex;
     justify-content: center;
-    padding: 0.85rem 0 0.25rem;
+    padding: 0.35rem 0 0.5rem;
+}
+
+@media (max-width: 960px) {
+    .auction-layout {
+        grid-template-columns: 1fr;
+    }
+
+    .auction-filters {
+        position: static;
+    }
+
+    .vehicle-grid--list .vehicle-card {
+        grid-template-columns: 1fr;
+    }
 }
 </style>

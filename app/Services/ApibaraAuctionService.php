@@ -22,6 +22,7 @@ class ApibaraAuctionService
         'platform',
         'make',
         'model',
+        'type',
         'year_from',
         'year_to',
         'lot_status',
@@ -101,6 +102,52 @@ class ApibaraAuctionService
     }
 
     /**
+     * Filter metadata for searchable selects (makes/models/types/statuses).
+     * Cached longer than vehicle search because it changes rarely.
+     *
+     * @return array{ok: bool, data: mixed, meta: array<string, mixed>|null, cached?: bool}
+     */
+    public function filters(bool $forceRefresh = false): array
+    {
+        $cacheKey = 'apibara:vehicle-filters:v1';
+        $cacheEnabled = (bool) config('apibara.cache_enabled', true);
+        $ttl = max(3600, (int) config('apibara.filters_cache_ttl', 86400));
+
+        if ($cacheEnabled && ! $forceRefresh && Cache::has($cacheKey)) {
+            $payload = Cache::get($cacheKey);
+            $normalized = $this->normalizeSuccessPayload(is_array($payload) ? $payload : []);
+            $normalized['cached'] = true;
+
+            $this->usage->record(
+                Auth::user(),
+                '/vehicles/filters',
+                'GET',
+                [],
+                200,
+                true,
+                false,
+                0,
+            );
+
+            return $normalized;
+        }
+
+        $result = $this->request('GET', '/vehicles/filters', [], true);
+
+        if ($cacheEnabled && ($result['ok'] ?? false)) {
+            Cache::put($cacheKey, [
+                'ok' => $result['ok'] ?? true,
+                'data' => $result['data'] ?? null,
+                'meta' => $result['meta'] ?? null,
+            ], $ttl);
+        }
+
+        $result['cached'] = false;
+
+        return $result;
+    }
+
+    /**
      * @param  array<string, mixed>  $filters
      * @return array<string, mixed>
      */
@@ -148,10 +195,13 @@ class ApibaraAuctionService
         }
 
         if (! isset($out['s'])) {
+            $keyword = isset($filters['q']) ? trim((string) $filters['q']) : '';
             $vin = isset($filters['vin']) ? trim((string) $filters['vin']) : '';
             $lot = isset($filters['lot_number']) ? trim((string) $filters['lot_number']) : '';
 
-            if ($vin !== '') {
+            if ($keyword !== '') {
+                $out['s'] = $keyword;
+            } elseif ($vin !== '') {
                 $out['s'] = strtoupper($vin);
             } elseif ($lot !== '') {
                 $out['s'] = $lot;

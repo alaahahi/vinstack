@@ -27,6 +27,8 @@ return [
 
     'cache_ttl' => (int) env('APIBARA_CACHE_TTL', 3600), // 1 hour
 
+    'filters_cache_ttl' => (int) env('APIBARA_FILTERS_CACHE_TTL', 86400), // 24 hours
+
     'max_per_page' => (int) env('APIBARA_MAX_PER_PAGE', 10),
 
     'monthly_free_quota' => (int) env('APIBARA_MONTHLY_FREE_QUOTA', 100),

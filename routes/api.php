@@ -52,6 +52,7 @@ Route::middleware('auth:sanctum')->group(function () {
     Route::middleware('role:admin,dealer')->prefix('auctions')->group(function () {
         Route::get('/test', [AuctionController::class, 'test']);
         Route::get('/usage', [AuctionController::class, 'usage']);
+        Route::get('/filters', [AuctionController::class, 'filters']);
         Route::get('/favorites/ids', [AuctionFavoriteController::class, 'identifiers']);
         Route::get('/favorites', [AuctionFavoriteController::class, 'index']);
         Route::post('/favorites', [AuctionFavoriteController::class, 'store']);

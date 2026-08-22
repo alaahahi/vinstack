@@ -23,6 +23,15 @@ class AuctionController extends Controller
         return $this->respond(fn () => $this->auctions->search($request->filters()));
     }
 
+    public function filters(Request $request): JsonResponse
+    {
+        $this->authorizeAuctionAccess($request);
+
+        return $this->respond(fn () => $this->auctions->filters(
+            $request->boolean('force_refresh'),
+        ));
+    }
+
     public function test(Request $request): JsonResponse
     {
         $this->authorizeAuctionAccess($request);

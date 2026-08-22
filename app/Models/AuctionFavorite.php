@@ -44,9 +44,9 @@ class AuctionFavorite extends Model
     /**
      * @return array<string, mixed>
      */
-    public function toApiArray(): array
+    public function toApiArray(bool $includeOwner = false): array
     {
-        return [
+        $payload = [
             'id' => $this->id,
             'identifier' => $this->identifier,
             'platform' => $this->platform,
@@ -63,7 +63,24 @@ class AuctionFavorite extends Model
             'primary_damage' => $this->primary_damage,
             'auction_at' => $this->auction_at,
             'favorited_at' => $this->created_at?->toIso8601String(),
+            'user_id' => $this->user_id,
             'snapshot' => $this->snapshot,
         ];
+
+        if ($includeOwner) {
+            $user = $this->relationLoaded('user') ? $this->user : null;
+            $dealer = $user?->relationLoaded('dealer') ? $user->dealer : null;
+
+            $payload['owner'] = [
+                'id' => $user?->id ?? $this->user_id,
+                'name' => $user?->name,
+                'role' => $user?->role instanceof \BackedEnum
+                    ? $user->role->value
+                    : ($user?->role ? (string) $user->role : null),
+                'company_name' => $dealer?->company_name,
+            ];
+        }
+
+        return $payload;
     }
 }

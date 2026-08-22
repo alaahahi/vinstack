@@ -7,6 +7,13 @@ export function searchAuctions(params = {}) {
     return api.get('/auctions', { params });
 }
 
+/**
+ * @param {Record<string, unknown>} params
+ */
+export function getAuctionFilters(params = {}) {
+    return api.get('/auctions/filters', { params });
+}
+
 export function testAuctions() {
     return api.get('/auctions/test');
 }
@@ -35,9 +42,10 @@ export function addAuctionFavorite(vehicle) {
 
 /**
  * @param {string} identifier
+ * @param {{ user_id?: number|string }} [params]
  */
-export function removeAuctionFavorite(identifier) {
-    return api.delete(`/auctions/favorites/${encodeURIComponent(identifier)}`);
+export function removeAuctionFavorite(identifier, params = {}) {
+    return api.delete(`/auctions/favorites/${encodeURIComponent(identifier)}`, { params });
 }
 
 /**
