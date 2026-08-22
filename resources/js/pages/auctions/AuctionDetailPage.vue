@@ -585,6 +585,12 @@ onMounted(load);
     margin-bottom: 0.75rem;
 }
 
+.related-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    gap: 0.75rem;
+}
+
 .history-list {
     list-style: none;
     margin: 0;
