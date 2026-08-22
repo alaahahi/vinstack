@@ -2267,6 +2267,4 @@ onMounted(async () => {
     background: color-mix(in srgb, #0f766e 18%, transparent);
     color: #2dd4bf;
 }
-    color: var(--vs-text-muted);
-}
 </style>
