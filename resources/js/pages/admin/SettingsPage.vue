@@ -291,6 +291,10 @@
                         <Checkbox v-model="form.sync_enabled" binary input-id="sync" />
                         <label for="sync" class="vs-form-label">{{ t('settings.autoSync') }}</label>
                     </div>
+                    <div class="field field--row">
+                        <Checkbox v-model="form.auction_spotlight_enabled" binary input-id="auction-spotlight" />
+                        <label for="auction-spotlight" class="vs-form-label">{{ t('settings.auctionSpotlight') }}</label>
+                    </div>
                     <div v-if="settings.last_sync_at" class="vs-sync-status">
                         <i class="pi pi-clock" />
                         <span>
@@ -948,6 +952,7 @@ const form = reactive({
     gallery_api_base_url: '',
     gallery_api_token: '',
     sync_enabled: true,
+    auction_spotlight_enabled: true,
     support_phone: '',
     cloudinary_cloud_name: '',
     cloudinary_api_key: '',
@@ -967,6 +972,7 @@ async function load() {
     form.api_base_url = settingsRes.data.data.api_base_url || '';
     form.gallery_api_base_url = settingsRes.data.data.gallery_api_base_url || '';
     form.sync_enabled = settingsRes.data.data.sync_enabled ?? true;
+    form.auction_spotlight_enabled = settingsRes.data.data.auction_spotlight_enabled ?? true;
     form.support_phone = settingsRes.data.data.support_phone || '';
     form.cloudinary_cloud_name = settingsRes.data.data.cloudinary_cloud_name || '';
     form.cloudinary_upload_preset = settingsRes.data.data.cloudinary_upload_preset || '';
@@ -1160,6 +1166,7 @@ async function save() {
             api_base_url: form.api_base_url,
             gallery_api_base_url: form.gallery_api_base_url,
             sync_enabled: form.sync_enabled,
+            auction_spotlight_enabled: form.auction_spotlight_enabled,
             support_phone: form.support_phone,
             cloudinary_cloud_name: form.cloudinary_cloud_name,
             cloudinary_upload_preset: form.cloudinary_upload_preset,

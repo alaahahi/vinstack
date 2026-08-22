@@ -19,6 +19,7 @@ class UpdateVinstackSettingsRequest extends FormRequest
             'gallery_api_base_url' => ['nullable', 'url', 'max:500'],
             'gallery_api_token' => ['nullable', 'string', 'max:2000'],
             'sync_enabled' => ['sometimes', 'boolean'],
+            'auction_spotlight_enabled' => ['sometimes', 'boolean'],
             'support_phone' => ['nullable', 'string', 'max:50'],
             'cloudinary_cloud_name' => ['nullable', 'string', 'max:120'],
             'cloudinary_api_key' => ['nullable', 'string', 'max:120'],

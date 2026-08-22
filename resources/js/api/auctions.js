@@ -78,3 +78,32 @@ export function getAuctionHistory(identifier, params = {}) {
 export function getAuctionRelated(identifier, params = {}) {
     return api.get(`/auctions/${encodeURIComponent(identifier)}/related`, { params });
 }
+
+export function listAuctionSpotlight() {
+    return api.get('/auctions/spotlight');
+}
+
+/**
+ * @param {Record<string, unknown>} vehicle
+ */
+export function recordAuctionSpotlight(vehicle) {
+    return api.post('/auctions/spotlight', vehicle);
+}
+
+/**
+ * @param {{ enabled: boolean }} payload
+ */
+export function updateAuctionSpotlightSettings(payload) {
+    return api.put('/auctions/spotlight/settings', payload);
+}
+
+export function clearAuctionSpotlight() {
+    return api.delete('/auctions/spotlight');
+}
+
+/**
+ * @param {string} identifier
+ */
+export function removeAuctionSpotlightItem(identifier) {
+    return api.delete(`/auctions/spotlight/${encodeURIComponent(identifier)}`);
+}

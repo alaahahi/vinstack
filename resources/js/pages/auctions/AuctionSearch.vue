@@ -84,6 +84,12 @@
         </p>
         <p v-if="error" class="auction-search__error">{{ error }}</p>
 
+        <AuctionSpotlightStrip
+            v-if="viewMode === 'search'"
+            ref="spotlightRef"
+            @open="openDetail"
+        />
+
         <div class="auction-layout" :class="{ 'auction-layout--favorites': viewMode === 'favorites' }">
             <aside v-if="viewMode === 'search'" class="auction-filters admin-surface">
                 <div class="auction-filters__head">
@@ -443,6 +449,7 @@ import InputIcon from 'primevue/inputicon';
 import IconField from 'primevue/iconfield';
 import ProgressSpinner from 'primevue/progressspinner';
 import Select from 'primevue/select';
+import AuctionSpotlightStrip from '../../components/auctions/AuctionSpotlightStrip.vue';
 import {
     addAuctionFavorite,
     getAuction,
@@ -462,6 +469,7 @@ const route = useRoute();
 const router = useRouter();
 const auctionSearchStore = useAuctionSearchStore();
 const auth = useAuthStore();
+const spotlightRef = ref(null);
 
 const DEFAULT_YEAR_FROM = 2025;
 const DEFAULT_YEAR_TO = 2027;

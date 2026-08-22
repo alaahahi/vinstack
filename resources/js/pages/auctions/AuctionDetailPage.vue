@@ -183,6 +183,7 @@ import {
     getAuctionHistory,
     getAuctionRelated,
     listAuctionFavoriteIds,
+    recordAuctionSpotlight,
     removeAuctionFavorite,
 } from '../../api/auctions';
 
@@ -267,11 +268,53 @@ async function load(forceRefresh = false) {
         ]);
         vehicle.value = data.data ?? null;
         activePhoto.value = 0;
+        if (vehicle.value) {
+            recordSpotlightView(vehicle.value);
+        }
     } catch (e) {
         error.value = e.response?.data?.message || t('auctions.loadFailed');
         vehicle.value = null;
     } finally {
         loading.value = false;
+    }
+}
+
+async function recordSpotlightView(row) {
+    try {
+        const thumbs = [];
+        if (Array.isArray(row.media?.thumbs)) {
+            thumbs.push(...row.media.thumbs);
+        }
+        if (Array.isArray(row.media?.items)) {
+            for (const item of row.media.items) {
+                const url = item?.thumb || item?.large || item?.full;
+                if (url) thumbs.push(url);
+            }
+        }
+
+        await recordAuctionSpotlight({
+            identifier: row.vin || row.lot_number || row.slug_vin,
+            slug_vin: row.slug_vin,
+            vin: row.vin,
+            lot_number: row.lot_number,
+            platform: row.platform,
+            title: row.title,
+            year: row.year,
+            make: row.make,
+            model: row.model,
+            pricing: row.pricing,
+            location: row.location,
+            condition: row.condition,
+            media: row.media,
+            auction: row.auction,
+            ad: row.ad,
+            thumb_urls: thumbs.slice(0, 8),
+            current_bid_usd: row.pricing?.current_bid_usd,
+            location_display: row.location?.display,
+            primary_damage: row.condition?.primary_damage,
+        });
+    } catch {
+        // spotlight is optional — never block detail view
     }
 }
 

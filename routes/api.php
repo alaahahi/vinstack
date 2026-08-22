@@ -23,6 +23,7 @@ use App\Http\Controllers\Admin\VinstackSettingsController;
 use App\Http\Controllers\Admin\AuctionApiProviderController;
 use App\Http\Controllers\Api\AuctionController;
 use App\Http\Controllers\Api\AuctionFavoriteController;
+use App\Http\Controllers\Api\AuctionSpotlightController;
 use App\Http\Controllers\Api\AuthController;
 use App\Http\Controllers\Api\PublicSettingsController;
 use App\Http\Controllers\Api\TwoFactorController;
@@ -59,6 +60,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/favorites', [AuctionFavoriteController::class, 'index']);
         Route::post('/favorites', [AuctionFavoriteController::class, 'store']);
         Route::delete('/favorites/{identifier}', [AuctionFavoriteController::class, 'destroy'])
+            ->where('identifier', '[^/]+');
+        Route::get('/spotlight', [AuctionSpotlightController::class, 'index']);
+        Route::post('/spotlight', [AuctionSpotlightController::class, 'store']);
+        Route::put('/spotlight/settings', [AuctionSpotlightController::class, 'updateSettings']);
+        Route::delete('/spotlight', [AuctionSpotlightController::class, 'clear']);
+        Route::delete('/spotlight/{identifier}', [AuctionSpotlightController::class, 'destroy'])
             ->where('identifier', '[^/]+');
         Route::get('/', [AuctionController::class, 'index']);
         Route::get('/{identifier}/related', [AuctionController::class, 'related'])

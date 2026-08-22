@@ -106,6 +106,7 @@ class VinstackSettingsController extends Controller
             'gallery_token_expired' => (bool) $settings->gallery_token_expired,
             'gallery_token_checked_at' => $settings->gallery_token_checked_at,
             'sync_enabled' => $settings->sync_enabled,
+            'auction_spotlight_enabled' => (bool) ($settings->auction_spotlight_enabled ?? true),
             'last_sync_at' => $settings->last_sync_at,
             'last_auto_sync_at' => $settings->last_auto_sync_at,
             'support_phone' => $settings->support_phone ?? '',
