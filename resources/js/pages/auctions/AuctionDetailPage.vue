@@ -7,14 +7,26 @@
                 text
                 @click="goBack"
             />
-            <Button
-                :label="t('actions.refresh')"
-                icon="pi pi-refresh"
-                outlined
-                size="small"
-                :loading="loading"
-                @click="load"
-            />
+            <div class="auction-detail__actions">
+                <Button
+                    v-if="vehicle"
+                    :label="isFavorite ? t('auctions.removeFavorite') : t('auctions.addFavorite')"
+                    :icon="isFavorite ? 'pi pi-heart-fill' : 'pi pi-heart'"
+                    :severity="isFavorite ? 'danger' : 'secondary'"
+                    outlined
+                    size="small"
+                    :loading="favoriteBusy"
+                    @click="toggleFavorite"
+                />
+                <Button
+                    :label="t('actions.refresh')"
+                    icon="pi pi-refresh"
+                    outlined
+                    size="small"
+                    :loading="loading"
+                    @click="load"
+                />
+            </div>
         </div>
 
         <div v-if="loading && ! vehicle" class="auction-detail__state">
@@ -139,7 +151,13 @@ import { useRoute, useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import ProgressSpinner from 'primevue/progressspinner';
 import Tag from 'primevue/tag';
-import { getAuction, getAuctionHistory } from '../../api/auctions';
+import {
+    addAuctionFavorite,
+    getAuction,
+    getAuctionHistory,
+    listAuctionFavoriteIds,
+    removeAuctionFavorite,
+} from '../../api/auctions';
 
 const { t } = useI18n();
 const route = useRoute();
@@ -149,6 +167,8 @@ const vehicle = ref(null);
 const loading = ref(true);
 const error = ref('');
 const activePhoto = ref(0);
+const favoriteIds = ref([]);
+const favoriteBusy = ref(false);
 
 const historyRows = ref([]);
 const historyLoading = ref(false);
@@ -175,12 +195,38 @@ const listRouteName = computed(() => (
     route.path.startsWith('/dealer') ? 'dealer.auctions' : 'admin.auctions'
 ));
 
+const favoriteKey = computed(() => {
+    const row = vehicle.value;
+
+    if (! row) return String(route.params.identifier || '');
+
+    return row.slug_vin || row.vin || row.lot_number || String(route.params.identifier || '');
+});
+
+const isFavorite = computed(() => {
+    const key = favoriteKey.value;
+
+    return key !== '' && favoriteIds.value.includes(key);
+});
+
+async function loadFavoriteIds() {
+    try {
+        const { data } = await listAuctionFavoriteIds();
+        favoriteIds.value = Array.isArray(data.data) ? data.data : [];
+    } catch {
+        // optional
+    }
+}
+
 async function load() {
     loading.value = true;
     error.value = '';
 
     try {
-        const { data } = await getAuction(String(route.params.identifier));
+        const [{ data }] = await Promise.all([
+            getAuction(String(route.params.identifier)),
+            loadFavoriteIds(),
+        ]);
         vehicle.value = data.data ?? null;
         activePhoto.value = 0;
     } catch (e) {
@@ -188,6 +234,53 @@ async function load() {
         vehicle.value = null;
     } finally {
         loading.value = false;
+    }
+}
+
+async function toggleFavorite() {
+    const row = vehicle.value;
+    const key = favoriteKey.value;
+
+    if (! row || ! key) return;
+
+    favoriteBusy.value = true;
+
+    try {
+        if (isFavorite.value) {
+            await removeAuctionFavorite(key);
+            favoriteIds.value = favoriteIds.value.filter((id) => id !== key);
+        } else {
+            await addAuctionFavorite({
+                identifier: key,
+                slug_vin: row.slug_vin || key,
+                vin: row.vin,
+                lot_number: row.lot_number,
+                platform: row.platform,
+                title: row.title,
+                year: row.year,
+                make: row.make,
+                model: row.model,
+                pricing: row.pricing,
+                location: row.location,
+                condition: row.condition,
+                media: row.media,
+                auction: row.auction,
+                ad: row.ad,
+                thumb_url: photos.value[0]?.thumb || photos.value[0]?.full || null,
+                current_bid_usd: row.pricing?.current_bid_usd,
+                buy_now_usd: row.pricing?.buy_now_usd,
+                location_display: row.location?.display,
+                primary_damage: row.condition?.primary_damage,
+                auction_at: auctionDate(row) === '—' ? null : auctionDate(row),
+            });
+            if (! favoriteIds.value.includes(key)) {
+                favoriteIds.value = [...favoriteIds.value, key];
+            }
+        }
+    } catch (e) {
+        error.value = e.response?.data?.message || t('auctions.favoriteFailed');
+    } finally {
+        favoriteBusy.value = false;
     }
 }
 
@@ -253,6 +346,14 @@ onMounted(load);
     display: flex;
     justify-content: space-between;
     gap: 0.75rem;
+    align-items: center;
+    flex-wrap: wrap;
+}
+
+.auction-detail__actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
 }
 
 .auction-detail__state,

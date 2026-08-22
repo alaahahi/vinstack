@@ -11,7 +11,7 @@
                 outlined
                 size="small"
                 :loading="loading"
-                @click="search(false)"
+                @click="refreshCurrent"
             />
         </header>
 
@@ -46,7 +46,7 @@
             <p class="auction-usage__hint">{{ t('auctions.usage.hint') }}</p>
         </section>
 
-        <p v-if="lastCached" class="auction-cache-badge">{{ t('auctions.fromCache') }}</p>
+        <p v-if="viewMode === 'search' && lastCached" class="auction-cache-badge">{{ t('auctions.fromCache') }}</p>
 
         <div class="view-tabs" role="tablist">
             <button
@@ -103,7 +103,7 @@
                 </div>
                 <div class="field">
                     <label>{{ t('auctions.vin') }}</label>
-                    <InputText v-model="filters.vin" class="w-full" dir="ltr" placeholder="VIN" />
+                    <InputText v-model="filters.vin" class="w-full" dir="ltr" />
                 </div>
                 <div class="field">
                     <label>{{ t('auctions.lotNumber') }}</label>
@@ -136,19 +136,21 @@
         <p v-if="error" class="auction-search__error">{{ error }}</p>
 
         <section class="auction-search__results admin-surface">
-            <div v-if="loading && !rows.length" class="auction-search__loading">
+            <div v-if="loading && !displayRows.length" class="auction-search__loading">
                 <ProgressSpinner style="width: 32px; height: 32px" />
-                <span>{{ t('auctions.loading') }}</span>
+                <span>{{ viewMode === 'favorites' ? t('auctions.loadingFavorites') : t('auctions.loading') }}</span>
             </div>
 
-            <p v-else-if="! loading && ! rows.length" class="auction-search__empty">
-                {{ searched ? t('auctions.empty') : t('auctions.prompt') }}
+            <p v-else-if="! loading && ! displayRows.length" class="auction-search__empty">
+                <template v-if="viewMode === 'favorites'">{{ t('auctions.favoritesEmpty') }}</template>
+                <template v-else>{{ searched ? t('auctions.empty') : t('auctions.prompt') }}</template>
             </p>
 
             <div v-else class="table-wrap">
                 <table class="auction-table">
                     <thead>
                         <tr>
+                            <th class="col-fav">{{ t('auctions.col.favorite') }}</th>
                             <th>{{ t('auctions.col.image') }}</th>
                             <th>{{ t('auctions.col.source') }}</th>
                             <th>{{ t('auctions.col.lot') }}</th>
@@ -165,11 +167,23 @@
                     </thead>
                     <tbody>
                         <tr
-                            v-for="row in rows"
+                            v-for="row in displayRows"
                             :key="rowKey(row)"
                             class="auction-table__row"
                             @click="openDetail(row)"
                         >
+                            <td class="col-fav" @click.stop>
+                                <button
+                                    type="button"
+                                    class="fav-btn"
+                                    :class="{ 'fav-btn--on': isFavorite(row) }"
+                                    :title="isFavorite(row) ? t('auctions.removeFavorite') : t('auctions.addFavorite')"
+                                    :disabled="favoriteBusy === favoriteKey(row)"
+                                    @click="toggleFavorite(row)"
+                                >
+                                    <i :class="isFavorite(row) ? 'pi pi-heart-fill' : 'pi pi-heart'" />
+                                </button>
+                            </td>
                             <td>
                                 <img
                                     v-if="thumb(row)"
@@ -188,17 +202,17 @@
                             <td>{{ row.year || '—' }}</td>
                             <td>{{ row.make || '—' }}</td>
                             <td>{{ row.model || '—' }}</td>
-                            <td class="money">{{ money(row.pricing?.current_bid_usd) }}</td>
-                            <td class="money">{{ money(row.pricing?.buy_now_usd) }}</td>
+                            <td class="money">{{ money(bidOf(row)) }}</td>
+                            <td class="money">{{ money(buyNowOf(row)) }}</td>
                             <td>{{ auctionDate(row) }}</td>
-                            <td>{{ row.location?.display || '—' }}</td>
-                            <td>{{ row.condition?.primary_damage || '—' }}</td>
+                            <td>{{ locationOf(row) }}</td>
+                            <td>{{ damageOf(row) }}</td>
                         </tr>
                     </tbody>
                 </table>
             </div>
 
-            <div v-if="meta?.next_cursor" class="auction-search__pager">
+            <div v-if="viewMode === 'search' && meta?.next_cursor" class="auction-search__pager">
                 <Button
                     :label="t('auctions.loadMore')"
                     icon="pi pi-angle-down"
@@ -220,12 +234,20 @@ import InputText from 'primevue/inputtext';
 import InputNumber from 'primevue/inputnumber';
 import ProgressSpinner from 'primevue/progressspinner';
 import Tag from 'primevue/tag';
-import { getAuctionUsage, searchAuctions } from '../../api/auctions';
+import {
+    addAuctionFavorite,
+    getAuctionUsage,
+    listAuctionFavoriteIds,
+    listAuctionFavorites,
+    removeAuctionFavorite,
+    searchAuctions,
+} from '../../api/auctions';
 
 const { t } = useI18n();
 const route = useRoute();
 const router = useRouter();
 
+const viewMode = ref('search');
 const filters = reactive({
     platform: '',
     make: '',
@@ -240,6 +262,9 @@ const filters = reactive({
 });
 
 const rows = ref([]);
+const favoriteRows = ref([]);
+const favoriteIds = ref([]);
+const favoriteBusy = ref('');
 const meta = ref(null);
 const loading = ref(false);
 const loadingMore = ref(false);
@@ -256,6 +281,10 @@ const platformOptions = computed(() => [
 
 const detailRouteName = computed(() => (
     route.path.startsWith('/dealer') ? 'dealer.auctionDetail' : 'admin.auctionDetail'
+));
+
+const displayRows = computed(() => (
+    viewMode.value === 'favorites' ? favoriteRows.value : rows.value
 ));
 
 function buildParams(cursor = null) {
@@ -277,7 +306,25 @@ function buildParams(cursor = null) {
     return params;
 }
 
+async function switchView(mode) {
+    viewMode.value = mode;
+    error.value = '';
+
+    if (mode === 'favorites') {
+        await loadFavorites();
+    }
+}
+
+async function refreshCurrent() {
+    if (viewMode.value === 'favorites') {
+        await loadFavorites();
+    } else {
+        await search(false);
+    }
+}
+
 async function search(loadMore = false) {
+    viewMode.value = 'search';
     error.value = '';
     searched.value = true;
 
@@ -296,7 +343,7 @@ async function search(loadMore = false) {
         rows.value = loadMore ? [...rows.value, ...list] : list;
         meta.value = data.meta ?? null;
         lastCached.value = Boolean(data.cached);
-        await loadUsage();
+        await Promise.all([loadUsage(), loadFavoriteIds()]);
     } catch (e) {
         error.value = e.response?.data?.message || t('auctions.loadFailed');
         if (! loadMore) {
@@ -306,6 +353,31 @@ async function search(loadMore = false) {
     } finally {
         loading.value = false;
         loadingMore.value = false;
+    }
+}
+
+async function loadFavorites() {
+    loading.value = true;
+    error.value = '';
+
+    try {
+        const { data } = await listAuctionFavorites();
+        favoriteRows.value = Array.isArray(data.data) ? data.data : [];
+        favoriteIds.value = favoriteRows.value.map((row) => row.identifier).filter(Boolean);
+    } catch (e) {
+        error.value = e.response?.data?.message || t('auctions.loadFailed');
+        favoriteRows.value = [];
+    } finally {
+        loading.value = false;
+    }
+}
+
+async function loadFavoriteIds() {
+    try {
+        const { data } = await listAuctionFavoriteIds();
+        favoriteIds.value = Array.isArray(data.data) ? data.data : [];
+    } catch {
+        // optional
     }
 }
 
@@ -334,14 +406,92 @@ function clearFilters() {
     lastCached.value = false;
 }
 
+function favoriteKey(row) {
+    return row.identifier || row.slug_vin || row.vin || row.lot_number || '';
+}
+
+function isFavorite(row) {
+    const key = favoriteKey(row);
+
+    return key !== '' && favoriteIds.value.includes(key);
+}
+
+async function toggleFavorite(row) {
+    const key = favoriteKey(row);
+
+    if (! key) return;
+
+    favoriteBusy.value = key;
+
+    try {
+        if (isFavorite(row)) {
+            await removeAuctionFavorite(key);
+            favoriteIds.value = favoriteIds.value.filter((id) => id !== key);
+            favoriteRows.value = favoriteRows.value.filter((item) => item.identifier !== key);
+        } else {
+            const payload = {
+                identifier: key,
+                slug_vin: row.slug_vin || key,
+                vin: row.vin,
+                lot_number: row.lot_number,
+                platform: row.platform,
+                title: row.title,
+                year: row.year,
+                make: row.make,
+                model: row.model,
+                pricing: row.pricing,
+                location: row.location,
+                condition: row.condition,
+                media: row.media,
+                auction: row.auction,
+                ad: row.ad,
+                thumb_url: thumb(row),
+                current_bid_usd: bidOf(row),
+                buy_now_usd: buyNowOf(row),
+                location_display: locationOf(row) === '—' ? null : locationOf(row),
+                primary_damage: damageOf(row) === '—' ? null : damageOf(row),
+                auction_at: auctionDate(row) === '—' ? null : auctionDate(row),
+            };
+            const { data } = await addAuctionFavorite(payload);
+            if (! favoriteIds.value.includes(key)) {
+                favoriteIds.value = [...favoriteIds.value, key];
+            }
+            if (data.data) {
+                favoriteRows.value = [data.data, ...favoriteRows.value.filter((item) => item.identifier !== key)];
+            }
+        }
+    } catch (e) {
+        error.value = e.response?.data?.message || t('auctions.favoriteFailed');
+    } finally {
+        favoriteBusy.value = '';
+    }
+}
+
 function rowKey(row) {
-    return row.slug_vin || `${row.platform}-${row.lot_number}-${row.vin}`;
+    return favoriteKey(row) || `${row.platform}-${row.lot_number}-${row.vin}`;
 }
 
 function thumb(row) {
-    return row.media?.thumbs?.[0]
+    return row.thumb_url
+        || row.media?.thumbs?.[0]
         || row.media?.items?.find((item) => item.type === 'image')?.thumb
         || null;
+}
+
+function bidOf(row) {
+    return row.pricing?.current_bid_usd ?? row.current_bid_usd ?? null;
+}
+
+function buyNowOf(row) {
+    return row.pricing?.buy_now_usd ?? row.buy_now_usd ?? null;
+}
+
+function locationOf(row) {
+    return row.location?.display || row.location_display || '—';
+}
+
+function damageOf(row) {
+    return row.condition?.primary_damage || row.primary_damage || '—';
 }
 
 function money(value) {
@@ -357,6 +507,7 @@ function money(value) {
 function auctionDate(row) {
     return row.auction?.formatted
         || row.auction?.auction_at
+        || row.auction_at
         || row.ad
         || '—';
 }
@@ -372,14 +523,16 @@ function platformSeverity(platform) {
 }
 
 function openDetail(row) {
-    const id = row.slug_vin || row.vin || row.lot_number;
+    const id = favoriteKey(row);
 
     if (! id) return;
 
     router.push({ name: detailRouteName.value, params: { identifier: id } });
 }
 
-onMounted(loadUsage);
+onMounted(async () => {
+    await Promise.all([loadUsage(), loadFavoriteIds()]);
+});
 </script>
 
 <style scoped>
@@ -406,6 +559,44 @@ onMounted(loadUsage);
     margin: 0.25rem 0 0;
     color: var(--vs-text-muted);
     font-size: 0.85rem;
+}
+
+.view-tabs {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+}
+
+.view-tab {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: 1px solid var(--admin-border, var(--vs-border));
+    background: transparent;
+    color: var(--vs-text-muted);
+    border-radius: 10px;
+    padding: 0.45rem 0.9rem;
+    font-weight: 600;
+    font-size: 0.85rem;
+    cursor: pointer;
+}
+
+.view-tab--active {
+    background: color-mix(in srgb, var(--admin-accent, #4a3558) 14%, transparent);
+    border-color: var(--admin-accent, #4a3558);
+    color: var(--admin-accent, #4a3558);
+}
+
+.view-tab__count {
+    min-width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 999px;
+    background: color-mix(in srgb, #be123c 18%, transparent);
+    color: #be123c;
+    font-size: 0.72rem;
+    display: inline-grid;
+    place-items: center;
+    padding: 0 0.3rem;
 }
 
 .auction-usage {
@@ -572,6 +763,30 @@ onMounted(loadUsage);
     text-transform: uppercase;
     letter-spacing: 0.02em;
     color: var(--vs-text-muted);
+}
+
+.col-fav {
+    width: 2.5rem;
+    text-align: center !important;
+}
+
+.fav-btn {
+    border: none;
+    background: transparent;
+    color: var(--vs-text-muted);
+    cursor: pointer;
+    font-size: 1.05rem;
+    padding: 0.2rem;
+    line-height: 1;
+}
+
+.fav-btn:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
+
+.fav-btn--on {
+    color: #be123c;
 }
 
 .auction-table__row {
