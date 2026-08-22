@@ -61,6 +61,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/favorites/{identifier}', [AuctionFavoriteController::class, 'destroy'])
             ->where('identifier', '[^/]+');
         Route::get('/', [AuctionController::class, 'index']);
+        Route::get('/{identifier}/related', [AuctionController::class, 'related'])
+            ->where('identifier', '[^/]+');
         Route::get('/{identifier}/history', [AuctionController::class, 'history'])
             ->where('identifier', '[^/]+');
         Route::get('/{identifier}', [AuctionController::class, 'show'])

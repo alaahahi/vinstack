@@ -70,3 +70,11 @@ export function getAuction(identifier, params = {}) {
 export function getAuctionHistory(identifier, params = {}) {
     return api.get(`/auctions/${encodeURIComponent(identifier)}/history`, { params });
 }
+
+/**
+ * @param {string} identifier
+ * @param {Record<string, unknown>} params
+ */
+export function getAuctionRelated(identifier, params = {}) {
+    return api.get(`/auctions/${encodeURIComponent(identifier)}/related`, { params });
+}

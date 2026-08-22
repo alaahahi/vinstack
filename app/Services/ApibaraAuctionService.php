@@ -119,6 +119,53 @@ class ApibaraAuctionService
     }
 
     /**
+     * Related vehicles (same make/story) from Apibara.
+     *
+     * @param  array<string, mixed>  $query
+     * @return array{ok: bool, data: mixed, meta: array<string, mixed>|null, cached?: bool}
+     */
+    public function related(string $identifier, array $query = [], bool $forceRefresh = false): array
+    {
+        $maxPerPage = max(1, (int) config('apibara.max_per_page', 10));
+        $params = array_filter([
+            'per_page' => isset($query['per_page'])
+                ? max(1, min($maxPerPage, (int) $query['per_page']))
+                : min(10, $maxPerPage),
+        ], fn ($value) => $value !== null && $value !== '');
+
+        $result = $this->requestWithIdentifierFallbacks($identifier, function (string $encoded) use ($params, $forceRefresh) {
+            return $this->request('GET', "/vehicles/{$encoded}/related", $params, $forceRefresh);
+        });
+
+        $payload = is_array($result['data'] ?? null) ? $result['data'] : [];
+        $upcoming = array_values(array_filter(
+            is_array($payload['upcoming'] ?? null) ? $payload['upcoming'] : [],
+            'is_array',
+        ));
+        $past = array_values(array_filter(
+            is_array($payload['past'] ?? null) ? $payload['past'] : [],
+            'is_array',
+        ));
+
+        $result['data'] = [
+            'source' => is_array($payload['source'] ?? null) ? $payload['source'] : null,
+            'upcoming' => $upcoming,
+            'past' => $past,
+            'items' => array_values(array_merge(
+                array_map(static fn (array $row) => $row + ['_related_group' => 'upcoming'], $upcoming),
+                array_map(static fn (array $row) => $row + ['_related_group' => 'past'], $past),
+            )),
+        ];
+        $result['meta'] = array_merge(is_array($result['meta'] ?? null) ? $result['meta'] : [], [
+            'upcoming_count' => count($upcoming),
+            'past_count' => count($past),
+            'total' => count($upcoming) + count($past),
+        ]);
+
+        return $result;
+    }
+
+    /**
      * slug_vin often 404s; VIN / lot_number work. Try sensible fallbacks.
      *
      * @param  callable(string): array{ok: bool, data: mixed, meta: array<string, mixed>|null, cached?: bool}  $callback

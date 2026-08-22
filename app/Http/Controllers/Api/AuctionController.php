@@ -72,6 +72,15 @@ class AuctionController extends Controller
         ], $request->boolean('force_refresh')));
     }
 
+    public function related(Request $request, string $identifier): JsonResponse
+    {
+        $this->authorizeAuctionAccess($request);
+
+        return $this->respond(fn () => $this->auctions->related($identifier, [
+            'per_page' => $request->query('per_page'),
+        ], $request->boolean('force_refresh')));
+    }
+
     public function usage(Request $request): JsonResponse
     {
         if ($request->user()?->role !== UserRole::Admin) {

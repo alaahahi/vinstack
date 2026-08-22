@@ -254,6 +254,33 @@ class ApibaraAuctionApiTest extends TestCase
             ->assertJsonPath('data.0.lot_number', '1');
     }
 
+    public function test_related_vehicles_endpoint_normalizes_groups(): void
+    {
+        Http::fake([
+            'apibara.tech/*/vehicles/*/related*' => Http::response([
+                'ok' => true,
+                'data' => [
+                    'source' => ['vin' => 'AAA', 'make' => 'KIA'],
+                    'upcoming' => [
+                        ['vin' => 'BBB', 'title' => '2024 KIA CARNIVAL', 'make' => 'KIA'],
+                    ],
+                    'past' => [
+                        ['vin' => 'CCC', 'title' => '2022 KIA CARNIVAL', 'make' => 'KIA'],
+                    ],
+                ],
+            ], 200),
+        ]);
+
+        Sanctum::actingAs($this->makeUser(UserRole::Dealer));
+
+        $this->getJson('/api/auctions/AAA/related')
+            ->assertOk()
+            ->assertJsonPath('meta.total', 2)
+            ->assertJsonPath('data.items.0._related_group', 'upcoming')
+            ->assertJsonPath('data.items.1._related_group', 'past')
+            ->assertJsonPath('data.upcoming.0.vin', 'BBB');
+    }
+
     public function test_show_falls_back_from_slug_vin_to_vin_on_404(): void
     {
         Http::fake(function ($request) {

@@ -118,6 +118,31 @@
 
             <section class="admin-surface detail-card">
                 <div class="history-head">
+                    <h3>{{ t('auctions.related') }}</h3>
+                    <Button
+                        :label="relatedLoaded ? t('auctions.reloadRelated') : t('auctions.loadRelated')"
+                        icon="pi pi-car"
+                        size="small"
+                        outlined
+                        :loading="relatedLoading"
+                        @click="loadRelated"
+                    />
+                </div>
+                <p v-if="relatedError" class="auction-detail__error">{{ relatedError }}</p>
+                <p v-else-if="! relatedLoaded" class="muted">{{ t('auctions.relatedPrompt') }}</p>
+                <p v-else-if="! relatedRows.length" class="muted">{{ t('auctions.relatedEmpty') }}</p>
+                <div v-else class="related-grid">
+                    <AuctionRelatedCard
+                        v-for="row in relatedRows"
+                        :key="relatedKey(row)"
+                        :vehicle="row"
+                        @open="openRelated"
+                    />
+                </div>
+            </section>
+
+            <section class="admin-surface detail-card">
+                <div class="history-head">
                     <h3>{{ t('auctions.history') }}</h3>
                     <Button
                         :label="t('auctions.loadHistory')"
@@ -145,16 +170,18 @@
 </template>
 
 <script setup>
-import { computed, onMounted, ref } from 'vue';
+import { computed, onMounted, ref, watch } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRoute, useRouter } from 'vue-router';
 import Button from 'primevue/button';
 import ProgressSpinner from 'primevue/progressspinner';
 import Tag from 'primevue/tag';
+import AuctionRelatedCard from '../../components/auctions/AuctionRelatedCard.vue';
 import {
     addAuctionFavorite,
     getAuction,
     getAuctionHistory,
+    getAuctionRelated,
     listAuctionFavoriteIds,
     removeAuctionFavorite,
 } from '../../api/auctions';
@@ -174,6 +201,11 @@ const historyRows = ref([]);
 const historyLoading = ref(false);
 const historyLoaded = ref(false);
 const historyError = ref('');
+
+const relatedRows = ref([]);
+const relatedLoading = ref(false);
+const relatedLoaded = ref(false);
+const relatedError = ref('');
 
 const photos = computed(() => {
     const items = vehicle.value?.media?.items;
@@ -221,6 +253,12 @@ async function loadFavoriteIds() {
 async function load(forceRefresh = false) {
     loading.value = true;
     error.value = '';
+    relatedRows.value = [];
+    relatedLoaded.value = false;
+    relatedError.value = '';
+    historyRows.value = [];
+    historyLoaded.value = false;
+    historyError.value = '';
 
     try {
         const [{ data }] = await Promise.all([
@@ -299,6 +337,44 @@ async function loadHistory() {
     }
 }
 
+async function loadRelated() {
+    relatedLoading.value = true;
+    relatedError.value = '';
+
+    try {
+        const id = vehicle.value?.vin
+            || vehicle.value?.lot_number
+            || String(route.params.identifier);
+
+        const { data } = await getAuctionRelated(id, { per_page: 10 });
+        const payload = data.data ?? {};
+        relatedRows.value = Array.isArray(payload.items)
+            ? payload.items
+            : [
+                ...(Array.isArray(payload.upcoming) ? payload.upcoming.map((row) => ({ ...row, _related_group: 'upcoming' })) : []),
+                ...(Array.isArray(payload.past) ? payload.past.map((row) => ({ ...row, _related_group: 'past' })) : []),
+            ];
+        relatedLoaded.value = true;
+    } catch (e) {
+        relatedError.value = e.response?.data?.message || t('auctions.loadFailed');
+    } finally {
+        relatedLoading.value = false;
+    }
+}
+
+function relatedKey(row) {
+    return row.vin || row.slug_vin || row.lot_number || `${row.platform}-${row.title}`;
+}
+
+function openRelated(row) {
+    const id = row?.vin || row?.lot_number || row?.slug_vin;
+
+    if (! id) return;
+
+    const name = route.path.startsWith('/dealer') ? 'dealer.auctionDetail' : 'admin.auctionDetail';
+    router.push({ name, params: { identifier: id } });
+}
+
 function goBack() {
     router.push({ name: listRouteName.value });
 }
@@ -331,6 +407,10 @@ function platformLabel(platform) {
 function platformSeverity(platform) {
     return platform === 'iaai' ? 'info' : 'warn';
 }
+
+watch(() => route.params.identifier, () => {
+    load();
+});
 
 onMounted(load);
 </script>

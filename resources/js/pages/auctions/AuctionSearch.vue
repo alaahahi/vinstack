@@ -1474,11 +1474,33 @@ onUnmounted(() => {
     display: grid;
     grid-template-columns: 1fr 1fr;
     gap: 0.55rem;
-    align-items: end;
+    align-items: start;
+}
+
+.year-row {
+    align-items: start;
 }
 
 .year-row .field {
     min-width: 0;
+    width: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    align-self: start;
+}
+
+.year-row .field > label {
+    min-height: 1.1rem;
+    line-height: 1.1rem;
+    margin: 0;
+    white-space: nowrap;
+}
+
+.year-row :deep(.p-select),
+.year-row :deep(.filter-select) {
+    width: 100%;
+    align-self: stretch;
 }
 
 .year-select {
