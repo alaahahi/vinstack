@@ -38,47 +38,6 @@
             </div>
         </header>
 
-        <section v-if="isAdmin && usage" class="auction-usage admin-surface">
-            <div class="auction-usage__stats">
-                <div>
-                    <span>{{ t('auctions.activeApi') }}</span>
-                    <strong>{{ usage.active_provider?.name || '—' }}</strong>
-                </div>
-                <div>
-                    <span>{{ t('auctions.remainingQuota') }}</span>
-                    <strong :class="{ 'text-warn': usage.remaining_estimate <= 20 }">
-                        {{ usage.remaining_estimate }} / {{ usage.free_quota }}
-                    </strong>
-                </div>
-                <div>
-                    <span>{{ t('auctions.usage.billed') }}</span>
-                    <strong>{{ usage.billed }} / {{ usage.free_quota }}</strong>
-                </div>
-                <div>
-                    <span>{{ t('auctions.usage.cached') }}</span>
-                    <strong>{{ usage.cached }}</strong>
-                </div>
-                <div>
-                    <span>{{ t('auctions.usage.cacheTtl') }}</span>
-                    <strong>{{ cacheHours }} {{ t('auctions.usage.hours') }}</strong>
-                </div>
-            </div>
-            <p class="auction-usage__hint">{{ t('auctions.usage.hint') }}</p>
-            <div v-if="usage.by_user?.length" class="auction-usage__users">
-                <strong>{{ t('auctions.usage.byUser') }}</strong>
-                <ul>
-                    <li v-for="row in usage.by_user" :key="`${row.user_id}-${row.role}`">
-                        <span class="auction-usage__user-name">{{ row.name }}</span>
-                        <span class="pill" :class="row.role === 'admin' ? 'pill--owner' : 'pill--copart'">
-                            {{ roleLabel(row.role) }}
-                        </span>
-                        <span>{{ row.billed }} {{ t('auctions.usage.billedShort') }}</span>
-                        <span>{{ row.cached }} {{ t('auctions.usage.cachedShort') }}</span>
-                    </li>
-                </ul>
-            </div>
-        </section>
-
         <p v-if="viewMode === 'search' && (lastCached || restoredFromCache)" class="auction-cache-badge">
             {{ t('auctions.fromCache') }}
         </p>
@@ -455,9 +414,9 @@ import {
     getAuction,
     getAuctionCacheStatus,
     getAuctionFilters,
-    getAuctionUsage,
     listAuctionFavoriteIds,
     listAuctionFavorites,
+    recordAuctionSpotlight,
     removeAuctionFavorite,
     searchAuctions,
 } from '../../api/auctions';
@@ -507,16 +466,11 @@ const loadingMore = ref(false);
 const error = ref('');
 const searched = ref(false);
 const lastCached = ref(false);
-const usage = ref(null);
 const loadingCached = ref(false);
 const refreshingKey = ref('');
 const serverCacheAvailable = ref(false);
 const activeSearchKey = ref('');
 let cacheCheckTimer = null;
-
-const cacheHours = computed(() => (
-    Math.max(1, Math.round(Number(usage.value?.cache_ttl_seconds || 86400) / 3600))
-));
 
 const currentSearchKey = computed(() => filtersKey(filters));
 
@@ -794,7 +748,7 @@ async function search(loadMore = false, { forceRefresh = false, cacheOnly = fals
         lastCached.value = Boolean(data.cached);
         activeSearchKey.value = currentSearchKey.value;
         persistSearchSnapshot();
-        await Promise.all([loadUsage(), loadFavoriteIds()]);
+        await loadFavoriteIds();
     } catch (e) {
         error.value = e.response?.data?.message || t('auctions.loadFailed');
         if (! loadMore) {
@@ -862,19 +816,11 @@ async function refreshItem(row) {
             cardKey(item) === key ? { ...item, ...updated } : item
         ));
         persistSearchSnapshot();
-        await loadUsage();
     } catch (e) {
         error.value = e.response?.data?.message || t('auctions.loadFailed');
     } finally {
         refreshingKey.value = '';
     }
-}
-
-function roleLabel(role) {
-    if (role === 'admin') return t('auctions.usage.roleAdmin');
-    if (role === 'dealer') return t('auctions.usage.roleDealer');
-
-    return role || '—';
 }
 
 async function loadFavorites() {
@@ -922,21 +868,6 @@ async function loadFavoriteIds() {
     try {
         const { data } = await listAuctionFavoriteIds();
         favoriteIds.value = Array.isArray(data.data) ? data.data : [];
-    } catch {
-        // optional
-    }
-}
-
-async function loadUsage() {
-    if (! isAdmin.value) {
-        usage.value = null;
-
-        return;
-    }
-
-    try {
-        const { data } = await getAuctionUsage();
-        usage.value = data.data?.local ?? null;
     } catch {
         // optional
     }
@@ -1251,11 +1182,50 @@ function detailIdentifier(row) {
     return row.vin || row.lot_number || row.slug_vin || row.identifier || '';
 }
 
+function spotlightPayloadFromRow(row) {
+    const thumbs = [];
+
+    if (Array.isArray(row.thumb_urls)) {
+        thumbs.push(...row.thumb_urls);
+    }
+    if (Array.isArray(row.media?.thumbs)) {
+        thumbs.push(...row.media.thumbs);
+    }
+    if (Array.isArray(row.media?.items)) {
+        for (const item of row.media.items) {
+            const url = item?.thumb || item?.large || item?.full;
+            if (url) thumbs.push(url);
+        }
+    }
+    if (typeof row.thumb_url === 'string' && row.thumb_url) {
+        thumbs.push(row.thumb_url);
+    }
+
+    const platform = String(row.platform || '').toLowerCase();
+
+    return {
+        identifier: row.vin || row.lot_number || row.slug_vin || row.identifier,
+        vin: row.vin || null,
+        lot_number: row.lot_number || null,
+        slug_vin: row.slug_vin || null,
+        platform: platform === 'copart' || platform === 'iaai' ? platform : null,
+        title: row.title || null,
+        year: row.year ? Number(row.year) : null,
+        make: row.make || null,
+        model: row.model || null,
+        thumb_urls: [...new Set(thumbs.filter((u) => typeof u === 'string' && u))].slice(0, 8),
+        current_bid_usd: row.pricing?.current_bid_usd ?? row.current_bid_usd ?? null,
+        location_display: row.location?.display ?? row.location_display ?? null,
+        primary_damage: row.condition?.primary_damage ?? row.primary_damage ?? null,
+    };
+}
+
 function openDetail(row) {
     const id = detailIdentifier(row);
 
     if (! id) return;
 
+    recordAuctionSpotlight(spotlightPayloadFromRow(row)).catch(() => {});
     router.push({ name: detailRouteName.value, params: { identifier: id } });
 }
 
@@ -1264,7 +1234,6 @@ onMounted(async () => {
 
     await Promise.all([
         loadFilterMeta({ applyDefaults: ! restored }),
-        loadUsage(),
         loadFavoriteIds(),
         refreshFavoritesCount(),
         checkServerCache(),
@@ -1346,60 +1315,6 @@ onUnmounted(() => {
     display: inline-grid;
     place-items: center;
     padding: 0 0.25rem;
-}
-
-.auction-usage {
-    padding: 0.75rem 1rem;
-}
-
-.auction-usage__stats {
-    display: grid;
-    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
-    gap: 0.65rem;
-}
-
-.auction-usage__stats > div {
-    display: flex;
-    flex-direction: column;
-    gap: 0.15rem;
-}
-
-.auction-usage__stats span {
-    font-size: 0.72rem;
-    color: var(--vs-text-muted);
-}
-
-.text-warn { color: #d97706; }
-
-.auction-usage__hint {
-    margin: 0.65rem 0 0;
-    font-size: 0.78rem;
-    color: var(--vs-text-muted);
-}
-
-.auction-usage__users {
-    margin-top: 0.75rem;
-}
-
-.auction-usage__users ul {
-    list-style: none;
-    margin: 0.4rem 0 0;
-    padding: 0;
-    display: flex;
-    flex-direction: column;
-    gap: 0.35rem;
-}
-
-.auction-usage__users li {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    gap: 0.45rem 0.75rem;
-    font-size: 0.8rem;
-}
-
-.auction-usage__user-name {
-    font-weight: 600;
 }
 
 .vehicle-card__footer {

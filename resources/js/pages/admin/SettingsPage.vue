@@ -499,6 +499,78 @@
                 </div>
             </section>
 
+            <section class="admin-surface settings-card settings-card--wide">
+                <header class="settings-card__head">
+                    <i class="pi pi-chart-bar" />
+                    <div>
+                        <h2 class="vs-card-title">{{ t('settings.sections.auctionUsage') }}</h2>
+                        <p class="vs-card-subtitle">{{ t('settings.sections.auctionUsageSub') }}</p>
+                    </div>
+                    <Button
+                        icon="pi pi-refresh"
+                        text
+                        rounded
+                        size="small"
+                        class="ms-auto"
+                        :loading="auctionUsageLoading"
+                        @click="loadAuctionUsage"
+                    />
+                </header>
+
+                <div class="settings-card__body">
+                    <p v-if="auctionUsageLoading && ! auctionUsage" class="settings-card__empty">
+                        {{ t('common.loading') }}
+                    </p>
+                    <template v-else-if="auctionUsage">
+                        <div class="auction-usage__stats">
+                            <div>
+                                <span>{{ t('auctions.activeApi') }}</span>
+                                <strong>{{ auctionUsage.active_provider?.name || '—' }}</strong>
+                            </div>
+                            <div>
+                                <span>{{ t('auctions.remainingQuota') }}</span>
+                                <strong :class="{ 'text-warn': auctionUsage.remaining_estimate <= 20 }">
+                                    {{ auctionUsage.remaining_estimate }} / {{ auctionUsage.free_quota }}
+                                </strong>
+                            </div>
+                            <div>
+                                <span>{{ t('auctions.usage.billed') }}</span>
+                                <strong>{{ auctionUsage.billed }} / {{ auctionUsage.free_quota }}</strong>
+                            </div>
+                            <div>
+                                <span>{{ t('auctions.usage.cached') }}</span>
+                                <strong>{{ auctionUsage.cached }}</strong>
+                            </div>
+                            <div>
+                                <span>{{ t('auctions.usage.cacheTtl') }}</span>
+                                <strong>{{ auctionUsageCacheHours }} {{ t('auctions.usage.hours') }}</strong>
+                            </div>
+                        </div>
+                        <p class="auction-usage__hint">{{ t('auctions.usage.hint') }}</p>
+                        <div v-if="auctionUsage.by_user?.length" class="auction-usage__users">
+                            <strong>{{ t('auctions.usage.byUser') }}</strong>
+                            <ul>
+                                <li
+                                    v-for="row in auctionUsage.by_user"
+                                    :key="`${row.user_id}-${row.role}`"
+                                >
+                                    <span class="auction-usage__user-name">{{ row.name }}</span>
+                                    <span
+                                        class="pill"
+                                        :class="row.role === 'admin' ? 'pill--owner' : 'pill--copart'"
+                                    >
+                                        {{ auctionUsageRoleLabel(row.role) }}
+                                    </span>
+                                    <span>{{ row.billed }} {{ t('auctions.usage.billedShort') }}</span>
+                                    <span>{{ row.cached }} {{ t('auctions.usage.cachedShort') }}</span>
+                                </li>
+                            </ul>
+                        </div>
+                    </template>
+                    <p v-else class="settings-card__empty">{{ t('settings.auctionUsageEmpty') }}</p>
+                </div>
+            </section>
+
             <section class="admin-surface settings-card settings-card--wide settings-card--system">
                 <header class="settings-card__head">
                     <i class="pi pi-database" />
@@ -855,6 +927,7 @@ import ProgressSpinner from 'primevue/progressspinner';
 import AdminPageHeader from '../../components/AdminPageHeader.vue';
 import VehicleOptionsEditor from '../../components/VehicleOptionsEditor.vue';
 import { restoreVehicle } from '../../api/vehicles';
+import { getAuctionUsage } from '../../api/auctions';
 import api from '../../api/client';
 import { formatDateTime } from '../../utils/formatDateTime';
 
@@ -904,6 +977,8 @@ const vehicleOptions = ref({
 });
 const auctionProviders = ref([]);
 const auctionActive = ref(null);
+const auctionUsage = ref(null);
+const auctionUsageLoading = ref(false);
 const savingAuctionProvider = ref(false);
 const auctionBusyId = ref('');
 const auctionForm = reactive({
@@ -913,6 +988,10 @@ const auctionForm = reactive({
     monthly_quota: 100,
     activate: false,
 });
+
+const auctionUsageCacheHours = computed(() => (
+    Math.max(1, Math.round(Number(auctionUsage.value?.cache_ttl_seconds || 86400) / 3600))
+));
 
 const DEFAULT_GALLERY_BASE = 'https://app.vinstack.com/api/client-portal';
 
@@ -984,7 +1063,27 @@ async function load() {
     form.cloudinary_api_key = '';
     form.cloudinary_api_secret = '';
     vehicleOptions.value = optionsRes.data.data;
-    await loadAuctionProviders();
+    await Promise.all([loadAuctionProviders(), loadAuctionUsage()]);
+}
+
+async function loadAuctionUsage() {
+    auctionUsageLoading.value = true;
+
+    try {
+        const { data } = await getAuctionUsage();
+        auctionUsage.value = data.data?.local ?? null;
+    } catch {
+        auctionUsage.value = null;
+    } finally {
+        auctionUsageLoading.value = false;
+    }
+}
+
+function auctionUsageRoleLabel(role) {
+    if (role === 'admin') return t('auctions.usage.roleAdmin');
+    if (role === 'dealer') return t('auctions.usage.roleDealer');
+
+    return role || '—';
 }
 
 async function saveVehicleOptions() {
@@ -2093,6 +2192,81 @@ onMounted(async () => {
 
 .settings-card__empty {
     margin: 0 0 0.85rem;
+    color: var(--vs-text-muted);
+    font-size: 0.85rem;
+}
+
+.auction-usage__stats {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(140px, 1fr));
+    gap: 0.65rem;
+}
+
+.auction-usage__stats > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+}
+
+.auction-usage__stats span {
+    font-size: 0.72rem;
+    color: var(--vs-text-muted);
+}
+
+.auction-usage__stats .text-warn {
+    color: #d97706;
+}
+
+.auction-usage__hint {
+    margin: 0.65rem 0 0;
+    font-size: 0.78rem;
+    color: var(--vs-text-muted);
+}
+
+.auction-usage__users {
+    margin-top: 0.75rem;
+}
+
+.auction-usage__users ul {
+    list-style: none;
+    margin: 0.4rem 0 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.auction-usage__users li {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.45rem 0.75rem;
+    font-size: 0.8rem;
+}
+
+.auction-usage__user-name {
+    font-weight: 600;
+}
+
+.pill {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 600;
+    background: color-mix(in srgb, var(--vs-border) 55%, transparent);
+}
+
+.pill--owner {
+    background: color-mix(in srgb, #7c3aed 18%, transparent);
+    color: #a78bfa;
+}
+
+.pill--copart {
+    background: color-mix(in srgb, #0f766e 18%, transparent);
+    color: #2dd4bf;
+}
     color: var(--vs-text-muted);
 }
 </style>
