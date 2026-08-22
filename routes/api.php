@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\VehicleUploadedImageController;
 use App\Http\Controllers\Admin\VehicleVinstackImageController;
 use App\Http\Controllers\Admin\VinstackBrowseController;
 use App\Http\Controllers\Admin\VinstackSettingsController;
+use App\Http\Controllers\Admin\AuctionApiProviderController;
 use App\Http\Controllers\Api\AuctionController;
 use App\Http\Controllers\Api\AuctionFavoriteController;
 use App\Http\Controllers\Api\AuthController;
@@ -53,6 +54,7 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::get('/test', [AuctionController::class, 'test']);
         Route::get('/usage', [AuctionController::class, 'usage']);
         Route::get('/filters', [AuctionController::class, 'filters']);
+        Route::get('/cache', [AuctionController::class, 'cacheStatus']);
         Route::get('/favorites/ids', [AuctionFavoriteController::class, 'identifiers']);
         Route::get('/favorites', [AuctionFavoriteController::class, 'index']);
         Route::post('/favorites', [AuctionFavoriteController::class, 'store']);
@@ -81,6 +83,12 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/wa-queue/settings', [DealerNotificationController::class, 'updateSettings']);
         Route::post('/wa-queue/test-connection', [DealerNotificationController::class, 'testConnection']);
         Route::post('/dealer-notifications/send', [DealerNotificationController::class, 'send']);
+
+        Route::get('/auction-providers', [AuctionApiProviderController::class, 'index']);
+        Route::post('/auction-providers', [AuctionApiProviderController::class, 'store']);
+        Route::put('/auction-providers/{provider}', [AuctionApiProviderController::class, 'update']);
+        Route::delete('/auction-providers/{provider}', [AuctionApiProviderController::class, 'destroy']);
+        Route::post('/auction-providers/{provider}/activate', [AuctionApiProviderController::class, 'activate']);
 
         Route::get('/dealers', [DealerController::class, 'index']);
         Route::get('/dealers/summary', [DealerController::class, 'summary']);

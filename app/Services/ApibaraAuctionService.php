@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Exceptions\ApibaraAuctionException;
+use App\Models\AuctionApiProvider;
 use Illuminate\Http\Client\ConnectionException;
 use Illuminate\Http\Client\Response;
 use Illuminate\Support\Facades\Auth;
@@ -36,6 +37,7 @@ class ApibaraAuctionService
 
     public function __construct(
         protected ApibaraUsageService $usage,
+        protected AuctionApiProviderService $providers,
     ) {}
 
     /**
@@ -45,9 +47,30 @@ class ApibaraAuctionService
     public function search(array $filters = []): array
     {
         $forceRefresh = (bool) ($filters['force_refresh'] ?? false);
-        unset($filters['force_refresh']);
+        $cacheOnly = (bool) ($filters['cache_only'] ?? false);
+        unset($filters['force_refresh'], $filters['cache_only']);
 
-        return $this->request('GET', '/vehicles', $this->normalizeSearchFilters($filters), $forceRefresh);
+        return $this->request(
+            'GET',
+            '/vehicles',
+            $this->normalizeSearchFilters($filters),
+            $forceRefresh,
+            $cacheOnly,
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $filters
+     */
+    public function hasSearchCache(array $filters): bool
+    {
+        if (! (bool) config('apibara.cache_enabled', true)) {
+            return false;
+        }
+
+        unset($filters['force_refresh'], $filters['cache_only']);
+
+        return Cache::has($this->cacheKey('GET', '/vehicles', $this->normalizeSearchFilters($filters)));
     }
 
     /**
@@ -282,21 +305,17 @@ class ApibaraAuctionService
      * @param  array<string, mixed>  $query
      * @return array{ok: bool, data: mixed, meta: array<string, mixed>|null, cached: bool}
      */
-    protected function request(string $method, string $path, array $query = [], bool $forceRefresh = false): array
-    {
-        $apiKey = (string) config('apibara.api_key', '');
-
-        if ($apiKey === '') {
-            throw new ApibaraAuctionException(
-                'مفتاح Apibara غير مضبوط. أضف APIBARA_API_KEY في ملف .env.',
-                503,
-                'apibara_not_configured',
-            );
-        }
-
+    protected function request(
+        string $method,
+        string $path,
+        array $query = [],
+        bool $forceRefresh = false,
+        bool $cacheOnly = false,
+    ): array {
         $cacheKey = $this->cacheKey($method, $path, $query);
         $cacheEnabled = (bool) config('apibara.cache_enabled', true);
-        $ttl = max(60, (int) config('apibara.cache_ttl', 3600));
+        $ttl = max(60, (int) config('apibara.cache_ttl', 86400));
+        $activeProviderId = $this->providers->activeSummary()['id'] ?? null;
 
         if ($cacheEnabled && ! $forceRefresh && Cache::has($cacheKey)) {
             $payload = Cache::get($cacheKey);
@@ -312,6 +331,8 @@ class ApibaraAuctionService
                 true,
                 false,
                 0,
+                null,
+                is_int($activeProviderId) ? $activeProviderId : null,
             );
 
             Log::info('Apibara auction cache hit', [
@@ -322,17 +343,102 @@ class ApibaraAuctionService
             return $normalized;
         }
 
-        $url = rtrim((string) config('apibara.base_url'), '/').'/'.ltrim($path, '/');
+        if ($cacheOnly) {
+            throw new ApibaraAuctionException(
+                'لا توجد نتيجة مخزّنة لهذا البحث.',
+                404,
+                'apibara_cache_miss',
+            );
+        }
+
+        $skipIds = [];
+        $lastException = null;
+
+        for ($attempt = 0; $attempt < 8; $attempt++) {
+            try {
+                $provider = $this->providers->resolveForLiveRequest($skipIds);
+            } catch (ApibaraAuctionException $e) {
+                throw $lastException ?? $e;
+            }
+
+            try {
+                return $this->sendLive($provider, $method, $path, $query, $cacheKey, $cacheEnabled, $ttl);
+            } catch (ApibaraAuctionException $e) {
+                $lastException = $e;
+                $skipIds[] = $provider->id;
+
+                if (in_array($e->errorCode(), ['apibara_rate_limited'], true)) {
+                    $this->providers->markExhausted($provider);
+
+                    continue;
+                }
+
+                if (in_array($e->errorCode(), ['apibara_unauthorized', 'apibara_forbidden'], true)) {
+                    continue;
+                }
+
+                throw $e;
+            }
+        }
+
+        throw $lastException ?? new ApibaraAuctionException(
+            'نفدت حصة كل مفاتيح API المزاد لهذا الشهر.',
+            429,
+            'apibara_quota_exhausted',
+        );
+    }
+
+    /**
+     * @param  array<string, mixed>  $query
+     * @return array{ok: bool, data: mixed, meta: array<string, mixed>|null, cached: bool}
+     */
+    protected function sendLive(
+        AuctionApiProvider $provider,
+        string $method,
+        string $path,
+        array $query,
+        string $cacheKey,
+        bool $cacheEnabled,
+        int $ttl,
+    ): array {
+        $apiKey = trim((string) $provider->api_key);
+
+        if ($apiKey === '') {
+            throw new ApibaraAuctionException(
+                'مفتاح Apibara غير مضبوط. أضف مفتاحاً من إعدادات المزاد.',
+                503,
+                'apibara_not_configured',
+            );
+        }
+
+        $url = rtrim((string) $provider->base_url, '/').'/'.ltrim($path, '/');
         $started = microtime(true);
+        $maxAttempts = 2;
+        $response = null;
 
         try {
-            $response = Http::timeout((int) config('apibara.timeout', 30))
-                ->connectTimeout((int) config('apibara.connect_timeout', 10))
-                ->acceptJson()
-                ->withHeaders([
-                    'X-API-Key' => $apiKey,
-                ])
-                ->send($method, $url, ['query' => $query]);
+            for ($attempt = 1; $attempt <= $maxAttempts; $attempt++) {
+                $response = Http::timeout((int) config('apibara.timeout', 30))
+                    ->connectTimeout((int) config('apibara.connect_timeout', 10))
+                    ->acceptJson()
+                    ->withHeaders([
+                        'X-API-Key' => $apiKey,
+                    ])
+                    ->send($method, $url, ['query' => $query]);
+
+                if ($response->successful() || ! $this->shouldRetryUpstream($response) || $attempt === $maxAttempts) {
+                    break;
+                }
+
+                Log::info('Apibara auction retry after transient upstream error', [
+                    'path' => $path,
+                    'attempt' => $attempt,
+                    'status' => $response->status(),
+                    'provider_id' => $provider->id,
+                ]);
+
+                usleep(150_000);
+            }
         } catch (ConnectionException $e) {
             $elapsedMs = (int) round((microtime(true) - $started) * 1000);
             $this->usage->record(
@@ -345,6 +451,7 @@ class ApibaraAuctionService
                 true,
                 $elapsedMs,
                 'apibara_connection',
+                $provider->id,
             );
             $this->logFailure($path, $query, null, 'connection', $e);
 
@@ -366,6 +473,7 @@ class ApibaraAuctionService
                 true,
                 $elapsedMs,
                 'apibara_unexpected',
+                $provider->id,
             );
             $this->logFailure($path, $query, null, 'unexpected', $e);
 
@@ -387,6 +495,7 @@ class ApibaraAuctionService
             'status' => $status,
             'elapsed_ms' => $elapsedMs,
             'cached' => false,
+            'provider_id' => $provider->id,
         ]);
 
         if ($response->successful()) {
@@ -407,6 +516,8 @@ class ApibaraAuctionService
                 false,
                 true,
                 $elapsedMs,
+                null,
+                $provider->id,
             );
 
             return $normalized;
@@ -424,9 +535,25 @@ class ApibaraAuctionService
             true,
             $elapsedMs,
             $exception->errorCode(),
+            $provider->id,
         );
 
         throw $exception;
+    }
+
+    protected function shouldRetryUpstream(Response $response): bool
+    {
+        if ($response->status() < 500) {
+            return false;
+        }
+
+        $message = (string) ($this->extractRemoteMessage($response) ?? '');
+
+        return str_contains($message, 'SQLSTATE[HY000] [2002]')
+            || str_contains($message, 'No such file or directory')
+            || str_contains($message, 'Connection refused')
+            || str_contains($message, 'server has gone away')
+            || $message === '';
     }
 
     /**
@@ -485,7 +612,8 @@ class ApibaraAuctionService
                 'apibara_forbidden',
             ),
             $status === 404 => new ApibaraAuctionException(
-                $bodyMessage ?: 'لم يتم العثور على السيارة أو السجل المطلوب في Apibara.',
+                $this->safePublicMessage($bodyMessage)
+                    ?: 'لم يتم العثور على السيارة أو السجل المطلوب في Apibara.',
                 404,
                 'apibara_not_found',
             ),
@@ -495,16 +623,72 @@ class ApibaraAuctionService
                 'apibara_rate_limited',
             ),
             $status >= 500 => new ApibaraAuctionException(
-                'خدمة Apibara غير متاحة حالياً. حاول لاحقاً.',
+                $this->friendlyUpstreamMessage($bodyMessage),
                 502,
-                'apibara_upstream',
+                $this->upstreamErrorCode($bodyMessage),
             ),
             default => new ApibaraAuctionException(
-                $bodyMessage ?: "فشل طلب Apibara (HTTP {$status}).",
+                $this->safePublicMessage($bodyMessage) ?: "فشل طلب Apibara (HTTP {$status}).",
                 $status >= 400 && $status < 500 ? $status : 502,
                 'apibara_http_error',
             ),
         };
+    }
+
+    protected function friendlyUpstreamMessage(?string $remoteMessage): string
+    {
+        $message = (string) $remoteMessage;
+
+        if (str_contains($message, 'Unknown column') || str_contains($message, 'SQLSTATE[42S22]')) {
+            return 'فلتر البحث غير مدعوم حالياً من مزوّد المزاد. أزل الولاية أو غيّر الفلاتر ثم أعد المحاولة.';
+        }
+
+        if (
+            str_contains($message, 'SQLSTATE[HY000] [2002]')
+            || str_contains($message, 'No such file or directory')
+            || str_contains($message, 'Connection refused')
+            || str_contains($message, 'server has gone away')
+        ) {
+            return 'خدمة المزاد غير متاحة مؤقتاً (عطل عند المزوّد). أعد المحاولة بعد قليل.';
+        }
+
+        return 'خدمة المزاد غير متاحة حالياً. حاول لاحقاً.';
+    }
+
+    protected function upstreamErrorCode(?string $remoteMessage): string
+    {
+        $message = (string) $remoteMessage;
+
+        if (str_contains($message, 'Unknown column') || str_contains($message, 'SQLSTATE[42S22]')) {
+            return 'apibara_bad_filter';
+        }
+
+        if (
+            str_contains($message, 'SQLSTATE[HY000] [2002]')
+            || str_contains($message, 'No such file or directory')
+        ) {
+            return 'apibara_upstream_db';
+        }
+
+        return 'apibara_upstream';
+    }
+
+    protected function safePublicMessage(?string $remoteMessage): ?string
+    {
+        if ($remoteMessage === null || trim($remoteMessage) === '') {
+            return null;
+        }
+
+        // Never expose SQL / stack traces from upstream to the UI.
+        if (
+            str_contains($remoteMessage, 'SQLSTATE')
+            || str_contains($remoteMessage, 'select * from')
+            || str_contains($remoteMessage, 'Connection:')
+        ) {
+            return null;
+        }
+
+        return trim($remoteMessage);
     }
 
     protected function extractRemoteMessage(Response $response): ?string

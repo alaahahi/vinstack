@@ -157,6 +157,53 @@ class ApibaraAuctionApiTest extends TestCase
             ->assertJsonPath('code', 'apibara_unauthorized');
     }
 
+    public function test_upstream_db_outage_is_retried_then_mapped_to_friendly_message(): void
+    {
+        Http::fake([
+            'apibara.tech/*' => Http::sequence()
+                ->push([
+                    'message' => 'SQLSTATE[HY000] [2002] No such file or directory (Connection: mariadb, SQL: select * from `vehicles`)',
+                ], 500)
+                ->push([
+                    'message' => 'SQLSTATE[HY000] [2002] No such file or directory (Connection: mariadb, SQL: select * from `vehicles`)',
+                ], 500),
+        ]);
+
+        Sanctum::actingAs($this->makeUser(UserRole::Admin));
+
+        $response = $this->getJson('/api/auctions?make=KIA&year_from=2025&year_to=2027')
+            ->assertStatus(502)
+            ->assertJsonPath('ok', false)
+            ->assertJsonPath('code', 'apibara_upstream_db');
+
+        $this->assertStringNotContainsString('SQLSTATE', (string) $response->json('message'));
+
+        Http::assertSentCount(2);
+    }
+
+    public function test_upstream_db_outage_recovers_on_retry(): void
+    {
+        Http::fake([
+            'apibara.tech/*' => Http::sequence()
+                ->push([
+                    'message' => 'SQLSTATE[HY000] [2002] No such file or directory',
+                ], 500)
+                ->push([
+                    'ok' => true,
+                    'data' => [['vin' => '3KPFT4DE8TE273956', 'make' => 'KIA']],
+                    'meta' => null,
+                ], 200),
+        ]);
+
+        Sanctum::actingAs($this->makeUser(UserRole::Admin));
+
+        $this->getJson('/api/auctions?make=KIA&year_from=2025&year_to=2027')
+            ->assertOk()
+            ->assertJsonPath('data.0.make', 'KIA');
+
+        Http::assertSentCount(2);
+    }
+
     public function test_show_and_history_routes(): void
     {
         Http::fake([

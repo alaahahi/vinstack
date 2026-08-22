@@ -32,6 +32,19 @@ class AuctionController extends Controller
         ));
     }
 
+    public function cacheStatus(SearchAuctionsRequest $request): JsonResponse
+    {
+        $filters = $request->filters();
+        unset($filters['force_refresh'], $filters['cache_only']);
+
+        return response()->json([
+            'ok' => true,
+            'data' => [
+                'available' => $this->auctions->hasSearchCache($filters),
+            ],
+        ]);
+    }
+
     public function test(Request $request): JsonResponse
     {
         $this->authorizeAuctionAccess($request);

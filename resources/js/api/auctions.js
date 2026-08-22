@@ -10,6 +10,13 @@ export function searchAuctions(params = {}) {
 /**
  * @param {Record<string, unknown>} params
  */
+export function getAuctionCacheStatus(params = {}) {
+    return api.get('/auctions/cache', { params });
+}
+
+/**
+ * @param {Record<string, unknown>} params
+ */
 export function getAuctionFilters(params = {}) {
     return api.get('/auctions/filters', { params });
 }

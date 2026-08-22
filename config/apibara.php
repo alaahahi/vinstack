@@ -25,7 +25,7 @@ return [
     */
     'cache_enabled' => filter_var(env('APIBARA_CACHE_ENABLED', true), FILTER_VALIDATE_BOOL),
 
-    'cache_ttl' => (int) env('APIBARA_CACHE_TTL', 3600), // 1 hour
+    'cache_ttl' => (int) env('APIBARA_CACHE_TTL', 86400), // 24 hours
 
     'filters_cache_ttl' => (int) env('APIBARA_FILTERS_CACHE_TTL', 86400), // 24 hours
 

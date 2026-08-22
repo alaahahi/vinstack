@@ -41,17 +41,41 @@
         <section v-if="isAdmin && usage" class="auction-usage admin-surface">
             <div class="auction-usage__stats">
                 <div>
-                    <span>{{ t('auctions.usage.billed') }}</span>
-                    <strong>{{ usage.billed }} / {{ usage.free_quota }}</strong>
+                    <span>{{ t('auctions.activeApi') }}</span>
+                    <strong>{{ usage.active_provider?.name || '—' }}</strong>
                 </div>
                 <div>
-                    <span>{{ t('auctions.usage.remaining') }}</span>
-                    <strong :class="{ 'text-warn': usage.remaining_estimate <= 20 }">{{ usage.remaining_estimate }}</strong>
+                    <span>{{ t('auctions.remainingQuota') }}</span>
+                    <strong :class="{ 'text-warn': usage.remaining_estimate <= 20 }">
+                        {{ usage.remaining_estimate }} / {{ usage.free_quota }}
+                    </strong>
+                </div>
+                <div>
+                    <span>{{ t('auctions.usage.billed') }}</span>
+                    <strong>{{ usage.billed }} / {{ usage.free_quota }}</strong>
                 </div>
                 <div>
                     <span>{{ t('auctions.usage.cached') }}</span>
                     <strong>{{ usage.cached }}</strong>
                 </div>
+                <div>
+                    <span>{{ t('auctions.usage.cacheTtl') }}</span>
+                    <strong>{{ cacheHours }} {{ t('auctions.usage.hours') }}</strong>
+                </div>
+            </div>
+            <p class="auction-usage__hint">{{ t('auctions.usage.hint') }}</p>
+            <div v-if="usage.by_user?.length" class="auction-usage__users">
+                <strong>{{ t('auctions.usage.byUser') }}</strong>
+                <ul>
+                    <li v-for="row in usage.by_user" :key="`${row.user_id}-${row.role}`">
+                        <span class="auction-usage__user-name">{{ row.name }}</span>
+                        <span class="pill" :class="row.role === 'admin' ? 'pill--owner' : 'pill--copart'">
+                            {{ roleLabel(row.role) }}
+                        </span>
+                        <span>{{ row.billed }} {{ t('auctions.usage.billedShort') }}</span>
+                        <span>{{ row.cached }} {{ t('auctions.usage.cachedShort') }}</span>
+                    </li>
+                </ul>
             </div>
         </section>
 
@@ -222,6 +246,15 @@
                     :loading="loading"
                     @click="search(false)"
                 />
+                <Button
+                    v-if="showLoadCachedButton"
+                    :label="t('auctions.loadCached')"
+                    icon="pi pi-database"
+                    outlined
+                    class="auction-filters__search"
+                    :loading="loadingCached"
+                    @click="loadCachedSearch"
+                />
             </aside>
 
             <section class="auction-results">
@@ -372,6 +405,16 @@
                                     <strong>{{ auctionDate(row) }}</strong>
                                 </div>
                             </div>
+                            <div class="vehicle-card__footer" @click.stop>
+                                <Button
+                                    :label="t('auctions.refreshItem')"
+                                    icon="pi pi-refresh"
+                                    size="small"
+                                    outlined
+                                    :loading="refreshingKey === cardKey(row)"
+                                    @click="refreshItem(row)"
+                                />
+                            </div>
                         </div>
                     </article>
                 </div>
@@ -402,6 +445,8 @@ import ProgressSpinner from 'primevue/progressspinner';
 import Select from 'primevue/select';
 import {
     addAuctionFavorite,
+    getAuction,
+    getAuctionCacheStatus,
     getAuctionFilters,
     getAuctionUsage,
     listAuctionFavoriteIds,
@@ -409,7 +454,7 @@ import {
     removeAuctionFavorite,
     searchAuctions,
 } from '../../api/auctions';
-import { useAuctionSearchStore } from '../../stores/auctionSearch';
+import { filtersKey, useAuctionSearchStore } from '../../stores/auctionSearch';
 import { useAuthStore } from '../../stores/auth';
 
 const { t } = useI18n();
@@ -455,6 +500,27 @@ const error = ref('');
 const searched = ref(false);
 const lastCached = ref(false);
 const usage = ref(null);
+const loadingCached = ref(false);
+const refreshingKey = ref('');
+const serverCacheAvailable = ref(false);
+const activeSearchKey = ref('');
+let cacheCheckTimer = null;
+
+const cacheHours = computed(() => (
+    Math.max(1, Math.round(Number(usage.value?.cache_ttl_seconds || 86400) / 3600))
+));
+
+const currentSearchKey = computed(() => filtersKey(filters));
+
+const showLoadCachedButton = computed(() => {
+    if (viewMode.value !== 'search') return false;
+
+    if (currentSearchKey.value === activeSearchKey.value && rows.value.length) {
+        return false;
+    }
+
+    return Boolean(auctionSearchStore.snapshotFor(filters) || serverCacheAvailable.value);
+});
 
 const favoritesBadgeCount = computed(() => (
     isAdmin.value ? favoritesCount.value : favoriteIds.value.length
@@ -573,6 +639,12 @@ watch(resultLayout, () => {
     }
 });
 
+watch(filters, () => {
+    serverCacheAvailable.value = Boolean(auctionSearchStore.snapshotFor(filters));
+    clearTimeout(cacheCheckTimer);
+    cacheCheckTimer = setTimeout(checkServerCache, 400);
+}, { deep: true });
+
 function onMakeChange() {
     filters.model = null;
 }
@@ -610,7 +682,7 @@ async function refreshCurrent() {
     if (viewMode.value === 'favorites') {
         await loadFavorites();
     } else {
-        await search(false);
+        await search(false, { forceRefresh: true });
     }
 }
 
@@ -679,11 +751,12 @@ function restoreSearchSnapshot() {
     lastCached.value = true;
     restoredFromCache.value = true;
     viewMode.value = 'search';
+    activeSearchKey.value = filtersKey(filters);
 
     return true;
 }
 
-async function search(loadMore = false) {
+async function search(loadMore = false, { forceRefresh = false, cacheOnly = false } = {}) {
     viewMode.value = 'search';
     error.value = '';
     searched.value = true;
@@ -699,11 +772,19 @@ async function search(loadMore = false) {
 
     try {
         const cursor = loadMore ? meta.value?.next_cursor : null;
-        const { data } = await searchAuctions(buildParams(cursor));
+        const params = {
+            ...buildParams(cursor),
+        };
+
+        if (forceRefresh) params.force_refresh = true;
+        if (cacheOnly) params.cache_only = true;
+
+        const { data } = await searchAuctions(params);
         const list = Array.isArray(data.data) ? data.data : [];
         rows.value = loadMore ? [...rows.value, ...list] : list;
         meta.value = data.meta ?? null;
         lastCached.value = Boolean(data.cached);
+        activeSearchKey.value = currentSearchKey.value;
         persistSearchSnapshot();
         await Promise.all([loadUsage(), loadFavoriteIds()]);
     } catch (e) {
@@ -716,6 +797,76 @@ async function search(loadMore = false) {
         loading.value = false;
         loadingMore.value = false;
     }
+}
+
+async function checkServerCache() {
+    try {
+        const { data } = await getAuctionCacheStatus(buildParams());
+        serverCacheAvailable.value = Boolean(data.data?.available);
+    } catch {
+        // keep local snapshot flag
+    }
+}
+
+async function loadCachedSearch() {
+    const local = auctionSearchStore.snapshotFor({ ...filters });
+
+    if (local?.rows?.length) {
+        rows.value = [...local.rows];
+        meta.value = local.meta ?? null;
+        searched.value = true;
+        lastCached.value = true;
+        restoredFromCache.value = true;
+        error.value = '';
+        viewMode.value = 'search';
+        activeSearchKey.value = currentSearchKey.value;
+        persistSearchSnapshot();
+
+        return;
+    }
+
+    loadingCached.value = true;
+
+    try {
+        await search(false, { cacheOnly: true });
+        restoredFromCache.value = true;
+    } finally {
+        loadingCached.value = false;
+    }
+}
+
+async function refreshItem(row) {
+    const id = detailIdentifier(row);
+
+    if (! id) return;
+
+    const key = cardKey(row);
+    refreshingKey.value = key;
+    error.value = '';
+
+    try {
+        const { data } = await getAuction(id, { force_refresh: true });
+        const updated = data.data;
+
+        if (! updated) return;
+
+        rows.value = rows.value.map((item) => (
+            cardKey(item) === key ? { ...item, ...updated } : item
+        ));
+        persistSearchSnapshot();
+        await loadUsage();
+    } catch (e) {
+        error.value = e.response?.data?.message || t('auctions.loadFailed');
+    } finally {
+        refreshingKey.value = '';
+    }
+}
+
+function roleLabel(role) {
+    if (role === 'admin') return t('auctions.usage.roleAdmin');
+    if (role === 'dealer') return t('auctions.usage.roleDealer');
+
+    return role || '—';
 }
 
 async function loadFavorites() {

@@ -9,6 +9,10 @@ use Illuminate\Support\Facades\DB;
 
 class ApibaraUsageService
 {
+    public function __construct(
+        protected AuctionApiProviderService $providers,
+    ) {}
+
     /**
      * @param  array<string, mixed>  $query
      */
@@ -22,9 +26,11 @@ class ApibaraUsageService
         bool $billed,
         ?int $elapsedMs = null,
         ?string $errorCode = null,
+        ?int $providerId = null,
     ): void {
         ApibaraRequestLog::query()->create([
             'user_id' => $user?->id,
+            'provider_id' => $providerId,
             'user_role' => $user?->role?->value,
             'user_name' => $user?->name,
             'endpoint' => $endpoint,
@@ -119,21 +125,25 @@ class ApibaraUsageService
             ])
             ->all();
 
-        $freeQuota = (int) config('apibara.monthly_free_quota', 100);
+        $active = $this->providers->activeSummary();
+        $providerQuota = (int) ($active['monthly_quota'] ?? config('apibara.monthly_free_quota', 100));
+        $providerRemaining = (int) ($active['remaining'] ?? max(0, $providerQuota - $billed));
 
         return [
             'month' => $from->format('Y-m'),
-            'free_quota' => $freeQuota,
+            'free_quota' => $providerQuota,
             'billed' => $billed,
             'cached' => $cached,
             'total' => $total,
             'failed_billed' => $failed,
-            'remaining_estimate' => max(0, $freeQuota - $billed),
+            'remaining_estimate' => $providerRemaining,
             'by_user' => $byUser,
             'by_endpoint' => $byEndpoint,
             'recent' => $recent,
-            'cache_ttl_seconds' => (int) config('apibara.cache_ttl', 3600),
+            'cache_ttl_seconds' => (int) config('apibara.cache_ttl', 86400),
             'max_per_page' => (int) config('apibara.max_per_page', 10),
+            'active_provider' => $active,
+            'providers' => $this->providers->listSummaries(),
         ];
     }
 }

@@ -39,7 +39,19 @@ class SearchAuctionsRequest extends FormRequest
             'cursor' => ['nullable', 'string', 'max:2000'],
             's' => ['nullable', 'string', 'max:200'],
             'force_refresh' => ['nullable', 'boolean'],
+            'cache_only' => ['nullable', 'boolean'],
         ];
+    }
+
+    protected function prepareForValidation(): void
+    {
+        foreach (['force_refresh', 'cache_only'] as $key) {
+            if ($this->exists($key)) {
+                $this->merge([
+                    $key => filter_var($this->input($key), FILTER_VALIDATE_BOOLEAN),
+                ]);
+            }
+        }
     }
 
     /**
