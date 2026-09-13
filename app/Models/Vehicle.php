@@ -17,6 +17,7 @@ class Vehicle extends Model
     protected $fillable = [
         'source',
         'vinstack_id',
+        'autoshipper_id',
         'vin',
         'make',
         'model',

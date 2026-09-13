@@ -431,6 +431,11 @@ const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.ve
     color: #b45309;
 }
 
+.source-pill--autoshipper {
+    background: #dcfce7;
+    color: #166534;
+}
+
 .vehicle-vin-line {
     margin-bottom: 0.15rem;
 }

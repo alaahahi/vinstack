@@ -220,12 +220,14 @@ const SOURCE_KEYS = {
     manual: 'vehicles.source.manual',
     vinstack: 'vehicles.source.vinstack',
     nujoom_al_jazeera: 'vehicles.source.nujoom',
+    autoshipper: 'vehicles.source.autoshipper',
 };
 
 const SOURCE_FALLBACK = {
     manual: 'Manual',
     vinstack: 'Imported',
     nujoom_al_jazeera: 'Nujoom Al Jazeera',
+    autoshipper: 'AutoShipper',
 };
 
 export function vehicleSourceLabel(vehicle, t = null) {
@@ -247,6 +249,7 @@ const SOURCE_PILL_CLASSES = {
     manual: 'source-pill--manual',
     vinstack: 'source-pill--vinstack',
     nujoom_al_jazeera: 'source-pill--nujoom',
+    autoshipper: 'source-pill--autoshipper',
 };
 
 export function vehicleSourcePillClass(vehicle) {

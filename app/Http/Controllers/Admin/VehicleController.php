@@ -91,6 +91,7 @@ class VehicleController extends Controller
                 VehicleSource::Vinstack->value,
                 VehicleSource::Manual->value,
                 VehicleSource::NujoomAlJazeera->value,
+                VehicleSource::AutoShipper->value,
             ];
 
             if (in_array($source, $allowedSources, true)) {

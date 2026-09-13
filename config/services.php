@@ -42,6 +42,10 @@ return [
         'gallery_token' => env('VINSTACK_GALLERY_API_TOKEN'),
     ],
 
+    'autoshipper' => [
+        'base_url' => env('AUTOSHIPPER_API_URL', 'https://autoshipper.io/api'),
+    ],
+
     'cloudinary' => [
         'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
         'api_key' => env('CLOUDINARY_API_KEY'),

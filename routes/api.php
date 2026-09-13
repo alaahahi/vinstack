@@ -20,6 +20,7 @@ use App\Http\Controllers\Admin\VehicleUploadedImageController;
 use App\Http\Controllers\Admin\VehicleVinstackImageController;
 use App\Http\Controllers\Admin\VinstackBrowseController;
 use App\Http\Controllers\Admin\VinstackSettingsController;
+use App\Http\Controllers\Admin\AutoshipperSettingsController;
 use App\Http\Controllers\Admin\AuctionApiProviderController;
 use App\Http\Controllers\Api\AuctionController;
 use App\Http\Controllers\Api\AuctionFavoriteController;
@@ -152,6 +153,10 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::post('/vinstack/settings/gallery-test', [VinstackSettingsController::class, 'testGallery']);
         Route::post('/vinstack/settings/cloudinary-test', [VinstackSettingsController::class, 'testCloudinary']);
         Route::post('/vinstack/sync', [VinstackSettingsController::class, 'sync']);
+
+        Route::get('/autoshipper/settings', [AutoshipperSettingsController::class, 'show']);
+        Route::put('/autoshipper/settings', [AutoshipperSettingsController::class, 'update']);
+        Route::post('/autoshipper/sync', [AutoshipperSettingsController::class, 'sync']);
 
         Route::get('/containers', [AdminContainerController::class, 'index']);
         Route::get('/containers/cloudinary-status', [AdminContainerImageController::class, 'cloudinaryStatus']);

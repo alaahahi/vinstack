@@ -354,6 +354,91 @@
                 </div>
             </div>
 
+            <div class="settings-group settings-group--autoshipper settings-card--wide">
+                <div class="settings-group__cards">
+                    <section class="admin-surface settings-card">
+                        <header class="settings-card__head">
+                            <i class="pi pi-truck" />
+                            <div>
+                                <h2 class="vs-card-title">{{ t('settings.sections.autoshipper') }}</h2>
+                                <p class="vs-card-subtitle">{{ t('settings.sections.autoshipperSub') }}</p>
+                            </div>
+                        </header>
+
+                        <div class="settings-card__body">
+                            <div class="field">
+                                <label for="autoshipper-base" class="vs-form-label">Base URL</label>
+                                <InputText
+                                    id="autoshipper-base"
+                                    v-model="autoshipperForm.api_base_url"
+                                    class="w-full"
+                                    placeholder="https://autoshipper.io/api"
+                                    dir="ltr"
+                                />
+                            </div>
+                            <div class="field">
+                                <label for="autoshipper-token" class="vs-form-label">{{ t('settings.autoshipperTokenOptional') }}</label>
+                                <Password
+                                    id="autoshipper-token"
+                                    v-model="autoshipperForm.api_token"
+                                    :placeholder="autoshipperSettings.has_token ? t('settings.tokenKeepPlaceholder') : t('settings.enterToken')"
+                                    toggle-mask
+                                    input-class="w-full"
+                                    class="w-full"
+                                />
+                            </div>
+                            <div class="field field--row">
+                                <Checkbox v-model="autoshipperForm.sync_enabled" binary input-id="autoshipper-sync" />
+                                <label for="autoshipper-sync" class="vs-form-label">{{ t('settings.autoshipperAutoSync') }}</label>
+                            </div>
+                            <div v-if="autoshipperSettings.last_sync_at" class="vs-sync-status">
+                                <i class="pi pi-clock" />
+                                <span>
+                                    {{ t('settings.lastSync') }}
+                                    <strong>
+                                        <span class="sync-datetime" dir="ltr">{{ formatDateTime(autoshipperSettings.last_sync_at) }}</span>
+                                    </strong>
+                                </span>
+                            </div>
+                            <div v-else class="vs-sync-status vs-sync-status--muted">
+                                <i class="pi pi-info-circle" />
+                                <span>{{ t('settings.noSyncYet') }}</span>
+                            </div>
+                            <div v-if="autoshipperSettings.last_auto_sync_at" class="vs-sync-status">
+                                <i class="pi pi-calendar-clock" />
+                                <span>
+                                    {{ t('settings.lastAutoSync') }}
+                                    <strong>
+                                        <span class="sync-datetime" dir="ltr">{{ formatDateTime(autoshipperSettings.last_auto_sync_at) }}</span>
+                                    </strong>
+                                </span>
+                            </div>
+                            <p class="sync-cron-help sync-cron-help--muted" dir="ltr">
+                                <code>0 * * * * php /path/to/artisan autoshipper:sync</code>
+                            </p>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="settings-group__actions">
+                    <Button
+                        :label="t('settings.autoshipperSyncNow')"
+                        icon="pi pi-sync"
+                        severity="secondary"
+                        outlined
+                        :loading="autoshipperSyncing"
+                        @click="syncAutoshipperNow"
+                    />
+                    <Button
+                        :label="t('settings.saveSettings')"
+                        icon="pi pi-check"
+                        class="btn-add"
+                        :loading="autoshipperSaving"
+                        @click="saveAutoshipper"
+                    />
+                </div>
+            </div>
+
             <section class="admin-surface settings-card settings-card--wide">
                 <header class="settings-card__head">
                     <i class="pi pi-list" />
@@ -935,11 +1020,14 @@ const { t } = useI18n();
 const toast = useToast();
 const confirm = useConfirm();
 const settings = ref({ has_token: false, last_sync_at: null, last_auto_sync_at: null });
+const autoshipperSettings = ref({ has_token: false, last_sync_at: null, last_auto_sync_at: null });
 const saving = ref(false);
 const testingGallery = ref(false);
 const testingCloudinary = ref(false);
 const savingOptions = ref(false);
 const syncing = ref(false);
+const autoshipperSyncing = ref(false);
+const autoshipperSaving = ref(false);
 const restorableVisible = ref(false);
 const restorableItems = ref([]);
 const restoringId = ref(null);
@@ -1042,10 +1130,17 @@ const form = reactive({
     image_transfer_batch_size: 10,
 });
 
+const autoshipperForm = reactive({
+    api_base_url: '',
+    api_token: '',
+    sync_enabled: true,
+});
+
 async function load() {
-    const [settingsRes, optionsRes] = await Promise.all([
+    const [settingsRes, optionsRes, autoshipperRes] = await Promise.all([
         api.get('/admin/vinstack/settings'),
         api.get('/admin/settings/vehicle-options'),
+        api.get('/admin/autoshipper/settings'),
     ]);
     settings.value = settingsRes.data.data;
     form.api_base_url = settingsRes.data.data.api_base_url || '';
@@ -1063,6 +1158,12 @@ async function load() {
     form.cloudinary_api_key = '';
     form.cloudinary_api_secret = '';
     vehicleOptions.value = optionsRes.data.data;
+
+    autoshipperSettings.value = autoshipperRes.data.data;
+    autoshipperForm.api_base_url = autoshipperRes.data.data.api_base_url || 'https://autoshipper.io/api';
+    autoshipperForm.sync_enabled = autoshipperRes.data.data.sync_enabled ?? true;
+    autoshipperForm.api_token = '';
+
     await Promise.all([loadAuctionProviders(), loadAuctionUsage()]);
 }
 
@@ -1330,6 +1431,58 @@ async function syncNow() {
         });
     } finally {
         syncing.value = false;
+    }
+}
+
+async function saveAutoshipper() {
+    autoshipperSaving.value = true;
+
+    try {
+        const payload = {
+            api_base_url: autoshipperForm.api_base_url,
+            sync_enabled: autoshipperForm.sync_enabled,
+        };
+
+        if (autoshipperForm.api_token) {
+            payload.api_token = autoshipperForm.api_token;
+        }
+
+        await api.put('/admin/autoshipper/settings', payload);
+        toast.add({ severity: 'success', summary: t('settings.saved'), life: 3000 });
+        await load();
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || 'فشل الحفظ',
+            life: 4000,
+        });
+    } finally {
+        autoshipperSaving.value = false;
+    }
+}
+
+async function syncAutoshipperNow() {
+    autoshipperSyncing.value = true;
+
+    try {
+        const { data } = await api.post('/admin/autoshipper/sync');
+        toast.add({
+            severity: 'success',
+            summary: data.message,
+            detail: `AutoShipper: ${data.total} · جديد: ${data.created} · محدّث: ${data.updated} · متخطى: ${data.skipped ?? 0}`,
+            life: 5000,
+        });
+        await load();
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || 'فشلت مزامنة AutoShipper',
+            life: 4000,
+        });
+    } finally {
+        autoshipperSyncing.value = false;
     }
 }
 

@@ -234,6 +234,7 @@ const sourceOptions = computed(() => [
     { label: t('vehicles.source.vinstack'), value: 'vinstack' },
     { label: t('vehicles.source.manual'), value: 'manual' },
     { label: t('vehicles.source.nujoom'), value: 'nujoom_al_jazeera' },
+    { label: t('vehicles.source.autoshipper'), value: 'autoshipper' },
 ]);
 
 const assigning = ref(false);
