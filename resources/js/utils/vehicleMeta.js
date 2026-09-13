@@ -155,6 +155,14 @@ export function vehiclePurchaseDate(vehicle) {
     return formatVehicleDate(vehicle?.raw_data?.purchase_date);
 }
 
+export function vehicleLoadingDate(vehicle) {
+    return formatVehicleDate(
+        vehicle?.raw_data?.loading_date
+            || vehicle?.raw_data?.date_pick
+            || vehicle?.raw_data?.arrived_terminal_date,
+    );
+}
+
 function parseVehicleMoney(value) {
     if (value === null || value === undefined || value === '') {
         return null;
@@ -213,7 +221,11 @@ export function vehicleEtaDate(vehicle) {
 }
 
 export function vehicleArrivedDate(vehicle) {
-    return formatVehicleDate(vehicle?.raw_data?.arrived_terminal_date);
+    return formatVehicleDate(
+        vehicle?.raw_data?.arrived_terminal_date
+            || vehicle?.raw_data?.loading_date
+            || vehicle?.raw_data?.date_pick,
+    );
 }
 
 const SOURCE_KEYS = {

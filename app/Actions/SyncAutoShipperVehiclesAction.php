@@ -223,27 +223,73 @@ class SyncAutoShipperVehiclesAction
             $vin = strtoupper($vin);
         }
 
-        $make = $this->stringFrom($item, ['make', 'brand', 'manufacturer']);
+        $make = $this->stringFrom($item, ['manufacturer', 'make', 'brand']);
         $model = $this->stringFrom($item, ['model', 'carModel', 'vehicleModel']);
         $year = $this->intFrom($item, ['year', 'modelYear', 'model_year']);
-        $price = $this->floatFrom($item, ['price', 'value', 'purchasePrice', 'purchase_price', 'auctionPrice']);
+        $price = $this->floatFrom($item, [
+            'price',
+            'value',
+            'purchasePrice',
+            'purchase_price',
+            'auctionPrice',
+            'estimated_retail_value',
+        ]);
+
+        $purchaseDate = VehicleEta::normalize(
+            Arr::get($item, 'invoice_date')
+                ?? Arr::get($item, 'purchase_date')
+                ?? Arr::get($item, 'purchaseDate')
+                ?? Arr::get($item, 'purchased_at')
+        );
+
+        $loadingDate = VehicleEta::normalize(
+            Arr::get($item, 'picked_up_date')
+                ?? Arr::get($item, 'pickedUpDate')
+                ?? Arr::get($item, 'loading_date')
+                ?? Arr::get($item, 'loaded_date')
+                ?? Arr::get($item, 'date_pick')
+        );
+
         $eta = VehicleEta::normalize(
-            Arr::get($item, 'eta')
-                ?? Arr::get($item, 'eta_date')
+            Arr::get($item, 'eta_date')
+                ?? Arr::get($item, 'eta')
                 ?? Arr::get($item, 'estimated_arrival')
                 ?? Arr::get($item, 'ETA')
         );
 
-        $status = $this->stringFrom($item, [
-            'status',
-            'tracking_status',
-            'trackingStatus',
-            'tracking',
-            'vehicleStatus',
-            'currentStatus',
-        ]);
+        $deliveredDate = VehicleEta::normalize(
+            Arr::get($item, 'delivered_date')
+                ?? Arr::get($item, 'deliveredDate')
+                ?? Arr::get($item, 'delivery_date')
+        );
+
+        $status = $this->resolveLogisticsStatus($item, $purchaseDate, $loadingDate, $eta, $deliveredDate);
+
+        $destination = $this->stringFrom($item, [
+            'destination_port',
+            'destination',
+            'pod',
+            'shippingDestination',
+            'shipping_destination',
+        ]) ?? $this->locationName(Arr::get($item, 'destination_location'));
+
+        $loadingPoint = $this->stringFrom($item, [
+            'loading_port',
+            'loading_point',
+            'loadingPoint',
+            'pol',
+            'pointOfLoading',
+        ]) ?? $this->locationName(Arr::get($item, 'loading_location'));
+
+        $auctionLocation = $this->stringFrom($item, ['auction_location', 'auctionLocation'])
+            ?? $this->locationName(Arr::get($item, 'pickup_location'));
+
+        $keys = $this->normalizeKeys(Arr::get($item, 'has_keys') ?? Arr::get($item, 'keys'));
 
         $imagePayload = $this->buildImagePayload($item, $media);
+        $thumbnailUrl = $imagePayload['thumbnail_url'] ?? null;
+        // VehicleImageStages drops thumbnail_url matches from galleries — keep stages complete.
+        unset($imagePayload['thumbnail_url']);
         $imagesByStage = VehicleImageStages::resolve($imagePayload);
         $images = [];
 
@@ -255,6 +301,10 @@ class SyncAutoShipperVehiclesAction
             }
         }
 
+        if (is_string($thumbnailUrl) && $thumbnailUrl !== '' && ! in_array($thumbnailUrl, $images, true)) {
+            array_unshift($images, $thumbnailUrl);
+        }
+
         $rawData = [
             ...$item,
             'source' => VehicleSource::AutoShipper->value,
@@ -263,20 +313,29 @@ class SyncAutoShipperVehiclesAction
             'model' => $model,
             'year' => $year,
             'price' => $price,
+            'color' => $this->stringFrom($item, ['color']),
+            'fuel_type' => $this->stringFrom($item, ['fuel_type', 'fuelType', 'fuel']),
+            'vehicle_type' => $this->stringFrom($item, ['body_type', 'bodyType', 'vehicle_type', 'type']),
             'eta' => $eta,
             'status' => $status,
-            'lot' => $this->stringFrom($item, ['lot', 'lotNumber', 'lot_number']),
-            'auction' => $this->stringFrom($item, ['auction', 'auctionName', 'auction_name']),
-            'buyer' => $this->stringFrom($item, ['buyer', 'buyerNumber', 'buyer_number']),
-            'destination' => $this->stringFrom($item, ['destination', 'pod', 'shippingDestination', 'shipping_destination']),
-            'loading_point' => $this->stringFrom($item, ['loading_point', 'loadingPoint', 'pol', 'pointOfLoading']),
-            'booking_number' => $this->stringFrom($item, ['booking_number', 'bookingNumber', 'booking']),
-            'container_number' => $this->stringFrom($item, ['container_number', 'containerNumber', 'container']),
-            'purchase_date' => VehicleEta::normalize(
-                Arr::get($item, 'purchase_date')
-                    ?? Arr::get($item, 'purchaseDate')
-                    ?? Arr::get($item, 'purchased_at')
-            ),
+            'lot' => $this->stringFrom($item, ['lot_number', 'lotNumber', 'lot']),
+            'auction' => $this->stringFrom($item, ['auction_name', 'auctionName', 'auction']),
+            'auction_location' => $auctionLocation,
+            'city' => $auctionLocation,
+            'buyer' => $this->stringFrom($item, ['buyer', 'buyerNumber', 'buyer_number', 'customer_id']),
+            'destination' => $destination,
+            'loading_point' => $loadingPoint,
+            'booking_number' => $this->stringFrom($item, ['booking_id', 'booking_number', 'bookingNumber', 'booking']),
+            'container_number' => $this->stringFrom($item, ['container_id', 'container_number', 'containerNumber', 'container']),
+            'sea_line' => $this->stringFrom($item, ['sea_line', 'seaLine', 'shipping_line']),
+            'purchase_date' => $purchaseDate,
+            'loading_date' => $loadingDate,
+            'date_pick' => $loadingDate,
+            'arrived_terminal_date' => $loadingDate,
+            'delivered_date' => $deliveredDate,
+            'keys' => $keys,
+            'notes' => $this->stringFrom($item, ['notes']),
+            'thumbnail_url' => $thumbnailUrl,
             'media' => $media,
             'vehicle_charges' => $charges,
             'images' => $images,
@@ -286,7 +345,7 @@ class SyncAutoShipperVehiclesAction
 
         $rawData = array_filter(
             $rawData,
-            fn ($value) => $value !== null && $value !== '',
+            static fn ($value) => $value !== null && $value !== '',
         );
 
         return [
@@ -316,6 +375,18 @@ class SyncAutoShipperVehiclesAction
         ];
 
         $thumbnail = $this->stringFrom($item, ['thumbnail_url', 'thumbnailUrl', 'thumb', 'photo', 'image']);
+
+        $thumbnailMediaId = $this->stringFrom($item, ['thumbnail_media_id', 'thumbnail_image_id', 'thumbnailMediaId']);
+        if ($thumbnail === null && $thumbnailMediaId !== null) {
+            foreach ($media as $row) {
+                $mediaId = $this->stringFrom($row, ['_id', 'id']);
+                if ($mediaId === $thumbnailMediaId) {
+                    $thumbnail = $this->extractMediaUrl($row)
+                        ?? $this->stringFrom($row, ['thumbnail_url', 'thumbnailUrl']);
+                    break;
+                }
+            }
+        }
 
         foreach ($media as $row) {
             $url = $this->extractMediaUrl($row);
@@ -347,6 +418,13 @@ class SyncAutoShipperVehiclesAction
             }
         }
 
+        if ($thumbnail !== null && ! in_array($thumbnail, $images, true)) {
+            array_unshift($images, $thumbnail);
+            if ($byStage['terminal'] === []) {
+                $byStage['terminal'][] = $thumbnail;
+            }
+        }
+
         return [
             'thumbnail_url' => $thumbnail,
             'images' => array_values(array_unique($images)),
@@ -361,7 +439,21 @@ class SyncAutoShipperVehiclesAction
      */
     protected function extractMediaUrl(array $row): ?string
     {
-        foreach (['url', 'src', 'path', 'fileUrl', 'file_url', 'imageUrl', 'image_url', 'fullUrl', 'full_url', 'cdnUrl', 'cdn_url'] as $key) {
+        foreach ([
+            'url',
+            'src',
+            'path',
+            'fileUrl',
+            'file_url',
+            'imageUrl',
+            'image_url',
+            'fullUrl',
+            'full_url',
+            'cdnUrl',
+            'cdn_url',
+            'thumbnail_url',
+            'thumbnailUrl',
+        ] as $key) {
             $value = Arr::get($row, $key);
             if (is_string($value) && $this->isHttpUrl($value)) {
                 return $value;
@@ -400,6 +492,7 @@ class SyncAutoShipperVehiclesAction
             'category',
             'mediaType',
             'media_type',
+            'document_type',
             'tag',
         ]);
 
@@ -416,7 +509,12 @@ class SyncAutoShipperVehiclesAction
             ) {
                 return 'destination';
             }
-            if (str_contains($normalized, 'terminal') || str_contains($normalized, 'yard') || str_contains($normalized, 'auction')) {
+            if (
+                str_contains($normalized, 'terminal')
+                || str_contains($normalized, 'yard')
+                || str_contains($normalized, 'auction')
+                || str_contains($normalized, 'loading')
+            ) {
                 return 'terminal';
             }
         }
@@ -435,9 +533,87 @@ class SyncAutoShipperVehiclesAction
     /**
      * @param  array<string, mixed>  $item
      */
+    protected function resolveLogisticsStatus(
+        array $item,
+        ?string $purchaseDate,
+        ?string $loadingDate,
+        ?string $eta,
+        ?string $deliveredDate,
+    ): ?string {
+        $explicit = $this->stringFrom($item, [
+            'status',
+            'tracking_status',
+            'trackingStatus',
+            'tracking',
+            'vehicleStatus',
+            'currentStatus',
+        ]);
+
+        if ($explicit !== null) {
+            return $explicit;
+        }
+
+        $snapshot = Arr::get($item, 'tracking_snapshot');
+        if (is_array($snapshot)) {
+            $fromSnapshot = $this->stringFrom($snapshot, ['status', 'state', 'label', 'name']);
+            if ($fromSnapshot !== null) {
+                return $fromSnapshot;
+            }
+        }
+
+        if ($deliveredDate !== null) {
+            return 'Delivered';
+        }
+
+        if ($eta !== null && $loadingDate !== null) {
+            return 'On The Way';
+        }
+
+        if ($loadingDate !== null) {
+            return 'Picked Up';
+        }
+
+        if ($purchaseDate !== null) {
+            return 'Purchased';
+        }
+
+        return null;
+    }
+
+    protected function locationName(mixed $value): ?string
+    {
+        if (! is_array($value)) {
+            return null;
+        }
+
+        return $this->stringFrom($value, ['name', 'city', 'port', 'label', 'title']);
+    }
+
+    protected function normalizeKeys(mixed $value): ?string
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        if (is_bool($value)) {
+            return $value ? 'Yes' : 'No';
+        }
+
+        if (is_string($value) || is_int($value) || is_float($value)) {
+            $trimmed = trim((string) $value);
+
+            return $trimmed !== '' ? $trimmed : null;
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $item
+     */
     protected function resolveExternalId(array $item): string
     {
-        foreach (['id', '_id', 'vehicleId', 'vehicle_id', 'autoshipper_id', 'externalId', 'external_id'] as $key) {
+        foreach (['_id', 'id', 'vehicleId', 'vehicle_id', 'autoshipper_id', 'externalId', 'external_id'] as $key) {
             $value = Arr::get($item, $key);
             if ($value !== null && $value !== '' && (is_string($value) || is_int($value) || is_float($value))) {
                 return trim((string) $value);

@@ -110,6 +110,7 @@ export default {
         purchase: 'Purchase',
         price: 'Price',
         eta: 'ETA',
+        loadingDate: 'Loading',
         arrivedTerminal: 'Arrived terminal',
         trackContainer: 'Track container',
         localUploads: 'Locally uploaded images for dealer',

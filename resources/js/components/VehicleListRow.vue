@@ -109,8 +109,8 @@
                 <span class="date-value">{{ purchaseDate || '—' }}</span>
             </div>
             <div class="date-row">
-                <span class="date-label">{{ t('vehicles.arrivedTerminal') }}</span>
-                <span class="date-value">{{ arrivedDate || '—' }}</span>
+                <span class="date-label">{{ t('vehicles.loadingDate') }}</span>
+                <span class="date-value">{{ loadingDate || '—' }}</span>
             </div>
             <div class="date-row">
                 <span class="date-label">{{ t('vehicles.eta') }}</span>
@@ -222,6 +222,7 @@ import {
     vehicleFuelClass,
     vehicleFuelType,
     vehicleKeysInfo,
+    vehicleLoadingDate,
     vehicleLot,
     vehicleOrigin,
     vehicleListPrice,
@@ -298,6 +299,7 @@ const booking = computed(() => vehicleBookingRef(props.vehicle));
 const keysInfo = computed(() => vehicleKeysInfo(props.vehicle, t));
 const titleStatus = computed(() => vehicleTitleStatus(props.vehicle, t));
 const purchaseDate = computed(() => vehiclePurchaseDate(props.vehicle));
+const loadingDate = computed(() => vehicleLoadingDate(props.vehicle));
 const etaDate = computed(() => vehicleEtaDate(props.vehicle));
 const arrivedDate = computed(() => vehicleArrivedDate(props.vehicle));
 const priceDisplay = computed(() => vehicleListPrice(props.vehicle, props.mode));

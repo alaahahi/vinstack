@@ -110,6 +110,7 @@ export default {
         purchase: 'الشراء',
         price: 'السعر',
         eta: 'ETA',
+        loadingDate: 'التحميل',
         arrivedTerminal: 'وصول الميناء',
         trackContainer: 'تتبع الحاوية',
         localUploads: 'يوجد صور مرفوعة محلياً للتاجر',

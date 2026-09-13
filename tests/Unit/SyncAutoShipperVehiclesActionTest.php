@@ -29,38 +29,47 @@ class SyncAutoShipperVehiclesActionTest extends TestCase
             'https://autoshipper.io/api/sync/vehicles' => Http::response([
                 'data' => [
                     [
-                        'id' => 'AS-1001',
-                        'vin' => '1HGCM82633A123456',
-                        'make' => 'Honda',
-                        'model' => 'Accord',
-                        'year' => 2021,
-                        'price' => 8500,
-                        'eta' => '2026-09-20',
-                        'status' => 'Loaded',
-                        'containerNumber' => 'MSCU1234567',
-                        'bookingNumber' => 'BK-99',
-                        'destination' => 'Iraq',
+                        '_id' => '6a7898907fdd7172c1babab1',
+                        'vin' => '3N1AB8CV7SY216850',
+                        'manufacturer' => 'NISSAN',
+                        'model' => 'SENTRA',
+                        'year' => 2025,
+                        'invoice_date' => '2026-08-07T00:00:00.000Z',
+                        'picked_up_date' => '2026-08-18T00:00:00.000Z',
+                        'eta_date' => '2026-09-17T00:00:00.000Z',
+                        'delivered_date' => null,
+                        'container_id' => 'TRKU4491134',
+                        'booking_id' => '10258969',
+                        'loading_port' => 'NEWARK, NJ',
+                        'destination_port' => 'MERSIN, TUR',
+                        'auction_name' => 'Copart',
+                        'lot_number' => '61012166',
+                        'has_keys' => true,
+                        'thumbnail_media_id' => 'media-1',
                     ],
                 ],
             ]),
             'https://autoshipper.io/api/sync/media' => Http::response([
                 'data' => [
                     [
-                        'vehicleId' => 'AS-1001',
-                        'url' => 'https://cdn.example.com/terminal/car1.jpg',
-                        'type' => 'terminal',
+                        '_id' => 'media-1',
+                        'vehicle_id' => '6a7898907fdd7172c1babab1',
+                        'url' => 'https://autoshippercdn.com/media/auction-1.jpg',
+                        'thumbnail_url' => 'https://autoshippercdn.com/media/auction-1_thumb.webp',
+                        'category' => 'auction',
+                        'media_type' => 'image',
                     ],
                     [
-                        'vehicle_id' => 'AS-1001',
-                        'url' => 'https://cdn.example.com/pickup/car1.jpg',
-                        'stage' => 'pickup',
+                        'vehicle_id' => '6a7898907fdd7172c1babab1',
+                        'url' => 'https://autoshippercdn.com/media/pickup-1.jpg',
+                        'category' => 'pickup',
                     ],
                 ],
             ]),
             'https://autoshipper.io/api/sync/vehicleCharges' => Http::response([
                 'data' => [
                     [
-                        'vehicleId' => 'AS-1001',
+                        'vehicle_id' => '6a7898907fdd7172c1babab1',
                         'name' => 'Ocean Freight',
                         'amount' => 1200,
                     ],
@@ -74,19 +83,28 @@ class SyncAutoShipperVehiclesActionTest extends TestCase
         $this->assertSame(0, $result['updated']);
         $this->assertSame(1, $result['total']);
 
-        $vehicle = Vehicle::query()->where('autoshipper_id', 'AS-1001')->first();
+        $vehicle = Vehicle::query()->where('autoshipper_id', '6a7898907fdd7172c1babab1')->first();
         $this->assertNotNull($vehicle);
         $this->assertSame(VehicleSource::AutoShipper, $vehicle->source);
-        $this->assertSame('1HGCM82633A123456', $vehicle->vin);
-        $this->assertSame('Honda', $vehicle->make);
-        $this->assertSame('Accord', $vehicle->model);
-        $this->assertSame(2021, $vehicle->year);
-        $this->assertSame('2026-09-20', $vehicle->eta);
-        $this->assertContains('https://cdn.example.com/terminal/car1.jpg', $vehicle->images);
-        $this->assertContains('https://cdn.example.com/pickup/car1.jpg', $vehicle->images);
-        $this->assertSame('https://cdn.example.com/terminal/car1.jpg', $vehicle->raw_data['images_by_stage']['terminal'][0] ?? null);
-        $this->assertSame('https://cdn.example.com/pickup/car1.jpg', $vehicle->raw_data['images_by_stage']['pickup'][0] ?? null);
-        $this->assertSame('Loaded', $vehicle->raw_data['status']);
+        $this->assertSame('3N1AB8CV7SY216850', $vehicle->vin);
+        $this->assertSame('NISSAN', $vehicle->make);
+        $this->assertSame('SENTRA', $vehicle->model);
+        $this->assertSame(2025, $vehicle->year);
+        $this->assertSame('2026-09-17', $vehicle->eta);
+        $this->assertSame('2026-08-07', $vehicle->raw_data['purchase_date']);
+        $this->assertSame('2026-08-18', $vehicle->raw_data['loading_date']);
+        $this->assertSame('2026-08-18', $vehicle->raw_data['arrived_terminal_date']);
+        $this->assertSame('MERSIN, TUR', $vehicle->raw_data['destination']);
+        $this->assertSame('NEWARK, NJ', $vehicle->raw_data['loading_point']);
+        $this->assertSame('TRKU4491134', $vehicle->raw_data['container_number']);
+        $this->assertSame('10258969', $vehicle->raw_data['booking_number']);
+        $this->assertSame('Copart', $vehicle->raw_data['auction']);
+        $this->assertSame('61012166', $vehicle->raw_data['lot']);
+        $this->assertSame('Yes', $vehicle->raw_data['keys']);
+        $this->assertSame('On The Way', $vehicle->raw_data['status']);
+        $this->assertContains('https://autoshippercdn.com/media/auction-1.jpg', $vehicle->images);
+        $this->assertContains('https://autoshippercdn.com/media/pickup-1.jpg', $vehicle->images);
+        $this->assertSame('https://autoshippercdn.com/media/auction-1.jpg', $vehicle->raw_data['thumbnail_url']);
         $this->assertCount(1, $vehicle->raw_data['vehicle_charges']);
         $this->assertSame('Ocean Freight', $vehicle->raw_data['vehicle_charges'][0]['name']);
     }

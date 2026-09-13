@@ -110,6 +110,7 @@ export default {
         purchase: 'کڕین',
         price: 'نرخ',
         eta: 'ETA',
+        loadingDate: 'باركردن',
         arrivedTerminal: 'گەیشتن بە تێرمیناڵ',
         trackContainer: 'بەدواداچوونی کۆنتەینەر',
         localUploads: 'وێنەی بارکراوی ناوخۆیی بۆ بازرگان هەیە',
