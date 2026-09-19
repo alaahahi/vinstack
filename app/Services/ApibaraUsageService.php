@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\ApibaraRequestLog;
 use App\Models\User;
+use App\Support\SqliteBusy;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 
@@ -28,20 +29,33 @@ class ApibaraUsageService
         ?string $errorCode = null,
         ?int $providerId = null,
     ): void {
-        ApibaraRequestLog::query()->create([
-            'user_id' => $user?->id,
-            'provider_id' => $providerId,
-            'user_role' => $user?->role?->value,
-            'user_name' => $user?->name,
-            'endpoint' => $endpoint,
-            'method' => $method,
-            'query' => $query,
-            'status' => $status,
-            'cached' => $cached,
-            'billed' => $billed,
-            'elapsed_ms' => $elapsedMs,
-            'error_code' => $errorCode,
-        ]);
+        SqliteBusy::soft(function () use (
+            $user,
+            $endpoint,
+            $method,
+            $query,
+            $status,
+            $cached,
+            $billed,
+            $elapsedMs,
+            $errorCode,
+            $providerId,
+        ): void {
+            ApibaraRequestLog::query()->create([
+                'user_id' => $user?->id,
+                'provider_id' => $providerId,
+                'user_role' => $user?->role?->value,
+                'user_name' => $user?->name,
+                'endpoint' => $endpoint,
+                'method' => $method,
+                'query' => $query,
+                'status' => $status,
+                'cached' => $cached,
+                'billed' => $billed,
+                'elapsed_ms' => $elapsedMs,
+                'error_code' => $errorCode,
+            ]);
+        });
     }
 
     /**

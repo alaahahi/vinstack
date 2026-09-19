@@ -14,6 +14,7 @@ use App\Support\VehicleEta;
 use App\Support\VehicleImageStages;
 use App\Support\VehicleRawDataLocations;
 use Illuminate\Support\Arr;
+use Illuminate\Support\Facades\Log;
 
 class SyncVehiclesAction
 {
@@ -24,7 +25,7 @@ class SyncVehiclesAction
     ) {}
 
     /**
-     * @return array{created: int, updated: int, total: int, restorable: list<array{id: int, vin: string|null}>}
+     * @return array{created: int, updated: int, skipped: int, total: int, restorable: list<array{id: int, vin: string|null}>}
      */
     public function execute(): array
     {
@@ -32,6 +33,7 @@ class SyncVehiclesAction
 
         $created = 0;
         $updated = 0;
+        $skipped = 0;
         $restorableById = [];
 
         foreach ($items as $item) {
@@ -47,6 +49,7 @@ class SyncVehiclesAction
 
             $payload = $this->mapAuto($item);
             $vin = Arr::get($item, 'vin');
+            $normalizedVin = is_string($vin) && $vin !== '' ? strtoupper($vin) : null;
 
             $vehicle = Vehicle::withTrashed()->where('vinstack_id', $vinstackId)->first();
 
@@ -84,11 +87,24 @@ class SyncVehiclesAction
                 continue;
             }
 
-            if (is_string($vin) && $vin !== '') {
-                $trashedByVin = Vehicle::onlyTrashed()->where('vin', strtoupper($vin))->first();
+            if ($normalizedVin !== null) {
+                $existingByVin = Vehicle::withTrashed()
+                    ->where('vin', $normalizedVin)
+                    ->first();
 
-                if ($trashedByVin) {
-                    $this->trackRestorable($restorableById, $trashedByVin);
+                if ($existingByVin) {
+                    if ($existingByVin->trashed()) {
+                        $this->trackRestorable($restorableById, $existingByVin);
+                    } else {
+                        $skipped++;
+                        Log::info('vinstack sync skipped: VIN already owned by another record', [
+                            'vin' => $normalizedVin,
+                            'incoming_vinstack_id' => $vinstackId,
+                            'existing_id' => $existingByVin->id,
+                            'existing_source' => $existingByVin->source?->value ?? $existingByVin->source,
+                            'existing_vinstack_id' => $existingByVin->vinstack_id,
+                        ]);
+                    }
 
                     continue;
                 }
@@ -110,6 +126,7 @@ class SyncVehiclesAction
         return [
             'created' => $created,
             'updated' => $updated,
+            'skipped' => $skipped,
             'total' => count($items),
             'restorable' => array_values($restorableById),
         ];

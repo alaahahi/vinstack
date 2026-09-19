@@ -13,6 +13,7 @@ use App\Services\ContainerService;
 use App\Services\DealerNotificationService;
 use App\Support\DealerPresence;
 use App\Support\RecoveryCodesArchive;
+use App\Support\SqliteBusy;
 use App\Support\SupportedLocale;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Support\Facades\DB;
@@ -65,23 +66,25 @@ class DealerController extends Controller
     {
         $plainPassword = $request->string('password')->toString();
 
-        [$user, $dealer] = DB::transaction(function () use ($request, $plainPassword) {
-            $user = User::query()->create([
-                'name' => $request->string('name'),
-                'email' => $request->string('email'),
-                'phone' => $request->input('phone'),
-                'password' => Hash::make($plainPassword),
-                'role' => UserRole::Dealer,
-            ]);
+        [$user, $dealer] = SqliteBusy::retry(function () use ($request, $plainPassword) {
+            return DB::transaction(function () use ($request, $plainPassword) {
+                $user = User::query()->create([
+                    'name' => $request->string('name'),
+                    'email' => $request->string('email'),
+                    'phone' => $request->input('phone'),
+                    'password' => Hash::make($plainPassword),
+                    'role' => UserRole::Dealer,
+                ]);
 
-            $dealer = Dealer::query()->create([
-                'user_id' => $user->id,
-                'company_name' => $request->string('company_name'),
-                'phone' => $request->input('phone'),
-                'login_password_encrypted' => $plainPassword,
-            ]);
+                $dealer = Dealer::query()->create([
+                    'user_id' => $user->id,
+                    'company_name' => $request->string('company_name'),
+                    'phone' => $request->input('phone'),
+                    'login_password_encrypted' => $plainPassword,
+                ]);
 
-            return [$user, $dealer];
+                return [$user, $dealer];
+            });
         });
 
         $dealer->load('user:id,name,email,phone,locale,locale_customized,last_seen_at,recovery_codes_archive,two_factor_confirmed_at');

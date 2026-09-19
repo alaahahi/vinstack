@@ -14,7 +14,7 @@ Schedule::command('vinstack:sync')
     ->withoutOverlapping();
 
 Schedule::command('autoshipper:sync')
-    ->hourly()
+    ->hourlyAt(30)
     ->name('autoshipper-auto-sync')
     ->withoutOverlapping();
 

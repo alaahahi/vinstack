@@ -48,7 +48,8 @@ class SyncVehicles extends Command
         }
 
         $restorableCount = count($result['restorable']);
-        $this->info("Fetched: {$result['total']}, Created: {$result['created']}, Updated: {$result['updated']}, Restorable: {$restorableCount}");
+        $skipped = (int) ($result['skipped'] ?? 0);
+        $this->info("Fetched: {$result['total']}, Created: {$result['created']}, Updated: {$result['updated']}, Skipped: {$skipped}, Restorable: {$restorableCount}");
 
         $settings->update(['last_auto_sync_at' => now()]);
 
@@ -56,6 +57,7 @@ class SyncVehicles extends Command
             'total' => $result['total'],
             'created' => $result['created'],
             'updated' => $result['updated'],
+            'skipped' => $skipped,
             'restorable' => $restorableCount,
         ]);
 

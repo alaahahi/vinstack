@@ -74,4 +74,56 @@ class SyncVehiclesActionTest extends TestCase
         $this->assertSame('2026-07-05', $vehicle->raw_data['purchase_date']);
         $this->assertSame('Shipped', $vehicle->raw_data['status']);
     }
+
+    public function test_sync_skips_create_when_vin_owned_by_another_source(): void
+    {
+        VinstackSetting::query()->create([
+            'api_base_url' => 'https://app.vinstack.test/api',
+            'sync_enabled' => true,
+        ]);
+
+        Vehicle::query()->create([
+            'source' => VehicleSource::AutoShipper,
+            'vinstack_id' => null,
+            'autoshipper_id' => 'as-1',
+            'vin' => '1HGCM82633A004444',
+            'make' => 'Toyota',
+            'model' => 'Camry',
+            'year' => 2023,
+            'status' => VehicleStatus::Available,
+            'raw_data' => [],
+        ]);
+
+        $this->mock(VinstackService::class, function ($mock): void {
+            $mock->shouldReceive('autos')->once()->andReturn([
+                [
+                    'id' => 'vs-collision-1',
+                    'vin' => '1HGCM82633A004444',
+                    'make' => 'Honda',
+                    'model' => 'Accord',
+                    'year' => 2024,
+                    'status' => 'At port',
+                    'images' => [],
+                ],
+            ]);
+        });
+
+        $this->mock(VehicleStatusNotificationService::class, function ($mock): void {
+            $mock->shouldNotReceive('recordFromRawDataChange');
+        });
+
+        $this->mock(DealerNotificationService::class, function ($mock): void {
+            $mock->shouldNotReceive('notifyVehicleUpdated');
+        });
+
+        $result = app(SyncVehiclesAction::class)->execute();
+
+        $this->assertSame(0, $result['created']);
+        $this->assertSame(0, $result['updated']);
+        $this->assertSame(1, $result['skipped']);
+        $this->assertDatabaseMissing('vehicles', [
+            'vinstack_id' => 'vs-collision-1',
+        ]);
+        $this->assertSame(1, Vehicle::query()->where('vin', '1HGCM82633A004444')->count());
+    }
 }
