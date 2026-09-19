@@ -374,9 +374,10 @@ const destinationLatLng = computed(() => pointFromLocation(tracking.value?.desti
 
 const currentLatLng = computed(() => pointFromLocation(tracking.value?.current_position));
 
-const mapTileUrl = 'https://{s}.basemaps.cartocdn.com/light_all/{z}/{x}/{y}{r}.png';
+// CARTO basemaps now watermark tiles without an API key; use OSM raster tiles instead.
+const mapTileUrl = 'https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png';
 
-const mapTileAttribution = '&copy; OpenStreetMap &copy; CARTO';
+const mapTileAttribution = '&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>';
 
 const waypointLatLngs = computed(() => {
     const wps = tracking.value?.waypoints;
