@@ -38,7 +38,13 @@ return [
             'database' => env('DB_DATABASE', database_path('database.sqlite')),
             'prefix' => '',
             'foreign_key_constraints' => env('DB_FOREIGN_KEYS', true),
-            'transaction_mode' => 'DEFERRED',
+            // IMMEDIATE, not DEFERRED: a deferred transaction that reads and then
+            // writes gets SQLITE_BUSY returned instantly — busy_timeout does not
+            // apply to that upgrade — which is how concurrent DB::transaction()
+            // blocks (Nujoom import, dealer create, image transfers) produced
+            // "database is locked". IMMEDIATE takes the write lock up front so
+            // busy_timeout is honoured.
+            'transaction_mode' => 'IMMEDIATE',
             'busy_timeout' => 60000,
             'journal_mode' => 'WAL',
             'synchronous' => 'NORMAL',

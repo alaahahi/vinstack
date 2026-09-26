@@ -10,9 +10,16 @@ class SqliteConnectionPragmaTest extends TestCase
 {
     public function test_default_sqlite_config_enables_wal_and_busy_timeout(): void
     {
-        $this->assertSame(20000, (int) config('database.connections.sqlite.busy_timeout'));
+        $this->assertSame(60000, (int) config('database.connections.sqlite.busy_timeout'));
         $this->assertSame('wal', strtolower((string) config('database.connections.sqlite.journal_mode')));
         $this->assertSame('NORMAL', strtoupper((string) config('database.connections.sqlite.synchronous')));
+    }
+
+    public function test_default_sqlite_config_uses_immediate_transactions(): void
+    {
+        // DEFERRED returns SQLITE_BUSY instantly when a read-then-write
+        // transaction upgrades, bypassing busy_timeout entirely.
+        $this->assertSame('IMMEDIATE', strtoupper((string) config('database.connections.sqlite.transaction_mode')));
     }
 
     public function test_sqlite_file_connection_applies_wal_and_busy_timeout_pragmas(): void

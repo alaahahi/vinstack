@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Actions\SyncVehiclesAction;
 use App\Models\VinstackSetting;
+use App\Support\SqliteBusy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
 
@@ -49,18 +50,26 @@ class SyncVehicles extends Command
 
         $restorableCount = count($result['restorable']);
         $skipped = (int) ($result['skipped'] ?? 0);
-        $this->info("Fetched: {$result['total']}, Created: {$result['created']}, Updated: {$result['updated']}, Skipped: {$skipped}, Restorable: {$restorableCount}");
+        $failed = (int) ($result['failed'] ?? 0);
+        $this->info("Fetched: {$result['total']}, Created: {$result['created']}, Updated: {$result['updated']}, Skipped: {$skipped}, Failed: {$failed}, Restorable: {$restorableCount}");
 
-        $settings->update(['last_auto_sync_at' => now()]);
+        if ($failed > 0) {
+            $this->warn("{$failed} vehicle(s) could not be written (see log). The rest of the batch completed.");
+        }
+
+        SqliteBusy::soft(fn () => $settings->update(['last_auto_sync_at' => now()]));
 
         Log::info('vinstack:sync completed', [
             'total' => $result['total'],
             'created' => $result['created'],
             'updated' => $result['updated'],
             'skipped' => $skipped,
+            'failed' => $failed,
             'restorable' => $restorableCount,
         ]);
 
+        // Individual row failures are already logged and counted; the batch as a
+        // whole succeeded, so do not make the scheduler report a failed command.
         return self::SUCCESS;
     }
 

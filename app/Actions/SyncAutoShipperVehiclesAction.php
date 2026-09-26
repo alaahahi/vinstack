@@ -9,6 +9,7 @@ use App\Models\Vehicle;
 use App\Services\AutoShipperService;
 use App\Services\DealerNotificationService;
 use App\Services\VehicleStatusNotificationService;
+use App\Support\SyncRowWriter;
 use App\Support\VehicleEta;
 use App\Support\VehicleGalleryMerger;
 use App\Support\VehicleImageStages;
@@ -24,7 +25,7 @@ class SyncAutoShipperVehiclesAction
     ) {}
 
     /**
-     * @return array{created: int, updated: int, total: int, skipped: int, restorable: list<array{id: int, vin: string|null}>}
+     * @return array{created: int, updated: int, total: int, skipped: int, failed: int, restorable: list<array{id: int, vin: string|null}>}
      */
     public function execute(): array
     {
@@ -35,6 +36,7 @@ class SyncAutoShipperVehiclesAction
         $created = 0;
         $updated = 0;
         $skipped = 0;
+        $failed = 0;
         $restorableById = [];
 
         foreach ($vehicles as $item) {
@@ -86,7 +88,18 @@ class SyncAutoShipperVehiclesAction
 
                 $previousRaw = is_array($vehicle->raw_data) ? $vehicle->raw_data : [];
                 $merged = VehicleGalleryMerger::mergeSyncPayload($vehicle, $payload);
-                $vehicle->update($merged);
+
+                $written = SyncRowWriter::attempt('autoshipper:sync', [
+                    'vehicle_id' => $vehicle->id,
+                    'vin' => $vehicle->vin,
+                    'autoshipper_id' => $externalId,
+                ], fn () => $vehicle->update($merged));
+
+                if (! $written) {
+                    $failed++;
+
+                    continue;
+                }
 
                 $statusChange = $this->statusNotifications->recordFromRawDataChange(
                     $vehicle,
@@ -138,7 +151,17 @@ class SyncAutoShipperVehiclesAction
                         ...$payload,
                         'autoshipper_id' => $externalId,
                     ]);
-                    $existingByVin->update($merged);
+                    $written = SyncRowWriter::attempt('autoshipper:sync', [
+                        'vehicle_id' => $existingByVin->id,
+                        'vin' => $vin,
+                        'autoshipper_id' => $externalId,
+                    ], fn () => $existingByVin->update($merged));
+
+                    if (! $written) {
+                        $failed++;
+
+                        continue;
+                    }
 
                     $statusChange = $this->statusNotifications->recordFromRawDataChange(
                         $existingByVin,
@@ -162,25 +185,36 @@ class SyncAutoShipperVehiclesAction
                 }
             }
 
-            Vehicle::query()->create([
+            $written = SyncRowWriter::attempt('autoshipper:sync', [
+                'vin' => $vin,
+                'autoshipper_id' => $externalId,
+            ], fn () => Vehicle::query()->create([
                 ...$payload,
                 'source' => VehicleSource::AutoShipper,
                 'autoshipper_id' => $externalId,
                 'vinstack_id' => null,
                 'status' => VehicleStatus::Available,
-            ]);
+            ]));
+
+            if (! $written) {
+                $failed++;
+
+                continue;
+            }
+
             $created++;
         }
 
-        AutoshipperSetting::current()->update([
+        SyncRowWriter::attempt('autoshipper:sync', ['step' => 'last_sync_at'], fn () => AutoshipperSetting::current()->update([
             'last_sync_at' => now(),
-        ]);
+        ]));
 
         return [
             'created' => $created,
             'updated' => $updated,
             'total' => count($vehicles),
             'skipped' => $skipped,
+            'failed' => $failed,
             'restorable' => array_values($restorableById),
         ];
     }
@@ -340,7 +374,10 @@ class SyncAutoShipperVehiclesAction
             'vehicle_charges' => $charges,
             'images' => $images,
             'images_by_stage' => $imagesByStage,
-            'synced_at' => now()->toIso8601String(),
+            // No per-run timestamp here: it is never read anywhere, but it made
+            // raw_data differ on every sync, so every AutoShipper vehicle was
+            // rewritten hourly and held the SQLite write lock for nothing.
+            // `vehicles.updated_at` already records the last real change.
         ];
 
         $rawData = array_filter(

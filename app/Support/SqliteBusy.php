@@ -13,11 +13,7 @@ final class SqliteBusy
     {
         $haystack = strtolower($e->getMessage());
 
-        if (
-            str_contains($haystack, 'database is locked')
-            || str_contains($haystack, 'sqlite_busy')
-            || str_contains($haystack, 'sqlite busy')
-        ) {
+        if (self::messageIsBusy($haystack)) {
             return true;
         }
 
@@ -32,6 +28,20 @@ final class SqliteBusy
         $previous = $e->getPrevious();
 
         return $previous instanceof Throwable ? self::isBusy($previous) : false;
+    }
+
+    /**
+     * Message-only variant, for callers that only have a failure string
+     * (e.g. a queue failure payload) rather than the original Throwable.
+     */
+    public static function messageIsBusy(string $message): bool
+    {
+        $haystack = strtolower($message);
+
+        return str_contains($haystack, 'database is locked')
+            || str_contains($haystack, 'sqlite_busy')
+            || str_contains($haystack, 'sqlite busy')
+            || str_contains($haystack, 'general error: 5');
     }
 
     /**

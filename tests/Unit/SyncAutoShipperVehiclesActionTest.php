@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Services\AutoShipperService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
@@ -148,6 +149,44 @@ class SyncAutoShipperVehiclesActionTest extends TestCase
 
         $vehicle = Vehicle::query()->where('autoshipper_id', 'AS-1001')->first();
         $this->assertSame('Shipped', $vehicle->raw_data['status']);
+    }
+
+    public function test_re_syncing_an_unchanged_payload_writes_nothing(): void
+    {
+        AutoshipperSetting::current();
+
+        Http::fake([
+            '*/sync/vehicles' => Http::response([
+                'data' => [[
+                    'id' => 'AS-2002',
+                    'vin' => '1HGCM82633A654321',
+                    'make' => 'Honda',
+                    'model' => 'Civic',
+                    'year' => 2022,
+                    'status' => 'Shipped',
+                ]],
+            ]),
+            '*/sync/media' => Http::response(['data' => []]),
+            '*/sync/vehicleCharges' => Http::response(['data' => []]),
+        ]);
+
+        // Run 1 creates the row; run 2 settles the keys mergeSyncPayload adds on
+        // top of the create payload. From run 3 on there must be no write.
+        app(SyncAutoShipperVehiclesAction::class)->execute();
+        app(SyncAutoShipperVehiclesAction::class)->execute();
+
+        $vehicleWrites = [];
+        DB::listen(function ($query) use (&$vehicleWrites): void {
+            if (str_starts_with($query->sql, 'update "vehicles"')) {
+                $vehicleWrites[] = $query->sql;
+            }
+        });
+
+        app(SyncAutoShipperVehiclesAction::class)->execute();
+
+        // raw_data used to carry a `synced_at` stamp refreshed on every run, which
+        // made every AutoShipper vehicle dirty and rewrote the whole blob hourly.
+        $this->assertSame([], $vehicleWrites);
     }
 
     public function test_sync_does_not_overwrite_vinstack_vehicle_by_vin(): void

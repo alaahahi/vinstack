@@ -12,6 +12,7 @@ use App\Services\VehicleStatusNotificationService;
 use App\Support\VehicleGalleryMerger;
 use App\Support\VehicleEta;
 use App\Support\VehicleImageStages;
+use App\Support\SyncRowWriter;
 use App\Support\VehicleRawDataLocations;
 use Illuminate\Support\Arr;
 use Illuminate\Support\Facades\Log;
@@ -25,7 +26,7 @@ class SyncVehiclesAction
     ) {}
 
     /**
-     * @return array{created: int, updated: int, skipped: int, total: int, restorable: list<array{id: int, vin: string|null}>}
+     * @return array{created: int, updated: int, skipped: int, failed: int, total: int, restorable: list<array{id: int, vin: string|null}>}
      */
     public function execute(): array
     {
@@ -34,6 +35,7 @@ class SyncVehiclesAction
         $created = 0;
         $updated = 0;
         $skipped = 0;
+        $failed = 0;
         $restorableById = [];
 
         foreach ($items as $item) {
@@ -66,7 +68,19 @@ class SyncVehiclesAction
 
                 $previousRaw = is_array($vehicle->raw_data) ? $vehicle->raw_data : [];
                 $merged = VehicleGalleryMerger::mergeSyncPayload($vehicle, $payload);
-                $vehicle->update($merged);
+
+                $written = SyncRowWriter::attempt('vinstack:sync', [
+                    'vehicle_id' => $vehicle->id,
+                    'vin' => $vehicle->vin,
+                    'vinstack_id' => $vinstackId,
+                ], fn () => $vehicle->update($merged));
+
+                if (! $written) {
+                    $failed++;
+
+                    continue;
+                }
+
                 $statusChange = $this->statusNotifications->recordFromRawDataChange(
                     $vehicle,
                     $previousRaw,
@@ -110,23 +124,34 @@ class SyncVehiclesAction
                 }
             }
 
-            Vehicle::query()->create([
+            $written = SyncRowWriter::attempt('vinstack:sync', [
+                'vin' => $normalizedVin,
+                'vinstack_id' => $vinstackId,
+            ], fn () => Vehicle::query()->create([
                 ...$payload,
                 'source' => VehicleSource::Vinstack,
                 'vinstack_id' => $vinstackId,
                 'status' => VehicleStatus::Available,
-            ]);
+            ]));
+
+            if (! $written) {
+                $failed++;
+
+                continue;
+            }
+
             $created++;
         }
 
-        VinstackSetting::current()->update([
+        SyncRowWriter::attempt('vinstack:sync', ['step' => 'last_sync_at'], fn () => VinstackSetting::current()->update([
             'last_sync_at' => now(),
-        ]);
+        ]));
 
         return [
             'created' => $created,
             'updated' => $updated,
             'skipped' => $skipped,
+            'failed' => $failed,
             'total' => count($items),
             'restorable' => array_values($restorableById),
         ];

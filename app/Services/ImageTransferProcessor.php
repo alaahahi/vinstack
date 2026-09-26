@@ -8,10 +8,9 @@ use App\Models\ImageTransferJob;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VinstackSetting;
-use Illuminate\Database\QueryException;
+use App\Support\SqliteBusy;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
-use PDOException;
 
 class ImageTransferProcessor
 {
@@ -428,20 +427,12 @@ class ImageTransferProcessor
 
     protected function isDatabaseLock(\Throwable $e): bool
     {
-        if ($e instanceof QueryException || $e instanceof PDOException) {
-            return $this->messageIsDatabaseLock($e->getMessage());
-        }
-
-        return $this->messageIsDatabaseLock($e->getMessage());
+        return SqliteBusy::isBusy($e);
     }
 
     protected function messageIsDatabaseLock(string $message): bool
     {
-        $message = strtolower($message);
-
-        return str_contains($message, 'database is locked')
-            || str_contains($message, 'sqlite_busy')
-            || str_contains($message, 'error: 5');
+        return SqliteBusy::messageIsBusy($message);
     }
 
     protected function sendCompletionNotification(ImageTransferJob $job): void
