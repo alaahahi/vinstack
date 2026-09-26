@@ -46,6 +46,11 @@ return [
         'base_url' => env('AUTOSHIPPER_API_URL', 'https://autoshipper.io/api'),
     ],
 
+    'copart' => [
+        'base_url' => env('COPART_API_URL', 'http://localhost'),
+        'token' => env('COPART_API_TOKEN'),
+    ],
+
     'cloudinary' => [
         'cloud_name' => env('CLOUDINARY_CLOUD_NAME'),
         'api_key' => env('CLOUDINARY_API_KEY'),

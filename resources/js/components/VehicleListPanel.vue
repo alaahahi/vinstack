@@ -36,6 +36,7 @@
                 :tracking-available="trackingAvailable"
                 @assign="$emit('assign', $event)"
                 @unassign="$emit('unassign', $event)"
+                @export-accounting="$emit('export-accounting', $event)"
                 @update-status="$emit('update-status', $event)"
                 @open-chat="$emit('open-chat', $event)"
                 @open-detail="$emit('open-detail', $event)"
@@ -138,7 +139,7 @@ const props = defineProps({
     },
 });
 
-const emit = defineEmits(['assign', 'unassign', 'update-status', 'open-chat', 'open-detail', 'edit', 'page', 'empty-action', 'load-more', 'delete']);
+const emit = defineEmits(['assign', 'unassign', 'export-accounting', 'update-status', 'open-chat', 'open-detail', 'edit', 'page', 'empty-action', 'load-more', 'delete']);
 
 const { t } = useI18n();
 

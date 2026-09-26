@@ -439,6 +439,61 @@
                 </div>
             </div>
 
+            <div class="settings-group settings-group--accounting settings-card--wide">
+                <div class="settings-group__cards">
+                    <section class="admin-surface settings-card">
+                        <header class="settings-card__head">
+                            <i class="pi pi-wallet" />
+                            <div>
+                                <h2 class="vs-card-title">{{ t('settings.sections.accountingExport') }}</h2>
+                                <p class="vs-card-subtitle">{{ t('settings.sections.accountingExportSub') }}</p>
+                            </div>
+                        </header>
+
+                        <div class="settings-card__body">
+                            <div class="field">
+                                <label for="accounting-base" class="vs-form-label">Base URL</label>
+                                <InputText
+                                    id="accounting-base"
+                                    v-model="accountingForm.api_base_url"
+                                    class="w-full"
+                                    placeholder="https://copart.example.com"
+                                    dir="ltr"
+                                />
+                            </div>
+                            <div class="field">
+                                <label for="accounting-token" class="vs-form-label">{{ t('settings.accountingToken') }}</label>
+                                <Password
+                                    id="accounting-token"
+                                    v-model="accountingForm.api_token"
+                                    :placeholder="accountingSettings.has_token ? t('settings.tokenKeepPlaceholder') : t('settings.enterToken')"
+                                    toggle-mask
+                                    input-class="w-full"
+                                    class="w-full"
+                                />
+                            </div>
+                            <div class="field field--row">
+                                <Checkbox v-model="accountingForm.enabled" binary input-id="accounting-enabled" />
+                                <label for="accounting-enabled" class="vs-form-label">{{ t('settings.accountingEnabled') }}</label>
+                            </div>
+                            <p class="sync-cron-help sync-cron-help--muted">
+                                {{ t('settings.accountingHelp') }}
+                            </p>
+                        </div>
+                    </section>
+                </div>
+
+                <div class="settings-group__actions">
+                    <Button
+                        :label="t('settings.saveSettings')"
+                        icon="pi pi-check"
+                        class="btn-add"
+                        :loading="accountingSaving"
+                        @click="saveAccountingExport"
+                    />
+                </div>
+            </div>
+
             <section class="admin-surface settings-card settings-card--wide">
                 <header class="settings-card__head">
                     <i class="pi pi-list" />
@@ -1021,6 +1076,7 @@ const toast = useToast();
 const confirm = useConfirm();
 const settings = ref({ has_token: false, last_sync_at: null, last_auto_sync_at: null });
 const autoshipperSettings = ref({ has_token: false, last_sync_at: null, last_auto_sync_at: null });
+const accountingSettings = ref({ has_token: false });
 const saving = ref(false);
 const testingGallery = ref(false);
 const testingCloudinary = ref(false);
@@ -1028,6 +1084,7 @@ const savingOptions = ref(false);
 const syncing = ref(false);
 const autoshipperSyncing = ref(false);
 const autoshipperSaving = ref(false);
+const accountingSaving = ref(false);
 const restorableVisible = ref(false);
 const restorableItems = ref([]);
 const restoringId = ref(null);
@@ -1136,11 +1193,18 @@ const autoshipperForm = reactive({
     sync_enabled: true,
 });
 
+const accountingForm = reactive({
+    api_base_url: '',
+    api_token: '',
+    enabled: false,
+});
+
 async function load() {
-    const [settingsRes, optionsRes, autoshipperRes] = await Promise.all([
+    const [settingsRes, optionsRes, autoshipperRes, accountingRes] = await Promise.all([
         api.get('/admin/vinstack/settings'),
         api.get('/admin/settings/vehicle-options'),
         api.get('/admin/autoshipper/settings'),
+        api.get('/admin/accounting-export/settings'),
     ]);
     settings.value = settingsRes.data.data;
     form.api_base_url = settingsRes.data.data.api_base_url || '';
@@ -1163,6 +1227,11 @@ async function load() {
     autoshipperForm.api_base_url = autoshipperRes.data.data.api_base_url || 'https://autoshipper.io/api';
     autoshipperForm.sync_enabled = autoshipperRes.data.data.sync_enabled ?? true;
     autoshipperForm.api_token = '';
+
+    accountingSettings.value = accountingRes.data.data;
+    accountingForm.api_base_url = accountingRes.data.data.api_base_url || '';
+    accountingForm.enabled = accountingRes.data.data.enabled ?? false;
+    accountingForm.api_token = '';
 
     await Promise.all([loadAuctionProviders(), loadAuctionUsage()]);
 }
@@ -1459,6 +1528,34 @@ async function saveAutoshipper() {
         });
     } finally {
         autoshipperSaving.value = false;
+    }
+}
+
+async function saveAccountingExport() {
+    accountingSaving.value = true;
+
+    try {
+        const payload = {
+            api_base_url: accountingForm.api_base_url,
+            enabled: accountingForm.enabled,
+        };
+
+        if (accountingForm.api_token) {
+            payload.api_token = accountingForm.api_token;
+        }
+
+        await api.put('/admin/accounting-export/settings', payload);
+        toast.add({ severity: 'success', summary: t('settings.saved'), life: 3000 });
+        await load();
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || 'فشل الحفظ',
+            life: 4000,
+        });
+    } finally {
+        accountingSaving.value = false;
     }
 }
 

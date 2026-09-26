@@ -154,6 +154,16 @@
                 <span v-if="hasUnreadMessages" class="chat-count-badge" aria-hidden="true">{{ unreadMessagesLabel }}</span>
             </span>
             <Button
+                v-if="isAssigned"
+                icon="pi pi-upload"
+                :label="exportButtonLabel"
+                size="small"
+                :severity="isExported ? 'success' : 'help'"
+                outlined
+                :title="exportButtonTitle"
+                @click.stop="$emit('export-accounting', vehicle)"
+            />
+            <Button
                 v-if="isManual"
                 icon="pi pi-pencil"
                 :label="t('vehicles.editManual')"
@@ -251,7 +261,7 @@ const props = defineProps({
     },
 });
 
-defineEmits(['assign', 'update-status', 'open-chat', 'open-detail', 'edit', 'unassign', 'track-container', 'delete']);
+defineEmits(['assign', 'update-status', 'open-chat', 'open-detail', 'edit', 'unassign', 'export-accounting', 'track-container', 'delete']);
 
 const { t } = useI18n();
 
@@ -311,6 +321,27 @@ const dealerDisplayName = computed(() => {
     return userName || companyName || null;
 });
 const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.vehicle));
+const isExported = computed(() => props.vehicle.accounting_export_status === 'exported');
+const exportFailed = computed(() => props.vehicle.accounting_export_status === 'failed');
+const exportButtonLabel = computed(() => {
+    if (isExported.value) {
+        return t('vehicles.exportAccountingDone');
+    }
+    if (exportFailed.value) {
+        return t('vehicles.exportAccountingRetry');
+    }
+
+    return t('vehicles.exportAccounting');
+});
+const exportButtonTitle = computed(() => {
+    if (exportFailed.value && props.vehicle.accounting_export_error) {
+        return props.vehicle.accounting_export_error;
+    }
+
+    return isExported.value
+        ? t('vehicles.exportAccountingDoneTitle')
+        : t('vehicles.exportAccountingTitle');
+});
 </script>
 
 <style scoped>

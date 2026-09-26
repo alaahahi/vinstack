@@ -28,6 +28,10 @@ class Vehicle extends Model
         'images',
         'raw_data',
         'notes',
+        'exported_to_accounting_at',
+        'copart_car_id',
+        'accounting_export_status',
+        'accounting_export_error',
     ];
 
     protected function casts(): array
@@ -39,6 +43,7 @@ class Vehicle extends Model
             'raw_data' => 'array',
             'price' => 'decimal:2',
             'year' => 'integer',
+            'exported_to_accounting_at' => 'datetime',
         ];
     }
 

@@ -21,6 +21,7 @@ use App\Http\Controllers\Admin\VehicleVinstackImageController;
 use App\Http\Controllers\Admin\VinstackBrowseController;
 use App\Http\Controllers\Admin\VinstackSettingsController;
 use App\Http\Controllers\Admin\AutoshipperSettingsController;
+use App\Http\Controllers\Admin\AccountingExportController;
 use App\Http\Controllers\Admin\AuctionApiProviderController;
 use App\Http\Controllers\Api\AuctionController;
 use App\Http\Controllers\Api\AuctionFavoriteController;
@@ -126,6 +127,9 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::delete('/vehicles/{vehicle}/images/{image}', [VehicleUploadedImageController::class, 'destroy']);
         Route::post('/vehicles/{vehicle}/assign', [AdminVehicleController::class, 'assign']);
         Route::delete('/vehicles/{vehicle}/unassign', [AdminVehicleController::class, 'unassign']);
+        Route::post('/vehicles/{vehicle}/export-to-accounting', [AccountingExportController::class, 'exportVehicle']);
+        Route::get('/accounting-export/settings', [AccountingExportController::class, 'settings']);
+        Route::put('/accounting-export/settings', [AccountingExportController::class, 'updateSettings']);
         Route::get('/vehicles/{vehicle}/messages', [AdminVehicleMessageController::class, 'index']);
         Route::post('/vehicles/{vehicle}/messages', [AdminVehicleMessageController::class, 'store']);
         Route::post('/vehicles/{vehicle}/messages/read', [AdminVehicleMessageController::class, 'markRead']);

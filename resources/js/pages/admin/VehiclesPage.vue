@@ -88,6 +88,7 @@
             :empty-action-label="t('actions.refreshList')"
             @assign="openAssign"
             @unassign="confirmUnassign"
+            @export-accounting="confirmExportAccounting"
             @delete="confirmDeleteVehicle"
             @edit="openEdit"
             @open-chat="openChat"
@@ -503,6 +504,41 @@ async function unassignVehicle(vehicle) {
             detail: e.response?.data?.message || t('vehicles.unassignFailed'),
             life: 4000,
         });
+    }
+}
+
+function confirmExportAccounting(vehicle) {
+    const dealerName = vehicle.active_assignment?.dealer?.user?.name
+        ?? vehicle.active_assignment?.dealer?.company_name
+        ?? '—';
+
+    confirm.require({
+        message: t('vehicles.exportAccountingConfirm', { dealer: dealerName, vin: vehicle.vin || '—' }),
+        header: t('vehicles.exportAccountingHeader'),
+        icon: 'pi pi-upload',
+        acceptLabel: t('actions.confirm'),
+        rejectLabel: t('actions.cancel'),
+        accept: () => exportToAccounting(vehicle),
+    });
+}
+
+async function exportToAccounting(vehicle) {
+    try {
+        const { data } = await api.post(`/admin/vehicles/${vehicle.id}/export-to-accounting`);
+        toast.add({
+            severity: 'success',
+            summary: data.message || t('vehicles.exportAccountingSuccess'),
+            life: 3500,
+        });
+        await resetAndLoad();
+    } catch (e) {
+        toast.add({
+            severity: 'error',
+            summary: t('common.error'),
+            detail: e.response?.data?.message || t('vehicles.exportAccountingFailed'),
+            life: 5000,
+        });
+        await resetAndLoad();
     }
 }
 
