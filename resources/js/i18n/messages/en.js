@@ -146,6 +146,8 @@ export default {
         exportAccountingTitle: 'Export this vehicle to the accounting system after approval',
         exportAccountingDone: 'Exported',
         exportAccountingDoneTitle: 'Already exported — re-export to refresh data',
+        exportAccountingPending: 'Awaiting approval',
+        exportAccountingPendingTitle: 'Waiting for admin approval in the accounting system',
         exportAccountingRetry: 'Retry export',
         exportAccountingHeader: 'Export to accounting',
         exportAccountingConfirm: 'Export vehicle {vin} for dealer «{dealer}» to accounting?',

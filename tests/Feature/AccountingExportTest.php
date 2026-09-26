@@ -93,13 +93,12 @@ class AccountingExportTest extends TestCase
             'https://copart.test/api/integration/vinstack/vehicles' => Http::response([
                 'ok' => true,
                 'data' => [
-                    'created' => true,
-                    'car_id' => 55,
-                    'client_id' => 9,
+                    'queued' => true,
+                    'import_id' => 77,
+                    'status' => 'pending',
                     'vin' => 'ACCTTESTVIN000003',
-                    'images' => 0,
                 ],
-            ], 201),
+            ], 202),
         ]);
 
         $admin = User::factory()->create(['role' => UserRole::Admin]);
@@ -146,12 +145,11 @@ class AccountingExportTest extends TestCase
 
         $this->postJson("/api/admin/vehicles/{$vehicle->id}/export-to-accounting")
             ->assertOk()
-            ->assertJsonPath('data.copart_car_id', 55)
-            ->assertJsonPath('data.accounting_export_status', 'exported');
+            ->assertJsonPath('data.accounting_export_status', 'pending_approval');
 
         $vehicle->refresh();
-        $this->assertSame('exported', $vehicle->accounting_export_status);
-        $this->assertSame(55, $vehicle->copart_car_id);
+        $this->assertSame('pending_approval', $vehicle->accounting_export_status);
+        $this->assertSame(77, $vehicle->copart_car_id);
         $this->assertNotNull($vehicle->exported_to_accounting_at);
 
         Http::assertSent(function ($request) {

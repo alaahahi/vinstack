@@ -14,7 +14,7 @@ use RuntimeException;
 class CopartExportService
 {
     /**
-     * @return array{ok: bool, created: bool, car_id: int, client_id: int}
+     * @return array{ok: bool, created: bool, queued: bool, car_id: int, import_id: int, client_id: int}
      */
     public function export(Vehicle $vehicle): array
     {
@@ -74,19 +74,23 @@ class CopartExportService
         }
 
         $data = $response->json('data') ?? [];
+        $queued = (bool) ($data['queued'] ?? false);
         $carId = (int) ($data['car_id'] ?? 0);
+        $importId = (int) ($data['import_id'] ?? 0);
 
         $vehicle->forceFill([
             'exported_to_accounting_at' => now(),
-            'copart_car_id' => $carId > 0 ? $carId : null,
-            'accounting_export_status' => 'exported',
+            'copart_car_id' => $carId > 0 ? $carId : ($importId > 0 ? $importId : null),
+            'accounting_export_status' => $queued ? 'pending_approval' : 'exported',
             'accounting_export_error' => null,
         ])->save();
 
         return [
             'ok' => true,
             'created' => (bool) ($data['created'] ?? false),
+            'queued' => $queued,
             'car_id' => $carId,
+            'import_id' => $importId,
             'client_id' => (int) ($data['client_id'] ?? 0),
         ];
     }

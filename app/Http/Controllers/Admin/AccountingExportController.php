@@ -63,10 +63,15 @@ class AccountingExportController extends Controller
 
         $vehicle->refresh();
 
+        $message = 'تم تحديث السيارة في نظام الحسابات.';
+        if (! empty($result['queued'])) {
+            $message = 'تم الإرسال لقائمة موافقة المحاسبة في Copart.';
+        } elseif (! empty($result['created'])) {
+            $message = 'تم تصدير السيارة إلى نظام الحسابات.';
+        }
+
         return response()->json([
-            'message' => $result['created']
-                ? 'تم تصدير السيارة إلى نظام الحسابات.'
-                : 'تم تحديث السيارة في نظام الحسابات.',
+            'message' => $message,
             'data' => [
                 'copart_car_id' => $vehicle->copart_car_id,
                 'exported_to_accounting_at' => $vehicle->exported_to_accounting_at,

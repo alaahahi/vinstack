@@ -146,6 +146,8 @@ export default {
         exportAccountingTitle: 'تصدير السيارة إلى نظام الحسابات بعد الموافقة',
         exportAccountingDone: 'مُصدَّرة',
         exportAccountingDoneTitle: 'تم التصدير مسبقاً — إعادة التصدير لتحديث البيانات',
+        exportAccountingPending: 'بانتظار الموافقة',
+        exportAccountingPendingTitle: 'بانتظار موافقة الأدمن في نظام الحسابات',
         exportAccountingRetry: 'إعادة التصدير',
         exportAccountingHeader: 'تصدير للمحاسبة',
         exportAccountingConfirm: 'تصدير السيارة {vin} للتاجر «{dealer}» إلى نظام الحسابات؟',

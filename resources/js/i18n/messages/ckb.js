@@ -146,6 +146,8 @@ export default {
         exportAccountingTitle: 'ناردنی ئۆتۆمبێل بۆ سیستەمی ژمێریاری دوای پەسەندکردن',
         exportAccountingDone: 'نێردرا',
         exportAccountingDoneTitle: 'پێشتر نێردرا — دووبارە بنێرە بۆ نوێکردنەوە',
+        exportAccountingPending: 'چاوەڕوانی پەسەندکردن',
+        exportAccountingPendingTitle: 'چاوەڕوانی پەسەندکردنی بەڕێوەبەر لە سیستەمی ژمێریاری',
         exportAccountingRetry: 'دووبارە ناردن',
         exportAccountingHeader: 'ناردن بۆ ژمێریاری',
         exportAccountingConfirm: 'ناردنی ئۆتۆمبێلی {vin} بۆ بازرگان «{dealer}» بۆ ژمێریاری؟',

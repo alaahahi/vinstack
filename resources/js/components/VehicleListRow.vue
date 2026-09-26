@@ -158,7 +158,7 @@
                 icon="pi pi-upload"
                 :label="exportButtonLabel"
                 size="small"
-                :severity="isExported ? 'success' : 'help'"
+                :severity="isExported ? 'success' : (isPendingApproval ? 'warn' : 'help')"
                 outlined
                 :title="exportButtonTitle"
                 @click.stop="$emit('export-accounting', vehicle)"
@@ -322,10 +322,14 @@ const dealerDisplayName = computed(() => {
 });
 const assignmentBadgeClass = computed(() => vehicleAssignmentBadgeClass(props.vehicle));
 const isExported = computed(() => props.vehicle.accounting_export_status === 'exported');
+const isPendingApproval = computed(() => props.vehicle.accounting_export_status === 'pending_approval');
 const exportFailed = computed(() => props.vehicle.accounting_export_status === 'failed');
 const exportButtonLabel = computed(() => {
     if (isExported.value) {
         return t('vehicles.exportAccountingDone');
+    }
+    if (isPendingApproval.value) {
+        return t('vehicles.exportAccountingPending');
     }
     if (exportFailed.value) {
         return t('vehicles.exportAccountingRetry');
@@ -336,6 +340,9 @@ const exportButtonLabel = computed(() => {
 const exportButtonTitle = computed(() => {
     if (exportFailed.value && props.vehicle.accounting_export_error) {
         return props.vehicle.accounting_export_error;
+    }
+    if (isPendingApproval.value) {
+        return t('vehicles.exportAccountingPendingTitle');
     }
 
     return isExported.value
