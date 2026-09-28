@@ -23,6 +23,12 @@ class ApibaraAuctionApiTest extends TestCase
             'apibara.timeout' => 10,
             'apibara.connect_timeout' => 5,
         ]);
+
+        $marker = storage_path('app/auction-api-providers.seeded');
+
+        if (is_file($marker)) {
+            unlink($marker);
+        }
     }
 
     public function test_guest_cannot_access_auctions(): void

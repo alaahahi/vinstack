@@ -25,6 +25,12 @@ class AuctionApiProviderTest extends TestCase
             'apibara.connect_timeout' => 5,
             'apibara.cache_ttl' => 86400,
         ]);
+
+        $marker = storage_path('app/auction-api-providers.seeded');
+
+        if (is_file($marker)) {
+            unlink($marker);
+        }
     }
 
     public function test_admin_can_add_and_manually_activate_providers(): void
@@ -146,6 +152,60 @@ class AuctionApiProviderTest extends TestCase
             ->assertJsonPath('data.local.by_user.0.name', 'Admin User')
             ->assertJsonPath('data.local.by_user.0.role', 'admin')
             ->assertJsonPath('data.local.active_provider.name', 'Apibara A');
+    }
+
+    public function test_admin_can_delete_provider_even_with_usage_logs(): void
+    {
+        config(['apibara.api_key' => 'env-seed-key-should-not-respawn-on-list']);
+
+        Sanctum::actingAs($this->makeUser(UserRole::Admin));
+
+        $provider = $this->makeProvider('Apibara A', 'key-a', 100, true, 1);
+        $other = $this->makeProvider('Apibara B', 'key-b', 100, false, 2);
+
+        \App\Models\ApibaraRequestLog::query()->create([
+            'provider_id' => $provider->id,
+            'user_id' => null,
+            'endpoint' => 'search',
+            'method' => 'GET',
+            'status' => 200,
+            'billed' => true,
+            'cached' => false,
+            'elapsed_ms' => 10,
+        ]);
+
+        $this->deleteJson("/api/admin/auction-providers/{$provider->id}")
+            ->assertOk()
+            ->assertJsonPath('ok', true);
+
+        $this->assertDatabaseMissing('auction_api_providers', ['id' => $provider->id]);
+        $this->assertDatabaseHas('auction_api_providers', ['id' => $other->id]);
+        $this->assertDatabaseHas('apibara_request_logs', [
+            'provider_id' => null,
+        ]);
+
+        // Listing must not recreate deleted keys from .env.
+        $this->getJson('/api/admin/auction-providers')
+            ->assertOk()
+            ->assertJsonCount(1, 'data.providers')
+            ->assertJsonPath('data.providers.0.id', $other->id);
+    }
+
+    public function test_admin_can_delete_last_provider_without_env_respawn_on_list(): void
+    {
+        config(['apibara.api_key' => 'env-only-key']);
+
+        Sanctum::actingAs($this->makeUser(UserRole::Admin));
+
+        $provider = $this->makeProvider('Only', 'key-only', 50, true, 1);
+
+        $this->deleteJson("/api/admin/auction-providers/{$provider->id}")
+            ->assertOk();
+
+        $this->getJson('/api/admin/auction-providers')
+            ->assertOk()
+            ->assertJsonCount(0, 'data.providers')
+            ->assertJsonPath('data.active', null);
     }
 
     protected function makeProvider(

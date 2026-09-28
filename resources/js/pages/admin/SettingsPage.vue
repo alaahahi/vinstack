@@ -1016,6 +1016,31 @@
         </Dialog>
 
         <Dialog
+            v-model:visible="auctionDeleteConfirmVisible"
+            :header="t('settings.auctionApiDeleteConfirm')"
+            modal
+            :style="{ width: 'min(420px, 95vw)' }"
+        >
+            <p class="vs-card-subtitle">
+                {{ auctionDeleteTarget?.name || t('settings.auctionApiDeleteConfirm') }}
+            </p>
+            <template #footer>
+                <Button
+                    :label="t('actions.cancel')"
+                    text
+                    @click="auctionDeleteConfirmVisible = false"
+                />
+                <Button
+                    :label="t('actions.delete')"
+                    icon="pi pi-trash"
+                    severity="danger"
+                    :loading="auctionBusyId === `delete-${auctionDeleteTarget?.id}`"
+                    @click="deleteAuctionProvider(auctionDeleteTarget)"
+                />
+            </template>
+        </Dialog>
+
+        <Dialog
             v-model:visible="clearLogsConfirmVisible"
             :header="t('settings.clearLogHeader')"
             modal
@@ -1163,6 +1188,8 @@ const auctionUsage = ref(null);
 const auctionUsageLoading = ref(false);
 const savingAuctionProvider = ref(false);
 const auctionBusyId = ref('');
+const auctionDeleteConfirmVisible = ref(false);
+const auctionDeleteTarget = ref(null);
 const auctionForm = reactive({
     name: '',
     base_url: 'https://apibara.tech/api/v1/vehicle-auction',
@@ -1384,19 +1411,17 @@ async function activateAuctionProvider(provider) {
 }
 
 function confirmDeleteAuctionProvider(provider) {
-    confirm.require({
-        message: t('settings.auctionApiDeleteConfirm'),
-        header: t('settings.auctionApiDeleteConfirm'),
-        icon: 'pi pi-trash',
-        rejectLabel: t('actions.cancel'),
-        acceptLabel: t('actions.confirm'),
-        acceptClass: 'p-button-danger',
-        accept: () => deleteAuctionProvider(provider),
-    });
+    auctionDeleteTarget.value = provider;
+    auctionDeleteConfirmVisible.value = true;
 }
 
 async function deleteAuctionProvider(provider) {
+    if (! provider?.id) {
+        return;
+    }
+
     auctionBusyId.value = `delete-${provider.id}`;
+    auctionDeleteConfirmVisible.value = false;
 
     try {
         const { data } = await api.delete(`/admin/auction-providers/${provider.id}`);
@@ -1405,6 +1430,10 @@ async function deleteAuctionProvider(provider) {
             summary: data.message || t('settings.auctionApiDeleted'),
             life: 3000,
         });
+        auctionProviders.value = auctionProviders.value.filter((row) => row.id !== provider.id);
+        if (auctionActive.value?.id === provider.id) {
+            auctionActive.value = null;
+        }
         await loadAuctionProviders();
     } catch (e) {
         toast.add({
@@ -1415,6 +1444,7 @@ async function deleteAuctionProvider(provider) {
         });
     } finally {
         auctionBusyId.value = '';
+        auctionDeleteTarget.value = null;
     }
 }
 

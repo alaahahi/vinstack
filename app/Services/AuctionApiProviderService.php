@@ -7,18 +7,29 @@ use App\Models\ApibaraRequestLog;
 use App\Models\AuctionApiProvider;
 use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\File;
 
 class AuctionApiProviderService
 {
+    /**
+     * Seed the first provider from .env at most once.
+     * After an admin deletes all keys, listing/search must not recreate them.
+     */
     public function ensureDefaultProvider(): void
     {
         if (AuctionApiProvider::query()->exists()) {
             return;
         }
 
+        if ($this->envSeedAlreadyAttempted()) {
+            return;
+        }
+
         $apiKey = trim((string) config('apibara.api_key', ''));
 
         if ($apiKey === '') {
+            $this->markEnvSeedAttempted();
+
             return;
         }
 
@@ -33,6 +44,8 @@ class AuctionApiProviderService
             'last_switched_at' => now(),
             'last_switch_reason' => 'seed',
         ]);
+
+        $this->markEnvSeedAttempted();
     }
 
     /**
@@ -40,7 +53,10 @@ class AuctionApiProviderService
      */
     public function listSummaries(): array
     {
-        $this->ensureDefaultProvider();
+        // Do not reseed here after an intentional wipe — deleted keys must stay gone.
+        if (! $this->envSeedAlreadyAttempted()) {
+            $this->ensureDefaultProvider();
+        }
 
         return AuctionApiProvider::query()
             ->orderBy('sort_order')
@@ -55,7 +71,9 @@ class AuctionApiProviderService
      */
     public function activeSummary(): ?array
     {
-        $this->ensureDefaultProvider();
+        if (! $this->envSeedAlreadyAttempted()) {
+            $this->ensureDefaultProvider();
+        }
 
         $active = AuctionApiProvider::query()->enabled()->active()->first()
             ?? AuctionApiProvider::query()->enabled()->orderBy('sort_order')->orderBy('id')->first();
@@ -68,7 +86,17 @@ class AuctionApiProviderService
      */
     public function resolveForLiveRequest(array $skipIds = []): AuctionApiProvider
     {
-        $this->ensureDefaultProvider();
+        if (! $this->envSeedAlreadyAttempted()) {
+            $this->ensureDefaultProvider();
+        }
+
+        if (! AuctionApiProvider::query()->enabled()->exists()) {
+            throw new ApibaraAuctionException(
+                'لا يوجد مفتاح API للمزاد. أضف مفتاحاً من الإعدادات.',
+                422,
+                'apibara_no_provider',
+            );
+        }
 
         $active = AuctionApiProvider::query()
             ->enabled()
@@ -151,7 +179,7 @@ class AuctionApiProviderService
      */
     public function store(array $data): AuctionApiProvider
     {
-        $this->ensureDefaultProvider();
+        $this->markEnvSeedAttempted();
 
         $activate = (bool) ($data['activate'] ?? false);
         unset($data['activate']);
@@ -197,14 +225,24 @@ class AuctionApiProviderService
 
     public function delete(AuctionApiProvider $provider): void
     {
-        $wasActive = $provider->is_active;
-        $provider->delete();
+        $this->markEnvSeedAttempted();
+
+        $wasActive = (bool) $provider->is_active;
+
+        DB::transaction(function () use ($provider): void {
+            // Detach usage logs first so FK / SQLite never blocks the delete.
+            ApibaraRequestLog::query()
+                ->where('provider_id', $provider->id)
+                ->update(['provider_id' => null]);
+
+            $provider->delete();
+        });
 
         if ($wasActive) {
             $next = AuctionApiProvider::query()->enabled()->orderBy('sort_order')->orderBy('id')->first();
 
             if ($next) {
-                $this->activate($next, 'auto_quota');
+                $this->activate($next, 'manual');
             }
         }
     }
@@ -295,5 +333,29 @@ class AuctionApiProviderService
         $tail = substr($apiKey, -4);
 
         return '••••'.$tail;
+    }
+
+    protected function envSeedMarkerPath(): string
+    {
+        return storage_path('app/auction-api-providers.seeded');
+    }
+
+    protected function envSeedAlreadyAttempted(): bool
+    {
+        return File::exists($this->envSeedMarkerPath());
+    }
+
+    protected function markEnvSeedAttempted(): void
+    {
+        $path = $this->envSeedMarkerPath();
+        $dir = dirname($path);
+
+        if (! File::isDirectory($dir)) {
+            File::makeDirectory($dir, 0755, true);
+        }
+
+        if (! File::exists($path)) {
+            File::put($path, now()->toIso8601String().PHP_EOL);
+        }
     }
 }
