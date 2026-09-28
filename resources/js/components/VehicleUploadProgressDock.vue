@@ -80,9 +80,9 @@
                             <span v-if="etaText(primaryJob)" class="upload-dock__eta">{{ etaText(primaryJob) }}</span>
                         </div>
 
-                        <p v-if="primaryJob.error" class="upload-dock__error">
+                        <p v-if="safeError(primaryJob)" class="upload-dock__error">
                             <i class="pi pi-exclamation-circle" />
-                            {{ primaryJob.error }}
+                            {{ safeError(primaryJob) }}
                         </p>
 
                         <p v-else-if="primaryJob.currentFileName && isActive(primaryJob)" class="upload-dock__file">
@@ -131,7 +131,7 @@
                             </template>
                         </p>
 
-                        <p v-if="job.error" class="upload-dock__item-error">{{ job.error }}</p>
+                        <p v-if="safeError(job)" class="upload-dock__item-error">{{ safeError(job) }}</p>
                     </article>
                     </div>
                 </div>
@@ -152,6 +152,7 @@
 import { computed, ref, watch } from 'vue';
 import { useVehicleUploadStore } from '../stores/vehicleUpload';
 import { useContainerUploadStore } from '../stores/containerUpload';
+import { sanitizeUploadUserMessage } from '../utils/sanitizeUploadUserMessage';
 
 const vehicleUploadStore = useVehicleUploadStore();
 const containerUploadStore = useContainerUploadStore();
@@ -252,6 +253,10 @@ const summaryText = computed(() => {
 
     return `${done} عملية مكتملة`;
 });
+
+function safeError(job) {
+    return sanitizeUploadUserMessage(job?.error, '');
+}
 
 watch(
     () => uploadStore.activeJobs.length,

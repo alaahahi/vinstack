@@ -1,5 +1,6 @@
 import api from '../api/client';
 import { UPLOAD_TIMEOUT_MS, ZIP_UPLOAD_TIMEOUT_MS } from '../constants/uploadTimeouts';
+import { sanitizeUploadUserMessage } from './sanitizeUploadUserMessage';
 
 export { fetchImageTransferStatus, fetchImageTransfers, watchBackgroundTransfer } from './imageTransfer';
 
@@ -14,6 +15,8 @@ const MIME_BY_EXT = {
 
 const ALLOWED_EXTENSIONS = new Set(Object.keys(MIME_BY_EXT));
 
+const CLOUDINARY_UPLOAD_FALLBACK = 'تعذّر رفع الصور إلى Cloudinary';
+
 /**
  * @param {unknown} error
  * @returns {string}
@@ -26,30 +29,45 @@ export function formatCloudinaryUploadError(error) {
     const data = error?.response?.data;
 
     if (! data) {
-        return error?.message || 'تعذّر رفع الصور إلى Cloudinary';
+        return sanitizeUploadUserMessage(error?.message, CLOUDINARY_UPLOAD_FALLBACK);
     }
 
     if (data.errors && typeof data.errors === 'object') {
         const first = Object.values(data.errors).flat()[0];
+        const fromErrors = sanitizeUploadUserMessage(first, '');
 
-        if (first) {
-            return String(first);
+        if (fromErrors) {
+            return fromErrors;
         }
     }
 
-    let message = data.message || 'تعذّر رفع الصور إلى Cloudinary';
-    const failed = data.failed ?? data.data?.failed ?? [];
+    let message = sanitizeUploadUserMessage(data.message, CLOUDINARY_UPLOAD_FALLBACK);
+    const failed = Array.isArray(data.failed)
+        ? data.failed
+        : (Array.isArray(data.data?.failed) ? data.data.failed : []);
 
-    if (failed.length) {
+    if (failed.length && ! failed.some((item) => item && typeof item === 'object' && item.path && item.status)) {
         const details = failed
             .slice(0, 3)
-            .map((item) => `${item.name}: ${item.error}`)
+            .map((item) => {
+                if (! item || typeof item !== 'object') {
+                    return null;
+                }
+
+                const name = sanitizeUploadUserMessage(item.name, 'ملف');
+                const err = sanitizeUploadUserMessage(item.error, '');
+
+                return err ? `${name}: ${err}` : name;
+            })
+            .filter(Boolean)
             .join(' — ');
 
-        message = `${message} (${details}${failed.length > 3 ? ` +${failed.length - 3}` : ''})`;
+        if (details) {
+            message = `${message} (${details}${failed.length > 3 ? ` +${failed.length - 3}` : ''})`;
+        }
     }
 
-    return message;
+    return sanitizeUploadUserMessage(message, CLOUDINARY_UPLOAD_FALLBACK);
 }
 
 /**

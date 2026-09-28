@@ -4,6 +4,7 @@ import { GALLERY_STAGES } from '../utils/vehicleImages';
 import { uploadVehicleImagesBatch } from '../utils/vehicleImageUpload';
 import { uploadVehicleZipImages } from '../utils/vehicleVinstackZipUpload';
 import { watchBackgroundTransfer } from '../utils/imageTransfer';
+import { sanitizeUploadUserMessage } from '../utils/sanitizeUploadUserMessage';
 
 const ACTIVE_STATUSES = ['queued', 'uploading', 'processing', 'refreshing'];
 
@@ -233,7 +234,7 @@ export const useVehicleUploadStore = defineStore('vehicleUpload', () => {
                     stage,
                     transfer: result.transfer,
                     type: 'images',
-                    message: result.message,
+                    message: sanitizeUploadUserMessage(result.message, 'تم الرفع'),
                     onAccepted,
                 });
 
@@ -259,17 +260,22 @@ export const useVehicleUploadStore = defineStore('vehicleUpload', () => {
                 ? result.data.uploaded.length
                 : list.length;
 
+            const successMessage = sanitizeUploadUserMessage(
+                result.message,
+                `تم رفع ${uploaded} صورة بنجاح`,
+            );
+
             patchJob(jobId, {
                 status: 'completed',
                 phase: 'done',
                 progress: 100,
                 completed: uploaded,
                 finishedAt: Date.now(),
-                message: result.message || `تم رفع ${uploaded} صورة بنجاح`,
+                message: successMessage,
                 dismissed: true,
             });
 
-            onAccepted?.(result.message || 'تم الرفع');
+            onAccepted?.(successMessage);
 
             return jobId;
         } catch (error) {
@@ -280,7 +286,10 @@ export const useVehicleUploadStore = defineStore('vehicleUpload', () => {
                 failed: list.length,
                 finishedAt: Date.now(),
                 message: 'فشل رفع الصور',
-                error: error.response?.data?.message || error.message || 'تعذر رفع الصور',
+                error: sanitizeUploadUserMessage(
+                    error.response?.data?.message ?? error.message,
+                    'تعذر رفع الصور',
+                ),
             });
         }
 
@@ -333,7 +342,10 @@ export const useVehicleUploadStore = defineStore('vehicleUpload', () => {
                     stage,
                     transfer: result.transfer,
                     type: 'zip',
-                    message: result.message,
+                    message: sanitizeUploadUserMessage(
+                        result.message,
+                        'تم الرفع — معالجة الصور جارية في الخلفية',
+                    ),
                     onAccepted,
                 });
 
@@ -356,6 +368,10 @@ export const useVehicleUploadStore = defineStore('vehicleUpload', () => {
             });
 
             const uploaded = Number(result.data?.uploaded ?? galleryPayload?.gallery_new_images_count ?? 0);
+            const successMessage = sanitizeUploadUserMessage(
+                result.message,
+                'تم رفع ZIP وتحديث المعرض',
+            );
 
             patchJob(jobId, {
                 status: 'completed',
@@ -363,11 +379,11 @@ export const useVehicleUploadStore = defineStore('vehicleUpload', () => {
                 progress: 100,
                 completed: uploaded || 1,
                 finishedAt: Date.now(),
-                message: result.message || 'تم رفع ZIP وتحديث المعرض',
+                message: successMessage,
                 dismissed: true,
             });
 
-            onAccepted?.(result.message || 'تم الرفع');
+            onAccepted?.(successMessage);
         } catch (error) {
             patchJob(jobId, {
                 status: 'failed',
@@ -376,7 +392,7 @@ export const useVehicleUploadStore = defineStore('vehicleUpload', () => {
                 failed: 1,
                 finishedAt: Date.now(),
                 message: 'فشل رفع ZIP',
-                error: error.message || 'تعذّر رفع ملف ZIP',
+                error: sanitizeUploadUserMessage(error.message, 'تعذّر رفع ملف ZIP'),
             });
         }
 

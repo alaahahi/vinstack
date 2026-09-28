@@ -137,8 +137,27 @@ class VehicleVinstackImageController extends Controller
             'zip_extract_failed' => 'تعذّر استخراج الصور من ملف ZIP.',
             'upload_file_unreadable' => 'تعذّر قراءة ملف الصورة أثناء الرفع.',
             'Cloudinary is not configured.' => 'Cloudinary غير مضبوط — أضف بيانات الاعتماد من الإعدادات.',
-            default => 'تعذّر رفع الصور. '.$code,
+            default => $this->safeGenericError($code),
         };
+    }
+
+    protected function safeGenericError(string $code): string
+    {
+        $trimmed = trim($code);
+
+        // Never leak staging manifests / SQL bind dumps into the UI.
+        if (
+            $trimmed === ''
+            || str_contains($trimmed, 'image-transfers/')
+            || str_starts_with($trimmed, '[')
+            || str_starts_with($trimmed, '{')
+            || str_contains($trimmed, '"status":"pending"')
+            || strlen($trimmed) > 180
+        ) {
+            return 'تعذّر رفع الصور.';
+        }
+
+        return 'تعذّر رفع الصور. '.$trimmed;
     }
 
     protected function translateGalleryApiError(string $code): string

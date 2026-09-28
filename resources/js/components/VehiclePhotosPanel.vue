@@ -674,11 +674,11 @@ async function uploadZipFile(stageKey, zipFile) {
         vehicleLabel: label.value,
         stage: stageKey,
         zipFile,
-        onAccepted: (message) => {
+        onAccepted: () => {
             toast.add({
                 severity: 'success',
                 summary: 'تم الرفع',
-                detail: message || 'معالجة الصور جارية في الخلفية',
+                detail: 'معالجة الصور جارية في الخلفية',
                 life: 4000,
             });
         },
@@ -695,11 +695,11 @@ async function uploadFiles(stageKey, files) {
         vehicleLabel: label.value,
         stage: stageKey,
         files,
-        onAccepted: (message) => {
+        onAccepted: () => {
             toast.add({
                 severity: 'success',
                 summary: 'تم الرفع',
-                detail: message || 'معالجة الصور جارية في الخلفية',
+                detail: 'معالجة الصور جارية في الخلفية',
                 life: 4000,
             });
         },

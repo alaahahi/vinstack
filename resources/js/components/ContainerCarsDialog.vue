@@ -335,6 +335,7 @@ import {
     fetchContainerCloudImages,
 } from '../utils/containerCloudinaryUpload';
 import { useContainerUploadStore } from '../stores/containerUpload';
+import { sanitizeUploadUserMessage } from '../utils/sanitizeUploadUserMessage';
 
 const props = defineProps({
     visible: {
@@ -877,7 +878,10 @@ function trackUploadJob(job) {
                 toast.add({
                     severity: 'error',
                     summary: 'فشل رفع ZIP',
-                    detail: latest.error || latest.message || 'تعذّر رفع ملف ZIP',
+                    detail: sanitizeUploadUserMessage(
+                        latest.error || latest.message,
+                        'تعذّر رفع ملف ZIP',
+                    ),
                     life: 6000,
                 });
                 stop();

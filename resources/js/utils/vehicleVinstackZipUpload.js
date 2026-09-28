@@ -1,5 +1,8 @@
 import api from '../api/client';
-import { UPLOAD_TIMEOUT_MS, ZIP_UPLOAD_TIMEOUT_MS } from '../constants/uploadTimeouts';
+import { ZIP_UPLOAD_TIMEOUT_MS } from '../constants/uploadTimeouts';
+import { sanitizeUploadUserMessage } from './sanitizeUploadUserMessage';
+
+const ZIP_UPLOAD_FALLBACK = 'تعذّر رفع ملف ZIP إلى Vinstack';
 
 /**
  * @param {unknown} error
@@ -13,30 +16,58 @@ export function formatVinstackZipUploadError(error) {
     const data = error?.response?.data;
 
     if (! data) {
-        return error?.message || 'تعذّر رفع ملف ZIP إلى Vinstack';
+        return sanitizeUploadUserMessage(error?.message, ZIP_UPLOAD_FALLBACK);
     }
 
     if (data.errors && typeof data.errors === 'object') {
         const first = Object.values(data.errors).flat()[0];
+        const fromErrors = sanitizeUploadUserMessage(first, '');
 
-        if (first) {
-            return String(first);
+        if (fromErrors) {
+            return fromErrors;
         }
     }
 
-    let message = data.message || 'تعذّر رفع ملف ZIP إلى Vinstack';
-    const failed = data.failed ?? data.data?.failed ?? [];
+    let message = sanitizeUploadUserMessage(data.message, ZIP_UPLOAD_FALLBACK);
+    const failed = Array.isArray(data.failed)
+        ? data.failed
+        : (Array.isArray(data.data?.failed) ? data.data.failed : []);
 
-    if (failed.length) {
+    if (failed.length && ! looksLikeManifestList(failed)) {
         const details = failed
             .slice(0, 3)
-            .map((item) => `${item.name}: ${item.error}`)
+            .map((item) => {
+                if (! item || typeof item !== 'object') {
+                    return null;
+                }
+
+                const name = sanitizeUploadUserMessage(item.name, 'ملف');
+                const err = sanitizeUploadUserMessage(item.error, '');
+
+                return err ? `${name}: ${err}` : name;
+            })
+            .filter(Boolean)
             .join(' — ');
 
-        message = `${message} (${details}${failed.length > 3 ? ` +${failed.length - 3}` : ''})`;
+        if (details) {
+            message = `${message} (${details}${failed.length > 3 ? ` +${failed.length - 3}` : ''})`;
+        }
     }
 
-    return message;
+    return sanitizeUploadUserMessage(message, ZIP_UPLOAD_FALLBACK);
+}
+
+/**
+ * @param {unknown[]} items
+ * @returns {boolean}
+ */
+function looksLikeManifestList(items) {
+    return items.some((item) => (
+        item
+        && typeof item === 'object'
+        && typeof item.path === 'string'
+        && typeof item.status === 'string'
+    ));
 }
 
 /**
