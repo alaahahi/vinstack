@@ -321,6 +321,26 @@
                 </div>
 
                 <div class="dash-lock-actions">
+                    <button
+                        class="dash-db-vacuum-btn dash-db-vacuum-btn--diagnose"
+                        type="button"
+                        :disabled="diagnosing"
+                        @click="runDiagnose"
+                    >
+                        <i v-if="diagnosing" class="pi pi-spinner pi-spin" />
+                        <i v-else class="pi pi-search" />
+                        {{ diagnosing ? t('dashboard.lockDiagnosing') : t('dashboard.lockDiagnoseBtn') }}
+                    </button>
+                    <button
+                        class="dash-db-vacuum-btn dash-db-vacuum-btn--unlock"
+                        type="button"
+                        :disabled="unlocking"
+                        @click="runUnlock"
+                    >
+                        <i v-if="unlocking" class="pi pi-spinner pi-spin" />
+                        <i v-else class="pi pi-unlock" />
+                        {{ unlocking ? t('dashboard.lockUnlocking') : t('dashboard.lockUnlockBtn') }}
+                    </button>
                     <button class="dash-db-vacuum-btn" type="button" :disabled="lockLogLoading" @click="loadLockLog">
                         <i class="pi pi-refresh" />
                         {{ t('dashboard.lockLogRefresh') }}
@@ -335,6 +355,35 @@
                         <i v-else class="pi pi-trash" />
                         {{ t('dashboard.lockLogClear') }}
                     </button>
+                </div>
+                <p v-if="unlockMessage" class="dash-lock-unlock-msg" :class="{ 'dash-lock-unlock-msg--err': unlockFailed }">
+                    {{ unlockMessage }}
+                </p>
+
+                <div v-if="diagnose" class="dash-lock-diagnose">
+                    <div class="dash-lock-diagnose__status" :data-locked="diagnose.locked_now ? '1' : '0'">
+                        <strong>
+                            {{ diagnose.locked_now ? t('dashboard.lockDiagnoseLocked') : t('dashboard.lockDiagnoseOk') }}
+                        </strong>
+                        <span v-if="diagnose.ping_ms != null">{{ diagnose.ping_ms }}ms</span>
+                    </div>
+                    <ul class="dash-lock-diagnose__suspects">
+                        <li
+                            v-for="(s, idx) in diagnose.suspects"
+                            :key="idx"
+                            :data-severity="s.severity"
+                        >
+                            <strong>{{ s.title }}</strong>
+                            <span>{{ s.detail }}</span>
+                        </li>
+                    </ul>
+                    <ul v-if="diagnose.active_transfers?.length" class="dash-lock-diagnose__transfers">
+                        <li v-for="job in diagnose.active_transfers" :key="job.uuid">
+                            <span>{{ job.type }} · {{ job.status }}</span>
+                            <strong>{{ job.progress_percent ?? '–' }}%</strong>
+                            <span dir="ltr">{{ job.uuid?.slice(0, 8) }}</span>
+                        </li>
+                    </ul>
                 </div>
 
                 <div v-if="lockLog.by_caller?.length" class="dash-lock-grid">
@@ -410,6 +459,11 @@ const lockLog = ref(null);
 const lockLogError = ref(false);
 const lockLogToggling = ref(false);
 const lockLogClearing = ref(false);
+const unlocking = ref(false);
+const unlockMessage = ref('');
+const unlockFailed = ref(false);
+const diagnosing = ref(false);
+const diagnose = ref(null);
 
 const dbChartColors = [
     '#6366f1', '#22c55e', '#f59e0b', '#3b82f6', '#ec4899',
@@ -524,6 +578,54 @@ async function clearLockLog() {
         alert(e.response?.data?.message || t('dashboard.lockLogClearFailed'));
     } finally {
         lockLogClearing.value = false;
+    }
+}
+
+async function runUnlock() {
+    if (!confirm(t('dashboard.lockUnlockConfirm'))) {
+        return;
+    }
+
+    unlocking.value = true;
+    unlockMessage.value = '';
+    unlockFailed.value = false;
+
+    try {
+        const { data } = await api.post('/admin/system/database-unlock', {
+            pause_transfers: true,
+        });
+        unlockMessage.value = data.message || t('dashboard.lockUnlockOk');
+        unlockFailed.value = false;
+        await loadLockLog();
+        await runDiagnose();
+    } catch (e) {
+        unlockFailed.value = true;
+        unlockMessage.value = e.response?.data?.message || t('dashboard.lockUnlockFailed');
+    } finally {
+        unlocking.value = false;
+    }
+}
+
+async function runDiagnose() {
+    diagnosing.value = true;
+
+    try {
+        const { data: payload } = await api.get('/admin/system/database-lock-status');
+        diagnose.value = payload.data;
+    } catch (e) {
+        diagnose.value = {
+            locked_now: true,
+            ping_ms: null,
+            suspects: [{
+                severity: 'critical',
+                kind: 'request_failed',
+                title: t('dashboard.lockDiagnoseFailed'),
+                detail: e.response?.data?.message || e.message || '',
+            }],
+            active_transfers: [],
+        };
+    } finally {
+        diagnosing.value = false;
     }
 }
 
@@ -1010,6 +1112,111 @@ onMounted(() => {
     background: transparent;
     color: var(--vs-text-muted);
     border-color: var(--admin-border);
+}
+
+.dash-db-vacuum-btn--unlock {
+    margin-inline-start: 0;
+    background: #0f766e;
+    border-color: #0f766e;
+}
+
+.dash-db-vacuum-btn--unlock:hover:not(:disabled) {
+    background: #0d9488;
+    border-color: #0d9488;
+}
+
+.dash-db-vacuum-btn--diagnose {
+    margin-inline-start: 0;
+    background: #1d4ed8;
+    border-color: #1d4ed8;
+}
+
+.dash-db-vacuum-btn--diagnose:hover:not(:disabled) {
+    background: #2563eb;
+    border-color: #2563eb;
+}
+
+.dash-lock-diagnose {
+    margin-bottom: 1rem;
+    border: 1px solid var(--admin-border);
+    border-radius: 12px;
+    padding: 0.75rem 0.9rem;
+    background: var(--admin-surface);
+}
+
+.dash-lock-diagnose__status {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    margin-bottom: 0.65rem;
+    font-size: 0.88rem;
+}
+
+.dash-lock-diagnose__status[data-locked='1'] strong {
+    color: #b91c1c;
+}
+
+.dash-lock-diagnose__status[data-locked='0'] strong {
+    color: #0f766e;
+}
+
+.dash-lock-diagnose__suspects,
+.dash-lock-diagnose__transfers {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+}
+
+.dash-lock-diagnose__suspects li {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    padding: 0.45rem 0.55rem;
+    border-radius: 8px;
+    border: 1px solid var(--admin-border);
+    font-size: 0.8rem;
+}
+
+.dash-lock-diagnose__suspects li[data-severity='critical'],
+.dash-lock-diagnose__suspects li[data-severity='high'] {
+    border-color: color-mix(in srgb, #ef4444 40%, transparent);
+    background: color-mix(in srgb, #ef4444 8%, transparent);
+}
+
+.dash-lock-diagnose__suspects li[data-severity='medium'] {
+    border-color: color-mix(in srgb, #f59e0b 40%, transparent);
+    background: color-mix(in srgb, #f59e0b 8%, transparent);
+}
+
+.dash-lock-diagnose__suspects li span {
+    color: var(--vs-text-muted);
+}
+
+.dash-lock-diagnose__transfers {
+    margin-top: 0.65rem;
+}
+
+.dash-lock-diagnose__transfers li {
+    display: grid;
+    grid-template-columns: 1fr auto auto;
+    gap: 0.5rem;
+    font-size: 0.75rem;
+    padding: 0.3rem 0;
+    border-bottom: 1px solid var(--admin-border);
+}
+
+.dash-lock-unlock-msg {
+    margin: 0 0 1rem;
+    font-size: 0.82rem;
+    color: #0f766e;
+}
+
+.dash-lock-unlock-msg--err {
+    color: #b91c1c;
 }
 
 .dash-db-vacuum-btn--muted:hover:not(:disabled) {

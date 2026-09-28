@@ -6,6 +6,7 @@ use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ClearSystemCacheRequest;
 use App\Http\Requests\Admin\UpdateSqliteLockLogRequest;
 use App\Services\DatabaseInsightsService;
+use App\Services\DatabaseUnlockService;
 use App\Services\SystemCacheService;
 use App\Support\SqliteLockLog;
 use Illuminate\Http\JsonResponse;
@@ -60,6 +61,41 @@ class SystemController extends Controller
                 ? "تم مسح {$deleted} ملف سجل."
                 : 'لا يوجد سجل لمسحه.',
             'data' => SqliteLockLog::summarize(),
+        ]);
+    }
+
+    public function unlockDatabase(Request $request, DatabaseUnlockService $unlock): JsonResponse
+    {
+        $pauseTransfers = $request->boolean('pause_transfers', true);
+        $result = $unlock->attempt($pauseTransfers);
+
+        if (! $result['ok']) {
+            return response()->json([
+                'message' => 'ما زالت قاعدة البيانات مقفلة. أوقف نقل الصور وانتظر دقيقة ثم أعد المحاولة.',
+                'data' => $result,
+            ], 503);
+        }
+
+        $parts = ['تم فك القفل / إعادة الاتصال بنجاح.'];
+
+        if (($result['transfers_paused'] ?? 0) > 0) {
+            $parts[] = "تم إيقاف {$result['transfers_paused']} مهمة نقل صور نشطة.";
+        }
+
+        if ($result['ping_ms'] !== null) {
+            $parts[] = "زمن الاستجابة: {$result['ping_ms']}ms.";
+        }
+
+        return response()->json([
+            'message' => implode(' ', $parts),
+            'data' => $result,
+        ]);
+    }
+
+    public function databaseLockStatus(DatabaseUnlockService $unlock): JsonResponse
+    {
+        return response()->json([
+            'data' => $unlock->diagnose(),
         ]);
     }
 

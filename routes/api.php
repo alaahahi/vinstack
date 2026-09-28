@@ -144,6 +144,8 @@ Route::middleware('auth:sanctum')->group(function () {
         Route::put('/system/sqlite-lock-log', [SystemController::class, 'updateSqliteLockLog']);
         Route::delete('/system/sqlite-lock-log', [SystemController::class, 'clearSqliteLockLog']);
         Route::post('/system/database-vacuum', [SystemController::class, 'vacuumDatabase']);
+        Route::get('/system/database-lock-status', [SystemController::class, 'databaseLockStatus']);
+        Route::post('/system/database-unlock', [SystemController::class, 'unlockDatabase']);
         Route::post('/system/migrate', [SystemController::class, 'migrate']);
         Route::post('/system/cache/clear', [SystemController::class, 'clearCache']);
         Route::get('/system/logs', [SystemController::class, 'logs']);
