@@ -170,9 +170,20 @@ class ContainerImageController extends Controller
                 ], 422);
             }
 
+            $transfer = $job->toApiArray();
+
+            try {
+                $fresh = $job->fresh();
+                if ($fresh) {
+                    $transfer = $fresh->toApiArray();
+                }
+            } catch (\Throwable) {
+                // Keep the staged job payload; processing continues in the background.
+            }
+
             return response()->json([
                 'data' => [
-                    'transfer' => $job->fresh()->toApiArray(),
+                    'transfer' => $transfer,
                     'async' => true,
                 ],
                 'message' => 'تم الرفع — معالجة الصور جارية في الخلفية.',

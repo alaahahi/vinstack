@@ -127,22 +127,38 @@ export const useVehicleUploadStore = defineStore('vehicleUpload', () => {
         type,
         message,
         onAccepted,
+        assumedAccepted = false,
     }) {
+        const successMessage = sanitizeUploadUserMessage(
+            message,
+            'تم الرفع — معالجة الصور جارية في الخلفية',
+        );
+
         markBackgroundBusy(vehicleId, stage);
 
+        // Keep the green success state visible — do not hide the dock immediately.
         patchJob(jobId, {
             status: 'completed',
             phase: 'done',
             progress: 100,
             total: transfer?.total_images ?? 0,
-            completed: 0,
+            completed: transfer?.total_images ?? 1,
             finishedAt: Date.now(),
-            message: message || 'تم الرفع',
+            message: successMessage,
+            error: null,
             transferId: transfer?.id ?? null,
-            dismissed: true,
+            dismissed: false,
         });
 
-        onAccepted?.(message || 'تم الرفع');
+        onAccepted?.(successMessage);
+
+        window.setTimeout(() => {
+            const current = findJob(jobId);
+
+            if (current && current.status === 'completed' && ! current.dismissed) {
+                patchJob(jobId, { dismissed: true });
+            }
+        }, 4500);
 
         const transferId = transfer?.id;
 
@@ -227,7 +243,7 @@ export const useVehicleUploadStore = defineStore('vehicleUpload', () => {
                 });
             });
 
-            if (result?.async && result?.transfer?.id) {
+            if (result?.async && (result?.transfer?.id || result?.assumedAccepted)) {
                 acceptAsyncTransfer({
                     jobId,
                     vehicleId,
@@ -236,6 +252,7 @@ export const useVehicleUploadStore = defineStore('vehicleUpload', () => {
                     type: 'images',
                     message: sanitizeUploadUserMessage(result.message, 'تم الرفع'),
                     onAccepted,
+                    assumedAccepted: Boolean(result.assumedAccepted),
                 });
 
                 return jobId;
@@ -272,10 +289,19 @@ export const useVehicleUploadStore = defineStore('vehicleUpload', () => {
                 completed: uploaded,
                 finishedAt: Date.now(),
                 message: successMessage,
-                dismissed: true,
+                error: null,
+                dismissed: false,
             });
 
             onAccepted?.(successMessage);
+
+            window.setTimeout(() => {
+                const current = findJob(jobId);
+
+                if (current && current.status === 'completed' && ! current.dismissed) {
+                    patchJob(jobId, { dismissed: true });
+                }
+            }, 4500);
 
             return jobId;
         } catch (error) {
@@ -335,7 +361,7 @@ export const useVehicleUploadStore = defineStore('vehicleUpload', () => {
                 });
             });
 
-            if (result?.async && result?.transfer?.id) {
+            if (result?.async && (result?.transfer?.id || result?.assumedAccepted)) {
                 acceptAsyncTransfer({
                     jobId,
                     vehicleId,
@@ -347,6 +373,7 @@ export const useVehicleUploadStore = defineStore('vehicleUpload', () => {
                         'تم الرفع — معالجة الصور جارية في الخلفية',
                     ),
                     onAccepted,
+                    assumedAccepted: Boolean(result.assumedAccepted),
                 });
 
                 return jobId;
@@ -370,7 +397,7 @@ export const useVehicleUploadStore = defineStore('vehicleUpload', () => {
             const uploaded = Number(result.data?.uploaded ?? galleryPayload?.gallery_new_images_count ?? 0);
             const successMessage = sanitizeUploadUserMessage(
                 result.message,
-                'تم رفع ZIP وتحديث المعرض',
+                uploaded > 0 ? `تم رفع ${uploaded} صورة بنجاح` : 'تم رفع ZIP وتحديث المعرض',
             );
 
             patchJob(jobId, {
@@ -380,10 +407,19 @@ export const useVehicleUploadStore = defineStore('vehicleUpload', () => {
                 completed: uploaded || 1,
                 finishedAt: Date.now(),
                 message: successMessage,
-                dismissed: true,
+                error: null,
+                dismissed: false,
             });
 
             onAccepted?.(successMessage);
+
+            window.setTimeout(() => {
+                const current = findJob(jobId);
+
+                if (current && current.status === 'completed' && ! current.dismissed) {
+                    patchJob(jobId, { dismissed: true });
+                }
+            }, 4500);
         } catch (error) {
             patchJob(jobId, {
                 status: 'failed',

@@ -94,7 +94,9 @@ class ImageTransferService
                 'manifest' => $manifest,
             ]);
 
-            ProcessImageTransferBatch::dispatch($job->id);
+            // Run after the HTTP response so the client gets 202 immediately
+            // even when QUEUE_CONNECTION=sync (common on shared hosting).
+            ProcessImageTransferBatch::dispatch($job->id)->afterResponse();
 
             return $job;
         });
@@ -155,7 +157,7 @@ class ImageTransferService
                 'manifest' => $manifest,
             ]);
 
-            ProcessImageTransferBatch::dispatch($job->id);
+            ProcessImageTransferBatch::dispatch($job->id)->afterResponse();
 
             return $job;
         });
@@ -219,7 +221,7 @@ class ImageTransferService
                 'manifest' => $manifest,
             ]);
 
-            ProcessImageTransferBatch::dispatch($job->id);
+            ProcessImageTransferBatch::dispatch($job->id)->afterResponse();
 
             return $job;
         });

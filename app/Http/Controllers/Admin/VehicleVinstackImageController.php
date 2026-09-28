@@ -48,9 +48,21 @@ class VehicleVinstackImageController extends Controller
                 ], 422);
             }
 
+            // Prefer in-memory job — avoid a second SQLite read that can fail after a busy write.
+            $transfer = $job->toApiArray();
+
+            try {
+                $fresh = $job->fresh();
+                if ($fresh) {
+                    $transfer = $fresh->toApiArray();
+                }
+            } catch (\Throwable) {
+                // Keep the staged job payload; processing already continues in the background.
+            }
+
             return response()->json([
                 'data' => [
-                    'transfer' => $job->fresh()->toApiArray(),
+                    'transfer' => $transfer,
                     'async' => true,
                 ],
                 'message' => 'تم الرفع — معالجة الصور جارية في الخلفية.',

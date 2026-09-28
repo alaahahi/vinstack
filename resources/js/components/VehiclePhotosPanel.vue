@@ -677,7 +677,7 @@ async function uploadZipFile(stageKey, zipFile) {
         onAccepted: () => {
             toast.add({
                 severity: 'success',
-                summary: 'تم الرفع',
+                summary: 'تم الرفع بنجاح',
                 detail: 'معالجة الصور جارية في الخلفية',
                 life: 4000,
             });
@@ -698,7 +698,7 @@ async function uploadFiles(stageKey, files) {
         onAccepted: () => {
             toast.add({
                 severity: 'success',
-                summary: 'تم الرفع',
+                summary: 'تم الرفع بنجاح',
                 detail: 'معالجة الصور جارية في الخلفية',
                 life: 4000,
             });

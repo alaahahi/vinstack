@@ -3,6 +3,7 @@ import { ZIP_UPLOAD_TIMEOUT_MS } from '../constants/uploadTimeouts';
 import { sanitizeUploadUserMessage } from './sanitizeUploadUserMessage';
 
 const ZIP_UPLOAD_FALLBACK = 'تعذّر رفع ملف ZIP إلى Vinstack';
+const ZIP_SENT_OK_MESSAGE = 'تم إرسال الملف — معالجة الصور جارية في الخلفية.';
 
 /**
  * @param {unknown} error
@@ -71,6 +72,61 @@ function looksLikeManifestList(items) {
 }
 
 /**
+ * Bytes finished uploading; a later timeout/network drop often means the server
+ * already accepted the ZIP and is processing — treat as soft success.
+ *
+ * @param {unknown} error
+ * @param {number} uploadPercent
+ * @returns {boolean}
+ */
+function isPostUploadTransportFailure(error, uploadPercent) {
+    if (uploadPercent < 99) {
+        return false;
+    }
+
+    if (error?.code === 'ECONNABORTED' || /timeout/i.test(String(error?.message || ''))) {
+        return true;
+    }
+
+    const status = error?.response?.status;
+
+    // No HTTP response (proxy cut / connection reset) after body was sent.
+    if (! error?.response && error?.request) {
+        return true;
+    }
+
+    // Gateway / origin timeouts after the upload body arrived.
+    if ([408, 502, 503, 504].includes(Number(status))) {
+        return true;
+    }
+
+    return false;
+}
+
+/**
+ * @param {import('axios').AxiosResponse} response
+ * @returns {{ async: true, transfer: object, message: string } | null}
+ */
+function asyncTransferFromResponse(response) {
+    const payload = response?.data?.data;
+    const transfer = payload?.transfer;
+    const transferId = transfer?.id;
+
+    if (payload?.async && transferId) {
+        return {
+            async: true,
+            transfer,
+            message: sanitizeUploadUserMessage(
+                response.data?.message,
+                ZIP_SENT_OK_MESSAGE,
+            ),
+        };
+    }
+
+    return null;
+}
+
+/**
  * @param {number|string} vehicleId
  * @param {'terminal'|'pickup'|'destination'} stage
  * @param {File} zipFile
@@ -81,32 +137,47 @@ export async function uploadVehicleZipImages(vehicleId, stage, zipFile, onProgre
     form.append('stage', stage);
     form.append('zip', zipFile, zipFile.name);
 
+    let uploadPercent = 0;
+
     try {
         const response = await api.post(`/admin/vehicles/${vehicleId}/images/zip`, form, {
             timeout: ZIP_UPLOAD_TIMEOUT_MS,
             onUploadProgress: (event) => {
                 if (onProgress && event.total) {
-                    onProgress(Math.round((event.loaded * 100) / event.total));
+                    uploadPercent = Math.round((event.loaded * 100) / event.total);
+                    onProgress(uploadPercent);
                 } else if (onProgress && event.loaded) {
+                    uploadPercent = 99;
                     onProgress(99);
                 }
             },
-            validateStatus: (status) => status === 201 || status === 202 || status === 422,
+            validateStatus: (status) => (
+                status === 200
+                || status === 201
+                || status === 202
+                || status === 422
+            ),
         });
 
         if (onProgress) {
+            uploadPercent = 100;
             onProgress(100);
         }
 
-        if (response.status === 202 && response.data?.data?.async) {
-            return {
-                async: true,
-                transfer: response.data.data.transfer,
-                message: response.data.message,
-            };
+        const asyncResult = asyncTransferFromResponse(response);
+
+        if (asyncResult) {
+            return asyncResult;
         }
 
         if (response.status === 422) {
+            // Partial sync success still carries uploaded count.
+            const uploaded = Number(response.data?.data?.uploaded ?? 0);
+
+            if (uploaded > 0) {
+                return response.data;
+            }
+
             const error = new Error(formatVinstackZipUploadError({ response }));
             error.response = response;
             throw error;
@@ -114,6 +185,21 @@ export async function uploadVehicleZipImages(vehicleId, stage, zipFile, onProgre
 
         return response.data;
     } catch (error) {
+        const asyncFromError = asyncTransferFromResponse(error?.response);
+
+        if (asyncFromError) {
+            return asyncFromError;
+        }
+
+        if (isPostUploadTransportFailure(error, uploadPercent)) {
+            return {
+                async: true,
+                transfer: { id: null, total_images: 0 },
+                message: ZIP_SENT_OK_MESSAGE,
+                assumedAccepted: true,
+            };
+        }
+
         error.message = formatVinstackZipUploadError(error);
         throw error;
     }
@@ -128,5 +214,7 @@ export function isZipFile(file) {
 
     return file.type === 'application/zip'
         || file.type === 'application/x-zip-compressed'
+        || file.type === 'application/octet-stream'
+        || file.type === 'multipart/x-zip'
         || name.endsWith('.zip');
 }

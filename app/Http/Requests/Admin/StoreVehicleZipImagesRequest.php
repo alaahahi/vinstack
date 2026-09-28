@@ -22,6 +22,7 @@ class StoreVehicleZipImagesRequest extends FormRequest
                 'required',
                 'file',
                 'mimes:zip',
+                'mimetypes:application/zip,application/x-zip-compressed,multipart/x-zip,application/octet-stream',
                 'max:'.VehicleVinstackZipUploadService::MAX_ZIP_KILOBYTES,
             ],
         ];
