@@ -63,7 +63,7 @@
 </template>
 
 <script setup>
-import { computed, onMounted, onUnmounted, ref } from 'vue';
+import { computed, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import { useRouter } from 'vue-router';
 import Button from 'primevue/button';
@@ -81,8 +81,6 @@ const loadingList = ref(false);
 const listVisible = ref(false);
 const chatVisible = ref(false);
 const chatVehicle = ref(null);
-
-let pollTimer = null;
 
 const badgeLabel = computed(() => (unreadCount.value > 0 ? String(unreadCount.value) : null));
 
@@ -121,7 +119,7 @@ async function fetchUnreadCount() {
         const { data } = await api.get('/admin/notifications/unread-count');
         unreadCount.value = Number(data.unread_count || 0);
     } catch {
-        // ignore polling errors
+        // ignore transient errors
     }
 }
 
@@ -181,17 +179,6 @@ function onChatRead() {
 function onChatSent() {
     fetchUnreadCount();
 }
-
-onMounted(() => {
-    fetchUnreadCount();
-    pollTimer = window.setInterval(fetchUnreadCount, 60000);
-});
-
-onUnmounted(() => {
-    if (pollTimer) {
-        window.clearInterval(pollTimer);
-    }
-});
 </script>
 
 <style scoped>
