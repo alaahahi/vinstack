@@ -8,6 +8,7 @@ use App\Models\DealerNotificationLog;
 use App\Models\Vehicle;
 use App\Models\VehicleDealerNoteNotification;
 use App\Models\VehicleStatusNotification;
+use App\Support\VehicleGalleryStore;
 use App\Support\VehicleLogisticsStatus;
 use App\Support\VehicleRawDataLocations;
 use Illuminate\Support\Facades\DB;
@@ -82,15 +83,32 @@ class AdminDashboardService
      */
     protected function photoStats(int $totalVehicles): array
     {
-        $withUploaded = Vehicle::query()->whereHas('uploadedImages')->count();
+        $fileGalleryIds = VehicleGalleryStore::isEnabled()
+            ? VehicleGalleryStore::vehicleIdsWithImages()
+            : [];
+
+        $withUploaded = Vehicle::query()
+            ->where(function ($query) use ($fileGalleryIds): void {
+                $query->whereHas('uploadedImages');
+
+                if ($fileGalleryIds !== []) {
+                    $query->orWhereIn('id', $fileGalleryIds);
+                }
+            })
+            ->count();
+
         $galleryIds = $this->vehicleIdsWithGalleryImages();
 
         $withAny = Vehicle::query()
-            ->where(function ($query) use ($galleryIds): void {
+            ->where(function ($query) use ($galleryIds, $fileGalleryIds): void {
                 $query->whereHas('uploadedImages');
 
                 if ($galleryIds !== []) {
                     $query->orWhereIn('id', $galleryIds);
+                }
+
+                if ($fileGalleryIds !== []) {
+                    $query->orWhereIn('id', $fileGalleryIds);
                 }
             })
             ->count();

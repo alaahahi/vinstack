@@ -4,7 +4,6 @@ namespace App\Support;
 
 use App\Models\Vehicle;
 use App\Models\VehicleUploadedImage;
-use App\Support\VehicleRawDataLocations;
 use Illuminate\Support\Arr;
 
 class VehicleGalleryMerger
@@ -104,6 +103,23 @@ class VehicleGalleryMerger
             }
 
             $stages[$image->stage][] = $url;
+        }
+
+        // Phase 1 dual-read: new uploads live in the per-vehicle gallery file.
+        if (VehicleGalleryStore::isEnabled()) {
+            foreach (VehicleGalleryStore::urlsByStage($vehicle) as $stage => $urls) {
+                if (! isset($stages[$stage])) {
+                    continue;
+                }
+
+                foreach ($urls as $url) {
+                    if ($url === '' || self::containsUrl($stages, $url)) {
+                        continue;
+                    }
+
+                    $stages[$stage][] = $url;
+                }
+            }
         }
 
         foreach (VehicleImageStages::STAGES as $stage) {

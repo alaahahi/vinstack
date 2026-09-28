@@ -10,8 +10,10 @@ use App\Models\VehicleUploadedImage;
 use App\Models\VinstackSetting;
 use App\Services\CloudinaryService;
 use App\Services\VehicleUploadedImageService;
+use App\Support\VehicleGalleryStore;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -22,6 +24,13 @@ class VehicleUploadedImageServiceTest extends TestCase
     public function test_store_one_uploads_to_cloudinary_and_discards_temp_file(): void
     {
         Storage::fake('public');
+
+        $galleryDir = storage_path('framework/testing/vehicle-galleries-svc-'.uniqid());
+        config([
+            'vehicle_gallery.file_store_enabled' => true,
+            'vehicle_gallery.path' => $galleryDir,
+        ]);
+        File::ensureDirectoryExists($galleryDir);
 
         VinstackSetting::query()->create([
             'cloudinary_cloud_name' => 'demo',
@@ -73,12 +82,15 @@ class VehicleUploadedImageServiceTest extends TestCase
             'https://res.cloudinary.com/demo/image/upload/v1/terminal.jpg',
             $result['url'],
         );
+        $this->assertSame('file', $result['storage'] ?? null);
+        $this->assertTrue(VehicleGalleryStore::isFileGalleryId((string) $result['id']));
 
-        $record = VehicleUploadedImage::query()->first();
-        $this->assertNotNull($record);
-        $this->assertNull($record->path);
-        $this->assertSame($result['url'], $record->cloudinary_url);
+        // Phase 1: no SQLite row for new uploads.
+        $this->assertSame(0, VehicleUploadedImage::query()->count());
+        $this->assertFileExists(VehicleGalleryStore::pathFor($vehicle));
         Storage::disk('public')->assertMissing('vehicle-images/'.$vehicle->id);
+
+        File::deleteDirectory($galleryDir);
     }
 
     public function test_local_uploaded_image_public_url_still_serves_storage_path(): void

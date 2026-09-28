@@ -7,6 +7,7 @@ use App\Models\Dealer;
 use App\Models\User;
 use App\Models\Vehicle;
 use App\Support\PhoneNormalizer;
+use App\Support\VehicleGalleryStore;
 use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 use RuntimeException;
@@ -111,6 +112,18 @@ class CopartExportService
                     $url = rtrim((string) config('app.url'), '/').$url;
                 }
                 $images[] = $url;
+            }
+        }
+
+        if (VehicleGalleryStore::isEnabled()) {
+            foreach (VehicleGalleryStore::formatted($vehicle) as $img) {
+                $url = (string) ($img['url'] ?? '');
+                if ($url !== '' && (str_starts_with($url, 'http') || str_starts_with($url, '/'))) {
+                    if (str_starts_with($url, '/')) {
+                        $url = rtrim((string) config('app.url'), '/').$url;
+                    }
+                    $images[] = $url;
+                }
             }
         }
 

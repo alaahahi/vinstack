@@ -58,7 +58,7 @@ class ImageTransferProcessor
             }
 
             $this->persistProgress($job);
-            $this->trySyncJobToDatabase($job);
+            $this->trySyncJobToDatabase($job, includeManifest: false);
         }
 
         $batchSize = max(1, (int) (VinstackSetting::current()->image_transfer_batch_size ?? 10));
@@ -112,7 +112,7 @@ class ImageTransferProcessor
         if ($job->hasPendingManifestItems()) {
             $job->status = ImageTransferJob::STATUS_PROCESSING;
             $this->persistProgress($job);
-            $this->trySyncJobToDatabase($job);
+            $this->trySyncJobToDatabase($job, includeManifest: false);
             $this->health->markBatchProcessed('processor', $jobId);
 
             return true;
@@ -378,9 +378,25 @@ class ImageTransferProcessor
         );
     }
 
-    protected function trySyncJobToDatabase(ImageTransferJob $job): void
+    protected function trySyncJobToDatabase(ImageTransferJob $job, bool $includeManifest = true): void
     {
         try {
+            // Mid-batch: update counters only — keep the large manifest on disk
+            // (ImageTransferProgressStore) so SQLite is not rewriting a big JSON blob.
+            if (! $includeManifest && $job->exists) {
+                ImageTransferJob::query()->whereKey($job->id)->update([
+                    'status' => $job->status,
+                    'transferred_count' => $job->transferred_count,
+                    'failed_count' => $job->failed_count,
+                    'error_message' => $job->error_message,
+                    'started_at' => $job->started_at,
+                    'finished_at' => $job->finished_at,
+                    'updated_at' => now(),
+                ]);
+
+                return;
+            }
+
             $job->save();
         } catch (\Throwable $e) {
             if ($this->isDatabaseLock($e)) {
