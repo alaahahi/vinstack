@@ -3,13 +3,22 @@
 namespace Tests\Unit;
 
 use App\Models\VinstackSetting;
+use App\Support\AutoSyncWindow;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Artisan;
 use Tests\TestCase;
 
 class SyncVehiclesCommandTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
 
     public function test_command_skips_when_auto_sync_disabled(): void
     {
@@ -28,8 +37,27 @@ class SyncVehiclesCommandTest extends TestCase
         );
     }
 
+    public function test_command_skips_during_peak_hours(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-28 11:00:00', AutoSyncWindow::TIMEZONE));
+
+        VinstackSetting::query()->create([
+            'api_base_url' => 'https://app.vinstack.com/api/v1/client',
+            'api_token' => 'vk_test_token',
+            'sync_enabled' => true,
+        ]);
+
+        $exitCode = Artisan::call('vinstack:sync');
+
+        $this->assertSame(0, $exitCode);
+        $this->assertStringContainsString('22:00 and 06:00', Artisan::output());
+        $this->assertStringNotContainsString('Syncing vehicles from Vinstack', Artisan::output());
+    }
+
     public function test_command_skips_when_api_token_missing(): void
     {
+        Carbon::setTestNow(Carbon::parse('2026-09-28 23:15:00', AutoSyncWindow::TIMEZONE));
+
         VinstackSetting::query()->create([
             'api_base_url' => 'https://app.vinstack.com/api/v1/client',
             'api_token' => null,

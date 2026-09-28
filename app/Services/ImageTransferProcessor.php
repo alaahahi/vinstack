@@ -9,6 +9,7 @@ use App\Models\User;
 use App\Models\Vehicle;
 use App\Models\VinstackSetting;
 use App\Support\SqliteBusy;
+use App\Support\SqliteLockLog;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Log;
 
@@ -427,12 +428,28 @@ class ImageTransferProcessor
 
     protected function isDatabaseLock(\Throwable $e): bool
     {
-        return SqliteBusy::isBusy($e);
+        $busy = SqliteBusy::isBusy($e);
+
+        if ($busy) {
+            SqliteBusy::record($e, 'image_transfer');
+        }
+
+        return $busy;
     }
 
     protected function messageIsDatabaseLock(string $message): bool
     {
-        return SqliteBusy::messageIsBusy($message);
+        $busy = SqliteBusy::messageIsBusy($message);
+
+        if ($busy) {
+            SqliteLockLog::record(
+                new \RuntimeException($message),
+                'image_transfer_queue',
+                ['caller' => 'ImageTransferProcessor::markFailedFromQueue']
+            );
+        }
+
+        return $busy;
     }
 
     protected function sendCompletionNotification(ImageTransferJob $job): void

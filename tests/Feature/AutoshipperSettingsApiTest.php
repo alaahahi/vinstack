@@ -7,7 +7,9 @@ use App\Enums\VehicleSource;
 use App\Models\AutoshipperSetting;
 use App\Models\User;
 use App\Models\Vehicle;
+use App\Support\AutoSyncWindow;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\Http;
 use Laravel\Sanctum\Sanctum;
 use Tests\TestCase;
@@ -16,6 +18,13 @@ class AutoshipperSettingsApiTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function tearDown(): void
+    {
+        Carbon::setTestNow();
+
+        parent::tearDown();
+    }
+
     public function test_admin_can_view_and_update_autoshipper_settings(): void
     {
         Sanctum::actingAs(User::factory()->create(['role' => UserRole::Admin]));
@@ -23,7 +32,10 @@ class AutoshipperSettingsApiTest extends TestCase
         $this->getJson('/api/admin/autoshipper/settings')
             ->assertOk()
             ->assertJsonPath('data.sync_enabled', true)
-            ->assertJsonPath('data.has_token', false);
+            ->assertJsonPath('data.has_token', false)
+            ->assertJsonPath('data.auto_sync_window.starts_at', '22:00')
+            ->assertJsonPath('data.auto_sync_window.ends_at', '06:00')
+            ->assertJsonPath('data.auto_sync_window.timezone', 'Asia/Baghdad');
 
         $this->putJson('/api/admin/autoshipper/settings', [
             'api_base_url' => 'https://autoshipper.io/api',
@@ -41,6 +53,7 @@ class AutoshipperSettingsApiTest extends TestCase
 
     public function test_admin_can_trigger_sync(): void
     {
+        Carbon::setTestNow(Carbon::parse('2026-09-28 11:00:00', AutoSyncWindow::TIMEZONE));
         Sanctum::actingAs(User::factory()->create(['role' => UserRole::Admin]));
         AutoshipperSetting::current();
 
@@ -82,6 +95,38 @@ class AutoshipperSettingsApiTest extends TestCase
         $this->getJson('/api/admin/autoshipper/settings')->assertForbidden();
         $this->putJson('/api/admin/autoshipper/settings', ['sync_enabled' => false])->assertForbidden();
         $this->postJson('/api/admin/autoshipper/sync')->assertForbidden();
+    }
+
+    public function test_command_skips_during_peak_hours_without_touching_vehicles(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-28 08:42:00', AutoSyncWindow::TIMEZONE));
+        AutoshipperSetting::current()->update(['sync_enabled' => true]);
+
+        $this->artisan('autoshipper:sync')
+            ->expectsOutputToContain('22:00 and 06:00')
+            ->assertSuccessful();
+
+        $this->assertSame(0, Vehicle::query()->count());
+
+        Carbon::setTestNow();
+    }
+
+    public function test_forced_command_is_not_blocked_by_peak_hours(): void
+    {
+        Carbon::setTestNow(Carbon::parse('2026-09-28 08:42:00', AutoSyncWindow::TIMEZONE));
+        AutoshipperSetting::current()->update(['sync_enabled' => true]);
+
+        Http::fake([
+            '*/sync/vehicles' => Http::response(['data' => []]),
+            '*/sync/media' => Http::response(['data' => []]),
+            '*/sync/vehicleCharges' => Http::response(['data' => []]),
+        ]);
+
+        $this->artisan('autoshipper:sync', ['--force' => true])
+            ->expectsOutputToContain('Syncing vehicles from AutoShipper')
+            ->assertSuccessful();
+
+        Carbon::setTestNow();
     }
 
     public function test_command_skips_when_sync_disabled(): void

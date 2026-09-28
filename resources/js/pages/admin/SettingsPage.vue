@@ -287,6 +287,24 @@
                 </header>
 
                 <div class="settings-card__body">
+                    <div
+                        v-if="autoSyncWindow"
+                        class="auto-sync-window"
+                        :class="autoSyncWindow.open ? 'auto-sync-window--open' : 'auto-sync-window--closed'"
+                    >
+                        <i class="pi" :class="autoSyncWindow.open ? 'pi-moon' : 'pi-sun'" />
+                        <div>
+                            <div class="auto-sync-window__title">
+                                {{ autoSyncWindow.open ? t('settings.autoSyncWindowOpen') : t('settings.autoSyncWindowClosed') }}
+                            </div>
+                            <p class="auto-sync-window__meta">
+                                {{ t('settings.autoSyncWindowHours') }}
+                                ·
+                                <span dir="ltr">{{ autoSyncWindow.local_time }}</span>
+                            </p>
+                            <p class="auto-sync-window__meta">{{ t('settings.autoSyncWindowManual') }}</p>
+                        </div>
+                    </div>
                     <div class="field field--row">
                         <Checkbox v-model="form.sync_enabled" binary input-id="sync" />
                         <label for="sync" class="vs-form-label">{{ t('settings.autoSync') }}</label>
@@ -328,7 +346,7 @@
                     <ul class="sync-cron-help__list" dir="ltr">
                         <li>
                             <code>* * * * * php /path/to/artisan schedule:run</code>
-                            — يُشغِّل جدولة Laravel كل دقيقة (المزامنة كل ساعة)
+                            — يُشغِّل جدولة Laravel كل دقيقة (المزامنة التلقائية فقط من 22:00 إلى 06:00 بتوقيت بغداد)
                         </li>
                         <li>
                             <code>0 * * * * php /path/to/artisan vinstack:sync</code>
@@ -386,6 +404,24 @@
                                     input-class="w-full"
                                     class="w-full"
                                 />
+                            </div>
+                            <div
+                                v-if="autoSyncWindow"
+                                class="auto-sync-window"
+                                :class="autoSyncWindow.open ? 'auto-sync-window--open' : 'auto-sync-window--closed'"
+                            >
+                                <i class="pi" :class="autoSyncWindow.open ? 'pi-moon' : 'pi-sun'" />
+                                <div>
+                                    <div class="auto-sync-window__title">
+                                        {{ autoSyncWindow.open ? t('settings.autoSyncWindowOpen') : t('settings.autoSyncWindowClosed') }}
+                                    </div>
+                                    <p class="auto-sync-window__meta">
+                                        {{ t('settings.autoSyncWindowHours') }}
+                                        ·
+                                        <span dir="ltr">{{ autoSyncWindow.local_time }}</span>
+                                    </p>
+                                    <p class="auto-sync-window__meta">{{ t('settings.autoSyncWindowManual') }}</p>
+                                </div>
                             </div>
                             <div class="field field--row">
                                 <Checkbox v-model="autoshipperForm.sync_enabled" binary input-id="autoshipper-sync" />
@@ -1074,8 +1110,9 @@ import { formatDateTime } from '../../utils/formatDateTime';
 const { t } = useI18n();
 const toast = useToast();
 const confirm = useConfirm();
-const settings = ref({ has_token: false, last_sync_at: null, last_auto_sync_at: null });
-const autoshipperSettings = ref({ has_token: false, last_sync_at: null, last_auto_sync_at: null });
+const settings = ref({ has_token: false, last_sync_at: null, last_auto_sync_at: null, auto_sync_window: null });
+const autoshipperSettings = ref({ has_token: false, last_sync_at: null, last_auto_sync_at: null, auto_sync_window: null });
+const autoSyncWindow = computed(() => settings.value.auto_sync_window || autoshipperSettings.value.auto_sync_window || null);
 const accountingSettings = ref({ has_token: false });
 const saving = ref(false);
 const testingGallery = ref(false);
@@ -2286,6 +2323,56 @@ onMounted(async () => {
     unicode-bidi: isolate;
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
+}
+
+.auto-sync-window {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.65rem;
+    margin-bottom: 0.85rem;
+    padding: 0.75rem 0.85rem;
+    border-radius: var(--admin-radius-sm, 8px);
+    border: 1px solid var(--admin-border);
+    font-size: 0.88rem;
+}
+
+.auto-sync-window .pi {
+    margin-top: 0.15rem;
+    font-size: 1rem;
+}
+
+.auto-sync-window--open {
+    background: rgba(22, 163, 74, 0.1);
+    border-color: rgba(22, 163, 74, 0.35);
+    color: #166534;
+}
+
+.auto-sync-window--closed {
+    background: rgba(245, 158, 11, 0.12);
+    border-color: rgba(245, 158, 11, 0.45);
+    color: #9a3412;
+}
+
+.auto-sync-window__title {
+    font-weight: 600;
+    line-height: 1.4;
+}
+
+.auto-sync-window__meta {
+    margin: 0.2rem 0 0;
+    font-size: 0.8rem;
+    line-height: 1.45;
+    color: var(--vs-text-muted);
+}
+
+[data-theme='dark'] .auto-sync-window--open {
+    background: rgba(22, 163, 74, 0.16);
+    color: #86efac;
+}
+
+[data-theme='dark'] .auto-sync-window--closed {
+    background: rgba(245, 158, 11, 0.16);
+    color: #fdba74;
 }
 
 .sync-cron-help {

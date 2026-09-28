@@ -1,15 +1,18 @@
 <?php
 
+use App\Http\Controllers\Admin\AccountingExportController;
+use App\Http\Controllers\Admin\AuctionApiProviderController;
+use App\Http\Controllers\Admin\AutoshipperSettingsController;
 use App\Http\Controllers\Admin\ContainerController as AdminContainerController;
-use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\ContainerImageController as AdminContainerImageController;
+use App\Http\Controllers\Admin\DashboardController;
 use App\Http\Controllers\Admin\DatabaseBackupController;
 use App\Http\Controllers\Admin\DealerController;
 use App\Http\Controllers\Admin\DealerNotificationController;
+use App\Http\Controllers\Admin\ImageTransferController;
 use App\Http\Controllers\Admin\ManualVehicleController;
 use App\Http\Controllers\Admin\NotificationController;
 use App\Http\Controllers\Admin\NujoomAlJazeeraImportController;
-use App\Http\Controllers\Admin\ImageTransferController;
 use App\Http\Controllers\Admin\ProfileController as AdminProfileController;
 use App\Http\Controllers\Admin\SystemController;
 use App\Http\Controllers\Admin\VehicleController as AdminVehicleController;
@@ -20,9 +23,6 @@ use App\Http\Controllers\Admin\VehicleUploadedImageController;
 use App\Http\Controllers\Admin\VehicleVinstackImageController;
 use App\Http\Controllers\Admin\VinstackBrowseController;
 use App\Http\Controllers\Admin\VinstackSettingsController;
-use App\Http\Controllers\Admin\AutoshipperSettingsController;
-use App\Http\Controllers\Admin\AccountingExportController;
-use App\Http\Controllers\Admin\AuctionApiProviderController;
 use App\Http\Controllers\Api\AuctionController;
 use App\Http\Controllers\Api\AuctionFavoriteController;
 use App\Http\Controllers\Api\AuctionSpotlightController;
@@ -140,6 +140,9 @@ Route::middleware('auth:sanctum')->group(function () {
 
         Route::get('/system/migrations', [SystemController::class, 'migrations']);
         Route::get('/system/database-insights', [SystemController::class, 'databaseInsights']);
+        Route::get('/system/sqlite-lock-log', [SystemController::class, 'sqliteLockLog']);
+        Route::put('/system/sqlite-lock-log', [SystemController::class, 'updateSqliteLockLog']);
+        Route::delete('/system/sqlite-lock-log', [SystemController::class, 'clearSqliteLockLog']);
         Route::post('/system/database-vacuum', [SystemController::class, 'vacuumDatabase']);
         Route::post('/system/migrate', [SystemController::class, 'migrate']);
         Route::post('/system/cache/clear', [SystemController::class, 'clearCache']);

@@ -6,6 +6,7 @@ use App\Actions\SyncAutoShipperVehiclesAction;
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\UpdateAutoshipperSettingsRequest;
 use App\Models\AutoshipperSetting;
+use App\Support\AutoSyncWindow;
 use Illuminate\Http\JsonResponse;
 
 class AutoshipperSettingsController extends Controller
@@ -77,6 +78,7 @@ class AutoshipperSettingsController extends Controller
             'sync_enabled' => (bool) ($settings->sync_enabled ?? true),
             'last_sync_at' => $settings->last_sync_at,
             'last_auto_sync_at' => $settings->last_auto_sync_at,
+            'auto_sync_window' => AutoSyncWindow::describe(),
         ];
     }
 }

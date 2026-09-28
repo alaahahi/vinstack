@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Actions\SyncVehiclesAction;
 use App\Models\VinstackSetting;
+use App\Support\AutoSyncWindow;
 use App\Support\SqliteBusy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -22,6 +23,14 @@ class SyncVehicles extends Command
             $this->info('Auto sync is disabled in settings. Skipping.');
 
             Log::info('vinstack:sync skipped: auto sync disabled');
+
+            return self::SUCCESS;
+        }
+
+        if (! $this->option('force') && ! AutoSyncWindow::isOpen()) {
+            $this->info(AutoSyncWindow::skipMessage());
+
+            Log::info('vinstack:sync skipped: outside night window', AutoSyncWindow::describe());
 
             return self::SUCCESS;
         }

@@ -8,6 +8,7 @@ use App\Http\Requests\Admin\UpdateVinstackSettingsRequest;
 use App\Models\VinstackSetting;
 use App\Services\CloudinaryService;
 use App\Services\VinstackGalleryService;
+use App\Support\AutoSyncWindow;
 use Illuminate\Http\JsonResponse;
 
 class VinstackSettingsController extends Controller
@@ -109,6 +110,7 @@ class VinstackSettingsController extends Controller
             'auction_spotlight_enabled' => (bool) ($settings->auction_spotlight_enabled ?? true),
             'last_sync_at' => $settings->last_sync_at,
             'last_auto_sync_at' => $settings->last_auto_sync_at,
+            'auto_sync_window' => AutoSyncWindow::describe(),
             'support_phone' => $settings->support_phone ?? '',
             'cloudinary_cloud_name' => $settings->cloudinary_cloud_name ?? '',
             'has_cloudinary_api_key' => (bool) $settings->cloudinary_api_key,

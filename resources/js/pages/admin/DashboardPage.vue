@@ -265,6 +265,125 @@
                 </div>
             </template>
         </section>
+
+        <section class="dash-section">
+            <header class="dash-section__head">
+                <i class="pi pi-lock dash-section__icon" aria-hidden="true" />
+                <div class="dash-section__head-main">
+                    <div>
+                        <h2>{{ t('dashboard.lockLogTitle') }}</h2>
+                        <p>{{ t('dashboard.lockLogSub') }}</p>
+                    </div>
+                    <div class="dash-lock-toggle">
+                        <span class="dash-lock-toggle__label">
+                            {{ lockLog?.enabled ? t('dashboard.lockLogOn') : t('dashboard.lockLogOff') }}
+                        </span>
+                        <ToggleSwitch
+                            :model-value="!!lockLog?.enabled"
+                            :disabled="lockLogLoading || lockLogToggling"
+                            @update:model-value="toggleLockLog"
+                        />
+                    </div>
+                </div>
+            </header>
+
+            <div v-if="lockLogLoading" class="dash-empty">
+                <ProgressSpinner style="width: 24px; height: 24px" />
+                <span>{{ t('dashboard.lockLogLoading') }}</span>
+            </div>
+
+            <p v-else-if="lockLogError" class="dash-empty">{{ t('dashboard.lockLogFailed') }}</p>
+
+            <template v-else-if="lockLog">
+                <div class="dash-db-summary">
+                    <div class="dash-db-stat">
+                        <span>{{ t('dashboard.lockLogToday') }}</span>
+                        <strong :class="{ 'dash-db-stat--warn': lockLog.today_total > 0 }">{{ lockLog.today_total }}</strong>
+                    </div>
+                    <div class="dash-db-stat">
+                        <span>{{ t('dashboard.lockLogSoft') }}</span>
+                        <strong>{{ lockLog.by_outcome?.soft_fail ?? 0 }}</strong>
+                    </div>
+                    <div class="dash-db-stat">
+                        <span>{{ t('dashboard.lockLogRetry') }}</span>
+                        <strong>{{ lockLog.by_outcome?.retry ?? 0 }}</strong>
+                    </div>
+                    <div class="dash-db-stat">
+                        <span>{{ t('dashboard.lockLogExhausted') }}</span>
+                        <strong :class="{ 'dash-db-stat--warn': (lockLog.by_outcome?.exhausted ?? 0) > 0 }">
+                            {{ lockLog.by_outcome?.exhausted ?? 0 }}
+                        </strong>
+                    </div>
+                    <div class="dash-db-stat">
+                        <span>{{ t('dashboard.lockLogSize') }}</span>
+                        <strong>{{ formatBytes(lockLog.log_size_bytes) }}</strong>
+                    </div>
+                </div>
+
+                <div class="dash-lock-actions">
+                    <button class="dash-db-vacuum-btn" type="button" :disabled="lockLogLoading" @click="loadLockLog">
+                        <i class="pi pi-refresh" />
+                        {{ t('dashboard.lockLogRefresh') }}
+                    </button>
+                    <button
+                        class="dash-db-vacuum-btn dash-db-vacuum-btn--muted"
+                        type="button"
+                        :disabled="lockLogClearing || !lockLog.log_size_bytes"
+                        @click="clearLockLog"
+                    >
+                        <i v-if="lockLogClearing" class="pi pi-spinner pi-spin" />
+                        <i v-else class="pi pi-trash" />
+                        {{ t('dashboard.lockLogClear') }}
+                    </button>
+                </div>
+
+                <div v-if="lockLog.by_caller?.length" class="dash-lock-grid">
+                    <article class="dash-lock-panel">
+                        <h3>{{ t('dashboard.lockLogTopCallers') }}</h3>
+                        <ul class="dash-lock-list">
+                            <li v-for="row in lockLog.by_caller" :key="row.name">
+                                <span :title="row.name">{{ shortCaller(row.name) }}</span>
+                                <strong>{{ row.count }}</strong>
+                            </li>
+                        </ul>
+                    </article>
+
+                    <article v-if="lockLog.by_route?.length" class="dash-lock-panel">
+                        <h3>{{ t('dashboard.lockLogTopRoutes') }}</h3>
+                        <ul class="dash-lock-list">
+                            <li v-for="row in lockLog.by_route" :key="row.name">
+                                <span :title="row.name">{{ row.name }}</span>
+                                <strong>{{ row.count }}</strong>
+                            </li>
+                        </ul>
+                    </article>
+
+                    <article v-if="lockLog.by_command?.length" class="dash-lock-panel">
+                        <h3>{{ t('dashboard.lockLogTopCommands') }}</h3>
+                        <ul class="dash-lock-list">
+                            <li v-for="row in lockLog.by_command" :key="row.name">
+                                <span :title="row.name">{{ row.name }}</span>
+                                <strong>{{ row.count }}</strong>
+                            </li>
+                        </ul>
+                    </article>
+                </div>
+
+                <div v-if="lockLog.recent?.length" class="dash-lock-recent">
+                    <h3>{{ t('dashboard.lockLogRecent') }}</h3>
+                    <ul class="dash-lock-recent-list">
+                        <li v-for="(ev, idx) in lockLog.recent" :key="idx">
+                            <span class="dash-lock-recent__time">{{ formatLockTime(ev.ts) }}</span>
+                            <span class="dash-lock-badge" :data-outcome="ev.outcome">{{ ev.outcome }}</span>
+                            <span class="dash-lock-recent__caller" :title="ev.caller">{{ shortCaller(ev.caller) }}</span>
+                            <span class="dash-lock-recent__sql" :title="ev.sql || ev.message">{{ ev.sql || ev.message || '–' }}</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <p v-else class="dash-empty dash-empty--compact">{{ t('dashboard.lockLogEmpty') }}</p>
+            </template>
+        </section>
     </div>
 </template>
 
@@ -272,6 +391,7 @@
 import { computed, onMounted, ref } from 'vue';
 import { useI18n } from 'vue-i18n';
 import ProgressSpinner from 'primevue/progressspinner';
+import ToggleSwitch from 'primevue/toggleswitch';
 import api from '../../api/client';
 
 const { t, locale } = useI18n();
@@ -284,6 +404,12 @@ const dbLoading = ref(true);
 const db = ref(null);
 const dbError = ref(false);
 const vacuuming = ref(false);
+
+const lockLogLoading = ref(true);
+const lockLog = ref(null);
+const lockLogError = ref(false);
+const lockLogToggling = ref(false);
+const lockLogClearing = ref(false);
 
 const dbChartColors = [
     '#6366f1', '#22c55e', '#f59e0b', '#3b82f6', '#ec4899',
@@ -357,6 +483,71 @@ async function loadDbInsights() {
     }
 }
 
+async function loadLockLog() {
+    lockLogLoading.value = true;
+    lockLogError.value = false;
+
+    try {
+        const { data: payload } = await api.get('/admin/system/sqlite-lock-log');
+        lockLog.value = payload.data;
+    } catch {
+        lockLogError.value = true;
+    } finally {
+        lockLogLoading.value = false;
+    }
+}
+
+async function toggleLockLog(enabled) {
+    lockLogToggling.value = true;
+
+    try {
+        const { data: payload } = await api.put('/admin/system/sqlite-lock-log', { enabled: !!enabled });
+        lockLog.value = payload.data;
+    } catch (e) {
+        alert(e.response?.data?.message || t('dashboard.lockLogToggleFailed'));
+    } finally {
+        lockLogToggling.value = false;
+    }
+}
+
+async function clearLockLog() {
+    if (!confirm(t('dashboard.lockLogClearConfirm'))) {
+        return;
+    }
+
+    lockLogClearing.value = true;
+
+    try {
+        const { data: payload } = await api.delete('/admin/system/sqlite-lock-log');
+        lockLog.value = payload.data;
+    } catch (e) {
+        alert(e.response?.data?.message || t('dashboard.lockLogClearFailed'));
+    } finally {
+        lockLogClearing.value = false;
+    }
+}
+
+function shortCaller(name) {
+    if (!name) return '–';
+
+    const parts = String(name).split('\\');
+
+    return parts[parts.length - 1] || name;
+}
+
+function formatLockTime(ts) {
+    if (!ts) return '–';
+
+    try {
+        return new Date(ts).toLocaleTimeString(
+            locale.value === 'ar' ? 'ar' : locale.value === 'ckb' ? 'ckb' : 'en',
+            { hour: '2-digit', minute: '2-digit', second: '2-digit' }
+        );
+    } catch {
+        return String(ts);
+    }
+}
+
 const maxBar = computed(() => {
     const months = data.value?.vehicles_added?.months ?? [];
 
@@ -405,6 +596,7 @@ async function load() {
 onMounted(() => {
     load();
     loadDbInsights();
+    loadLockLog();
 });
 </script>
 
@@ -778,6 +970,180 @@ onMounted(() => {
     .dash-stat-card__head strong,
     .dash-lp-card__head strong {
         font-size: 1.35rem;
+    }
+}
+
+.dash-section__head-main {
+    flex: 1;
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 1rem;
+    flex-wrap: wrap;
+}
+
+.dash-lock-toggle {
+    display: flex;
+    align-items: center;
+    gap: 0.55rem;
+}
+
+.dash-lock-toggle__label {
+    font-size: 0.8rem;
+    font-weight: 600;
+    color: var(--vs-text-muted);
+}
+
+.dash-db-stat--warn {
+    color: #ef4444;
+}
+
+.dash-lock-actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.5rem;
+    margin-bottom: 1rem;
+}
+
+.dash-db-vacuum-btn--muted {
+    margin-inline-start: 0;
+    background: transparent;
+    color: var(--vs-text-muted);
+    border-color: var(--admin-border);
+}
+
+.dash-db-vacuum-btn--muted:hover:not(:disabled) {
+    background: color-mix(in srgb, var(--admin-border) 35%, transparent);
+    border-color: var(--admin-border);
+    color: var(--vs-text);
+}
+
+.dash-lock-actions .dash-db-vacuum-btn {
+    margin-inline-start: 0;
+}
+
+.dash-lock-grid {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+    gap: 0.85rem;
+    margin-bottom: 1rem;
+}
+
+.dash-lock-panel {
+    border: 1px solid var(--admin-border);
+    border-radius: 12px;
+    padding: 0.75rem 0.9rem;
+    background: var(--admin-surface);
+}
+
+.dash-lock-panel h3,
+.dash-lock-recent h3 {
+    margin: 0 0 0.55rem;
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: var(--vs-text-muted);
+}
+
+.dash-lock-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.dash-lock-list li {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.78rem;
+}
+
+.dash-lock-list li span {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    min-width: 0;
+}
+
+.dash-lock-recent-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    max-height: 280px;
+    overflow: auto;
+}
+
+.dash-lock-recent-list li {
+    display: grid;
+    grid-template-columns: 4.5rem auto minmax(0, 1fr) minmax(0, 1.4fr);
+    gap: 0.45rem;
+    align-items: center;
+    font-size: 0.75rem;
+    padding: 0.35rem 0.45rem;
+    border-radius: 8px;
+    border: 1px solid var(--admin-border);
+}
+
+.dash-lock-recent__time {
+    color: var(--vs-text-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.dash-lock-badge {
+    display: inline-flex;
+    padding: 0.1rem 0.4rem;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    background: #334155;
+    color: #e2e8f0;
+}
+
+.dash-lock-badge[data-outcome='soft_fail'] {
+    background: color-mix(in srgb, #f59e0b 22%, transparent);
+    color: #b45309;
+}
+
+.dash-lock-badge[data-outcome='retry'] {
+    background: color-mix(in srgb, #3b82f6 22%, transparent);
+    color: #1d4ed8;
+}
+
+.dash-lock-badge[data-outcome='exhausted'],
+.dash-lock-badge[data-outcome='sync_row_given_up'] {
+    background: color-mix(in srgb, #ef4444 22%, transparent);
+    color: #b91c1c;
+}
+
+.dash-lock-recent__caller,
+.dash-lock-recent__sql {
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+
+.dash-lock-recent__sql {
+    color: var(--vs-text-muted);
+    direction: ltr;
+    text-align: start;
+}
+
+.dash-empty--compact {
+    min-height: 3rem;
+}
+
+@media (max-width: 900px) {
+    .dash-lock-recent-list li {
+        grid-template-columns: 4.5rem auto 1fr;
+    }
+
+    .dash-lock-recent__sql {
+        grid-column: 1 / -1;
     }
 }
 </style>

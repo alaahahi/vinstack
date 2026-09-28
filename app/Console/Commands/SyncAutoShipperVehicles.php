@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Actions\SyncAutoShipperVehiclesAction;
 use App\Models\AutoshipperSetting;
+use App\Support\AutoSyncWindow;
 use App\Support\SqliteBusy;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Log;
@@ -22,6 +23,14 @@ class SyncAutoShipperVehicles extends Command
             $this->info('AutoShipper auto sync is disabled in settings. Skipping.');
 
             Log::info('autoshipper:sync skipped: auto sync disabled');
+
+            return self::SUCCESS;
+        }
+
+        if (! $this->option('force') && ! AutoSyncWindow::isOpen()) {
+            $this->info(AutoSyncWindow::skipMessage());
+
+            Log::info('autoshipper:sync skipped: outside night window', AutoSyncWindow::describe());
 
             return self::SUCCESS;
         }

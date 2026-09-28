@@ -36,6 +36,7 @@ class AuthController extends Controller
 
     public function logout(Request $request): JsonResponse
     {
+        // Stateless SPA tokens live only in the browser — nothing to delete in SQLite.
         $request->user()->currentAccessToken()?->delete();
 
         return response()->json(['message' => 'Logged out']);

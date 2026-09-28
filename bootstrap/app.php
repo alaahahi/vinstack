@@ -1,5 +1,8 @@
 <?php
 
+use App\Http\Middleware\EnsureUserHasRole;
+use App\Http\Middleware\MigrateLegacySpaToken;
+use App\Monitor\Services\ExceptionMonitor;
 use Illuminate\Foundation\Application;
 use Illuminate\Foundation\Configuration\Exceptions;
 use Illuminate\Foundation\Configuration\Middleware;
@@ -14,14 +17,18 @@ return Application::configure(basePath: dirname(__DIR__))
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->statefulApi();
 
+        $middleware->api(append: [
+            MigrateLegacySpaToken::class,
+        ]);
+
         $middleware->alias([
-            'role' => \App\Http\Middleware\EnsureUserHasRole::class,
+            'role' => EnsureUserHasRole::class,
         ]);
     })
     ->withExceptions(function (Exceptions $exceptions): void {
-        $exceptions->reportable(function (\Throwable $e): void {
-            if (app()->bound(\App\Monitor\Services\ExceptionMonitor::class)) {
-                app(\App\Monitor\Services\ExceptionMonitor::class)->log($e);
+        $exceptions->reportable(function (Throwable $e): void {
+            if (app()->bound(ExceptionMonitor::class)) {
+                app(ExceptionMonitor::class)->log($e);
             }
         });
     })->create();

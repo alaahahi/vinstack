@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Services\Auth\SpaAccessTokenService;
+use App\Support\SqliteBusy;
 use Illuminate\Database\QueryException;
 use Laravel\Sanctum\PersonalAccessToken as SanctumPersonalAccessToken;
 use PDOException;
@@ -15,11 +17,52 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
      */
     public const LAST_USED_AT_THROTTLE_SECONDS = 3600;
 
+    /** @var bool */
+    public $stateless = false;
+
+    public function markAsStateless(): void
+    {
+        $this->stateless = true;
+    }
+
+    /**
+     * Prefer signed SPA tokens (no DB). Fall back to legacy DB tokens so
+     * existing browser sessions can migrate without forced logout.
+     *
+     * @param  string  $token
+     * @return static|null
+     */
+    public static function findToken($token)
+    {
+        if (! is_string($token) || $token === '') {
+            return null;
+        }
+
+        $service = app(SpaAccessTokenService::class);
+
+        if ($service->isStatelessToken($token)) {
+            return $service->resolveAccessTokenModel($token);
+        }
+
+        try {
+            /** @var static|null $legacy */
+            $legacy = parent::findToken($token);
+
+            return $legacy;
+        } catch (QueryException|PDOException) {
+            return null;
+        }
+    }
+
     /**
      * @param  array<string, mixed>  $options
      */
     public function save(array $options = []): bool
     {
+        if ($this->stateless) {
+            return true;
+        }
+
         if ($this->shouldSkipLastUsedAtWrite()) {
             // Discard in-memory dirty last_used_at / updated_at without writing.
             $this->syncOriginal();
@@ -34,6 +77,19 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
         return parent::save($options);
     }
 
+    public function delete(): ?bool
+    {
+        if ($this->stateless) {
+            return true;
+        }
+
+        try {
+            return parent::delete();
+        } catch (QueryException|PDOException) {
+            return true;
+        }
+    }
+
     /**
      * Persist last_used_at without ever failing the HTTP request on lock errors.
      *
@@ -45,6 +101,9 @@ class PersonalAccessToken extends SanctumPersonalAccessToken
             return parent::save($options);
         } catch (QueryException|PDOException $e) {
             // SQLite "database is locked" (and similar) must not crash auth.
+            SqliteBusy::record($e, 'soft_fail', [
+                'caller' => 'PersonalAccessToken::saveLastUsedAtSafely',
+            ]);
             $this->syncOriginal();
 
             return true;

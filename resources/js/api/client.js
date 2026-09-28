@@ -32,7 +32,17 @@ api.interceptors.request.use((config) => {
 });
 
 api.interceptors.response.use(
-    (response) => response,
+    (response) => {
+        // Temporary migration: swap legacy DB Sanctum token for signed SPA token.
+        const nextToken = response.headers?.['x-spa-token'];
+        if (typeof nextToken === 'string' && nextToken.startsWith('st1.')) {
+            const isolated = sessionStorage.getItem('auth_isolated') === '1';
+            const target = isolated ? sessionStorage : localStorage;
+            target.setItem('token', nextToken);
+        }
+
+        return response;
+    },
     (error) => {
         if (error.response?.status === 401) {
             const isolated = sessionStorage.getItem('auth_isolated') === '1';

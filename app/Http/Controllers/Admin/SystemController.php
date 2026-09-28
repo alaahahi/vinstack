@@ -4,9 +4,12 @@ namespace App\Http\Controllers\Admin;
 
 use App\Http\Controllers\Controller;
 use App\Http\Requests\Admin\ClearSystemCacheRequest;
+use App\Http\Requests\Admin\UpdateSqliteLockLogRequest;
 use App\Services\DatabaseInsightsService;
 use App\Services\SystemCacheService;
+use App\Support\SqliteLockLog;
 use Illuminate\Http\JsonResponse;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -19,6 +22,44 @@ class SystemController extends Controller
     {
         return response()->json([
             'data' => $insights->summarize(),
+        ]);
+    }
+
+    public function sqliteLockLog(Request $request): JsonResponse
+    {
+        $date = $request->query('date');
+        $date = is_string($date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) ? $date : null;
+
+        SqliteLockLog::pruneOldFiles();
+
+        return response()->json([
+            'data' => SqliteLockLog::summarize($date),
+        ]);
+    }
+
+    public function updateSqliteLockLog(UpdateSqliteLockLogRequest $request): JsonResponse
+    {
+        SqliteLockLog::setEnabled($request->boolean('enabled'));
+
+        return response()->json([
+            'message' => $request->boolean('enabled')
+                ? 'تم تفعيل سجل أقفال SQLite.'
+                : 'تم إيقاف سجل أقفال SQLite.',
+            'data' => SqliteLockLog::summarize(),
+        ]);
+    }
+
+    public function clearSqliteLockLog(Request $request): JsonResponse
+    {
+        $date = $request->query('date');
+        $date = is_string($date) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $date) ? $date : null;
+        $deleted = SqliteLockLog::clear($date);
+
+        return response()->json([
+            'message' => $deleted > 0
+                ? "تم مسح {$deleted} ملف سجل."
+                : 'لا يوجد سجل لمسحه.',
+            'data' => SqliteLockLog::summarize(),
         ]);
     }
 
@@ -54,7 +95,7 @@ class SystemController extends Controller
             ]);
         } catch (Throwable $e) {
             return response()->json([
-                'message' => 'فشل VACUUM: ' . $e->getMessage(),
+                'message' => 'فشل VACUUM: '.$e->getMessage(),
             ], 500);
         }
     }

@@ -45,6 +45,20 @@ final class SqliteBusy
     }
 
     /**
+     * Record a busy/lock event to the file-only lock log (no DB writes).
+     *
+     * @param  array<string, mixed>  $extra
+     */
+    public static function record(Throwable $e, string $outcome, array $extra = []): void
+    {
+        if (! self::isBusy($e)) {
+            return;
+        }
+
+        SqliteLockLog::record($e, $outcome, $extra);
+    }
+
+    /**
      * Run a non-critical write; swallow SQLite busy/lock errors.
      */
     public static function soft(callable $callback): void
@@ -55,6 +69,8 @@ final class SqliteBusy
             if (! self::isBusy($e)) {
                 throw $e;
             }
+
+            self::record($e, 'soft_fail');
 
             Log::debug('sqlite busy soft-fail', [
                 'message' => $e->getMessage(),
@@ -81,9 +97,23 @@ final class SqliteBusy
             } catch (QueryException|PDOException $e) {
                 $last = $e;
 
-                if (! self::isBusy($e) || $i === $attempts) {
+                if (! self::isBusy($e)) {
                     throw $e;
                 }
+
+                if ($i === $attempts) {
+                    self::record($e, 'exhausted', [
+                        'attempt' => $i,
+                        'max_attempts' => $attempts,
+                    ]);
+
+                    throw $e;
+                }
+
+                self::record($e, 'retry', [
+                    'attempt' => $i,
+                    'max_attempts' => $attempts,
+                ]);
 
                 usleep($backoffMs * 1000 * $i);
             }

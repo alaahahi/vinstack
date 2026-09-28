@@ -4,6 +4,7 @@ namespace App\Http\Controllers\Api;
 
 use App\Enums\UserRole;
 use App\Models\User;
+use App\Services\Auth\SpaAccessTokenService;
 use App\Support\DealerPresence;
 use App\Support\TwoFactorToken;
 use Illuminate\Validation\ValidationException;
@@ -36,12 +37,8 @@ trait FormatsAuthUser
             DealerPresence::touch($user);
         }
 
-        $expirationMinutes = config('sanctum.expiration');
-        $expiresAt = $expirationMinutes
-            ? now()->addMinutes((int) $expirationMinutes)
-            : null;
-
-        $token = $user->createToken('spa', ['*'], $expiresAt)->plainTextToken;
+        // Signed token in localStorage/sessionStorage — no personal_access_tokens write.
+        $token = app(SpaAccessTokenService::class)->issue($user);
 
         return [
             'token' => $token,

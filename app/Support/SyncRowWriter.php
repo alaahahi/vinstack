@@ -39,6 +39,13 @@ final class SyncRowWriter
         } catch (QueryException|PDOException $e) {
             // Deliberately catches non-lock query errors too (a malformed row
             // must not cost us the rest of the batch); anything else bubbles.
+            if (SqliteBusy::isBusy($e)) {
+                SqliteBusy::record($e, 'sync_row_given_up', [
+                    'sync' => $sync,
+                    'context' => $context,
+                ]);
+            }
+
             Log::error($sync.': row write failed, continuing', [
                 ...$context,
                 'sqlite_busy' => SqliteBusy::isBusy($e),
