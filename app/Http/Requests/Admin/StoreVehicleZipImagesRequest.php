@@ -39,7 +39,7 @@ class StoreVehicleZipImagesRequest extends FormRequest
             'zip.required' => 'يرجى اختيار ملف ZIP.',
             'zip.file' => 'يجب أن يكون المرفق ملفاً صالحاً.',
             'zip.mimes' => 'يُقبل ملف ZIP فقط (.zip).',
-            'zip.max' => 'حجم ملف ZIP كبير جداً — الحد الأقصى 50 ميغابايت.',
+            'zip.max' => 'حجم ملف ZIP كبير جداً — الحد الأقصى 100 ميغابايت.',
         ];
     }
 }

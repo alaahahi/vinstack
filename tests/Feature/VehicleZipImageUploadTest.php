@@ -101,6 +101,92 @@ class VehicleZipImageUploadTest extends TestCase
             ->assertStatus(422);
     }
 
+    public function test_vehicle_zip_upload_rejects_files_exceeding_100mb_limit(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $vin = '1HGBH41JXMN109186';
+
+        VinstackSetting::query()->create([
+            'gallery_api_base_url' => 'https://app.vinstack.com/api/client-portal',
+            'gallery_api_token' => 'gallery-token',
+            'image_transfer_async_enabled' => false,
+        ]);
+
+        $vehicle = Vehicle::query()->create([
+            'source' => VehicleSource::Vinstack,
+            'vin' => $vin,
+            'vinstack_id' => '507f1f77bcf86cd799439011',
+            'status' => VehicleStatus::Available,
+            'raw_data' => [
+                'id' => '507f1f77bcf86cd799439011',
+            ],
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $oversizedZip = UploadedFile::fake()->create('photos.zip', 102401, 'application/zip');
+
+        $response = $this->post('/api/admin/vehicles/'.$vehicle->id.'/images/zip', [
+            'stage' => 'terminal',
+            'zip' => $oversizedZip,
+        ], [
+            'Accept' => 'application/json',
+        ]);
+
+        $response->assertStatus(422)
+            ->assertJsonValidationErrors('zip');
+    }
+
+    public function test_vehicle_zip_upload_accepts_files_at_100mb_boundary(): void
+    {
+        $admin = User::factory()->create(['role' => UserRole::Admin]);
+        $vin = '1HGBH41JXMN109186';
+
+        VinstackSetting::query()->create([
+            'gallery_api_base_url' => 'https://app.vinstack.com/api/client-portal',
+            'gallery_api_token' => 'gallery-token',
+            'image_transfer_async_enabled' => false,
+        ]);
+
+        $vehicle = Vehicle::query()->create([
+            'source' => VehicleSource::Vinstack,
+            'vin' => $vin,
+            'vinstack_id' => '507f1f77bcf86cd799439011',
+            'status' => VehicleStatus::Available,
+            'raw_data' => [
+                'id' => '507f1f77bcf86cd799439011',
+            ],
+        ]);
+
+        Http::fake([
+            'https://app.vinstack.com/api/client-portal/autos/'.$vin.'/gallery/terminal' => Http::response([
+                'data' => ['url' => 'https://cdn.example.com/terminal-1.jpg'],
+            ], 201),
+            'https://app.vinstack.com/api/client-portal/autos/'.$vin.'/gallery' => Http::response([
+                'data' => [
+                    'terminal' => ['urls' => ['https://cdn.example.com/terminal-1.jpg']],
+                    'pickup' => ['urls' => []],
+                    'destination' => ['urls' => []],
+                ],
+            ], 200),
+        ]);
+
+        Sanctum::actingAs($admin);
+
+        $zip = $this->makeZipWithImages([
+            'photo-1.jpg' => UploadedFile::fake()->image('photo-1.jpg')->getContent(),
+        ]);
+
+        $response = $this->post('/api/admin/vehicles/'.$vehicle->id.'/images/zip', [
+            'stage' => 'terminal',
+            'zip' => $zip,
+        ], [
+            'Accept' => 'application/json',
+        ]);
+
+        $response->assertSuccessful();
+    }
+
     public function test_admin_vehicle_zip_upload_returns_async_when_cloudinary_enabled(): void
     {
         $admin = User::factory()->create(['role' => UserRole::Admin]);

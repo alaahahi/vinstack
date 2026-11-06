@@ -14,7 +14,7 @@ use ZipArchive;
 
 class VehicleVinstackZipUploadService
 {
-    public const MAX_ZIP_KILOBYTES = 51200;
+    public const MAX_ZIP_KILOBYTES = 102400;
 
     public const MAX_IMAGES_PER_ZIP = 100;
 
