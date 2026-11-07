@@ -18,7 +18,9 @@
    npm run build
    ```
 3. **Git**: أضف واعْمَل commit لمجلد `public/build/` (مُتتبَّع في المستودع). **لا** ترفع `node_modules` ولا `.env`.
-4. ارفع المشروع: `git push` ثم على السيرفر `git pull`، أو FTP لمجلد التطبيق كاملاً (مع `vendor/` إن لم يكن Composer على الاستضافة).
+4. ارفع المشروع:
+   - **Git push + pull**: على جهازك `git push`، ثم على السيرفر `git pull` (أو `git fetch origin <branch>` ثم `git checkout <branch>` أو `git merge origin/<branch>` حسب الفرع). ملاحظة: `git fetch` بدون `checkout` لا ينشئ فرع محلي تلقائياً.
+   - **FTP**: انسخ مجلد التطبيق كاملاً (مع `vendor/` إن لم يكن Composer على الاستضافة). FTP ليس ذريًّا — قد تحتاج وضع الموقع في **وضع الصيانة** (`php artisan down`) قبل النسخ ثم تفعيله (`php artisan up`) بعد الانتهاء لتجنب حالة غير مستقرة خلال الرفع.
 
 ### على السيرفر — خياران لجذر الموقع
 
@@ -178,7 +180,9 @@ QUEUE_CONNECTION=sync
    npm run build
    ```
 3. **Commit** the generated `public/build/` directory. Do **not** commit `node_modules` or `.env`.
-4. Deploy via **git pull** on the host or **FTP** the full app tree (include `vendor/` if the host cannot run Composer).
+4. Deploy:
+   - **Git push + pull**: `git push` locally, then on the server `git pull` (or `git fetch origin <branch>` followed by `git checkout <branch>` or `git merge origin/<branch>` depending on your branch). Note: `git fetch` alone does not create a local branch automatically.
+   - **FTP**: Copy the full app tree (include `vendor/` if the host cannot run Composer). FTP is not atomic — consider putting the app into **maintenance mode** (`php artisan down`) before uploading, then restore (`php artisan up`) after completion to avoid an unstable state during transfer.
 
 ### Document root options
 
