@@ -10,6 +10,14 @@
         <section class="admin-surface dealers-panel">
             <div v-if="loading && !dealers.length" class="dealers-loading">
                 <ProgressSpinner style="width: 36px; height: 36px" />
+                <p class="dealers-loading-text">{{ t('dealers.loading') }}</p>
+            </div>
+
+            <div v-else-if="loadError && !dealers.length" class="admin-empty admin-empty--error">
+                <i class="pi pi-exclamation-circle" />
+                <p class="admin-empty-title">{{ t('dealers.loadErrorTitle') }}</p>
+                <p class="admin-empty-hint">{{ loadError }}</p>
+                <Button :label="t('actions.refresh')" icon="pi pi-refresh" outlined @click="load()" />
             </div>
 
             <div v-else-if="!dealers.length" class="admin-empty">
@@ -263,6 +271,7 @@ const toast = useToast();
 const confirm = useConfirm();
 const dealers = ref([]);
 const loading = ref(false);
+const loadError = ref(null);
 const showForm = ref(false);
 const showEdit = ref(false);
 const saving = ref(false);
@@ -362,12 +371,22 @@ async function updateNotificationLocale(dealer, locale) {
 async function load({ silent = false } = {}) {
     if (!silent) {
         loading.value = true;
+        loadError.value = null;
     }
 
     try {
         const { data } = await api.get('/admin/dealers');
         dealers.value = [...(data.data ?? [])].sort((left, right) => Number(right.id) - Number(left.id));
         loginUrl.value = data.meta?.login_url || loginUrl.value;
+        loadError.value = null;
+    } catch (e) {
+        loadError.value = e.response?.data?.message || t('dealers.loadFailed');
+        toast.add({
+            severity: 'error',
+            summary: t('common.error'),
+            detail: loadError.value,
+            life: 4000,
+        });
     } finally {
         if (!silent) {
             loading.value = false;
@@ -723,8 +742,17 @@ onUnmounted(() => {
 
 .dealers-loading {
     display: flex;
+    flex-direction: column;
+    align-items: center;
     justify-content: center;
+    gap: 0.75rem;
     padding: 3rem;
+}
+
+.dealers-loading-text {
+    margin: 0;
+    font-size: 0.9rem;
+    color: var(--vs-text-muted);
 }
 
 .dealer-list {

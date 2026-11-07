@@ -286,6 +286,9 @@ export default {
     },
     dealers: {
         newDealer: 'New dealer',
+        loading: 'Loading dealers…',
+        loadFailed: 'Failed to load dealers',
+        loadErrorTitle: 'Could not load dealers',
         emptyTitle: 'No dealers yet',
         emptyHint: 'Create the first dealer account to start assigning vehicles from the vehicle list.',
         copyLogin: 'Copy login details',
@@ -692,6 +695,10 @@ export default {
         queueDriver: 'Queue driver',
         pendingJobs: 'Pending queue jobs',
         lastRun: 'Last run',
+        succeeded: 'succeeded',
+        processed: 'processed',
+        allSucceeded: 'all succeeded',
+        allFailed: 'all failed',
         statusOk: 'OK',
         statusDown: 'Down / stale',
         types: {

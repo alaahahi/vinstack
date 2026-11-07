@@ -286,6 +286,9 @@ export default {
     },
     dealers: {
         newDealer: 'تاجر جديد',
+        loading: 'جاري تحميل قائمة التجار…',
+        loadFailed: 'فشل تحميل قائمة التجار',
+        loadErrorTitle: 'تعذّر تحميل التجار',
         emptyTitle: 'لا يوجد تجار بعد',
         emptyHint: 'أنشئ أول حساب تاجر لبدء إسناد السيارات من قائمة السيارات.',
         copyLogin: 'نسخ بيانات الدخول',
@@ -486,6 +489,10 @@ export default {
         queueDriver: 'محرك الطابور',
         pendingJobs: 'مهام بالطابور',
         lastRun: 'آخر تشغيل',
+        succeeded: 'نجح',
+        processed: 'عُولج',
+        allSucceeded: 'نجحت جميعاً',
+        allFailed: 'فشلت جميعاً',
         statusOk: 'شغال',
         statusDown: 'متوقف / متأخر',
         types: {

@@ -286,6 +286,9 @@ export default {
     },
     dealers: {
         newDealer: 'بازرگانی نوێ',
+        loading: 'بازرگانان بار دەکرێن…',
+        loadFailed: 'بارکردنی بازرگانان سەرکەوتوو نەبوو',
+        loadErrorTitle: 'نەتوانرا بازرگانان بار بکرێن',
         emptyTitle: 'هێشتا هیچ بازرگانێک نییە',
         emptyHint: 'یەکەم هەژماری بازرگان دروست بکە بۆ دابەشکردنی ئۆتۆمبێل لە لیستەکە.',
         copyLogin: 'کۆپیکردنی زانیاری چوونەژوورەوە',
@@ -486,6 +489,10 @@ export default {
         queueDriver: 'درایڤەری ڕیز',
         pendingJobs: 'ئەرکی چاوەڕوان',
         lastRun: 'دوا جێبەجێکردن',
+        succeeded: 'سەرکەوتوو',
+        processed: 'پرۆسێس کرا',
+        allSucceeded: 'هەموو سەرکەوتوو بوون',
+        allFailed: 'هەموو سەرکەوتوو نەبوون',
         statusOk: 'چالاک',
         statusDown: 'وەستاو / درەنگ',
         types: {

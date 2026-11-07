@@ -77,11 +77,21 @@
 
                 <div class="transfer-card__progress">
                     <div class="transfer-card__bar">
-                        <span :style="{ width: `${job.progress_percent || 0}%` }" />
+                        <span
+                            class="transfer-card__bar-success"
+                            :style="{ width: `${successPercent(job)}%` }"
+                        />
+                        <span
+                            v-if="job.failed_count > 0"
+                            class="transfer-card__bar-failed"
+                            :style="{ width: `${failedPercent(job)}%` }"
+                        />
                     </div>
                     <div class="transfer-card__meta">
-                        <span>{{ job.transferred_count }}/{{ job.total_images }} · {{ job.progress_percent }}%</span>
-                        <span v-if="job.failed_count">{{ t('imageTransfers.failedCount', { count: job.failed_count }) }}</span>
+                        <span>{{ progressLabel(job) }}</span>
+                        <span v-if="job.failed_count > 0" class="transfer-card__meta-failed">
+                            {{ t('imageTransfers.failedCount', { count: job.failed_count }) }}
+                        </span>
                     </div>
                 </div>
 
@@ -240,6 +250,40 @@ function canCancel(job) {
 
 function canProcessNow(job) {
     return ['queued', 'processing'].includes(job.status);
+}
+
+function successPercent(job) {
+    if (job.total_images <= 0) {
+        return 0;
+    }
+
+    return Math.min(100, Math.round((job.transferred_count / job.total_images) * 100));
+}
+
+function failedPercent(job) {
+    if (job.total_images <= 0) {
+        return 0;
+    }
+
+    return Math.min(100, Math.round((job.failed_count / job.total_images) * 100));
+}
+
+function progressLabel(job) {
+    const processed = job.transferred_count + job.failed_count;
+
+    if (job.status === 'completed') {
+        return `${job.transferred_count}/${job.total_images} · ${t('imageTransfers.allSucceeded')}`;
+    }
+
+    if (job.status === 'partial') {
+        return `${job.transferred_count}/${job.total_images} ${t('imageTransfers.succeeded')} · ${processed}/${job.total_images} ${t('imageTransfers.processed')}`;
+    }
+
+    if (job.status === 'failed') {
+        return `${processed}/${job.total_images} ${t('imageTransfers.processed')} · ${t('imageTransfers.allFailed')}`;
+    }
+
+    return `${processed}/${job.total_images} · ${job.progress_percent}%`;
 }
 
 function formatTime(value) {
@@ -599,20 +643,31 @@ onBeforeUnmount(clearPoll);
     border-radius: 999px;
     background: color-mix(in srgb, var(--vs-text-muted) 16%, transparent);
     overflow: hidden;
+    display: flex;
+    position: relative;
 }
 
-.transfer-card__bar span {
+.transfer-card__bar-success,
+.transfer-card__bar-failed {
     display: block;
     height: 100%;
+    transition: width 0.3s ease;
+}
+
+.transfer-card__bar-success {
     background: #22c55e;
 }
 
-.transfer-card--failed .transfer-card__bar span {
+.transfer-card__bar-failed {
+    background: #f59e0b;
+}
+
+.transfer-card--failed .transfer-card__bar-success {
     background: #ef4444;
 }
 
-.transfer-card--partial .transfer-card__bar span {
-    background: #f59e0b;
+.transfer-card--failed .transfer-card__bar-failed {
+    background: #dc2626;
 }
 
 .transfer-card__meta,
@@ -624,6 +679,11 @@ onBeforeUnmount(clearPoll);
     margin-top: 0.4rem;
     font-size: 0.8rem;
     color: var(--vs-text-muted);
+}
+
+.transfer-card__meta-failed {
+    color: #d97706;
+    font-weight: 600;
 }
 
 .transfer-card__alert,
