@@ -23,7 +23,11 @@ class DealersPageLoadingStatesTest extends TestCase
         $admin = User::factory()->create(['role' => UserRole::Admin]);
         Sanctum::actingAs($admin);
 
-        $dealer = Dealer::factory()->create(['company_name' => 'Test Dealer LLC']);
+        $dealerUser = User::factory()->create(['role' => UserRole::Dealer]);
+        $dealer = Dealer::query()->create([
+            'user_id' => $dealerUser->id,
+            'company_name' => 'Test Dealer LLC',
+        ]);
 
         $response = $this->getJson('/api/admin/dealers');
 
@@ -79,17 +83,23 @@ class DealersPageLoadingStatesTest extends TestCase
         $admin = User::factory()->create(['role' => UserRole::Admin]);
         Sanctum::actingAs($admin);
 
-        $dealer1 = Dealer::factory()->create([
+        $dealerUser1 = User::factory()->create(['role' => UserRole::Dealer]);
+        $dealer1 = Dealer::query()->create([
+            'user_id' => $dealerUser1->id,
             'company_name' => 'Dealer One',
             'created_at' => now()->subDays(5),
         ]);
 
-        $dealer2 = Dealer::factory()->create([
+        $dealerUser2 = User::factory()->create(['role' => UserRole::Dealer]);
+        $dealer2 = Dealer::query()->create([
+            'user_id' => $dealerUser2->id,
             'company_name' => 'Dealer Two',
             'created_at' => now()->subDays(2),
         ]);
 
-        $dealer3 = Dealer::factory()->create([
+        $dealerUser3 = User::factory()->create(['role' => UserRole::Dealer]);
+        $dealer3 = Dealer::query()->create([
+            'user_id' => $dealerUser3->id,
             'company_name' => 'Dealer Three',
             'created_at' => now()->subDay(),
         ]);
